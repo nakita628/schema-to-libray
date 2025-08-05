@@ -27,7 +27,7 @@ export default function zod(
   // /* combinators */
   if (schema.oneOf) {
     if (!schema.oneOf?.length) return wrap('z.any()', schema)
-    const schemas = schema.oneOf.map((s) => zod(s, rootName, isSchemaToZod))
+    const schemas = schema.oneOf.map((s: Schema) => zod(s, rootName, isSchemaToZod))
     // discriminatedUnion Support hesitant
     //   This is because using intersection causes a type error.
     // const discriminator = schema.discriminator?.propertyName
@@ -38,7 +38,7 @@ export default function zod(
   }
   if (schema.anyOf) {
     if (!schema.anyOf?.length) return wrap('z.any()', schema)
-    const schemas = schema.anyOf.map((s) => zod(s, rootName, isSchemaToZod))
+    const schemas = schema.anyOf.map((s: Schema) => zod(s, rootName, isSchemaToZod))
     return wrap(`z.union([${schemas.join(',')}])`, schema)
   }
   if (schema.allOf) {
@@ -49,7 +49,7 @@ export default function zod(
       nullable: boolean
       defaultValue?: unknown
     }>(
-      (acc, s) => {
+      (acc: { schemas: string[]; nullable: boolean; defaultValue?: unknown }, s: Schema) => {
         const isOnlyNull = s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
 
         if (isOnlyNull)
@@ -193,13 +193,13 @@ export function string(schema: Schema): string {
 export function _enum(schema: Schema): string {
   /* -------------------------- helpers -------------------------- */
   const hasType = (t: string): boolean =>
-    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x) => x === t))
+    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
 
   const lit = (v: unknown): string =>
     v === null ? 'null' : typeof v === 'string' ? `'${v}'` : String(v)
 
   const tuple = (arr: readonly unknown[]): string =>
-    `z.tuple([${arr.map((i) => `z.literal(${lit(i)})`).join(',')}])`
+    `z.tuple([${arr.map((i: unknown) => `z.literal(${lit(i)})`).join(',')}])`
 
   /* --------------------------- guard --------------------------- */
   if (!schema.enum || schema.enum.length === 0) return 'z.any()'
@@ -207,14 +207,14 @@ export function _enum(schema: Schema): string {
   /* ------------------- number / integer enum ------------------- */
   if (hasType('number') || hasType('integer')) {
     return schema.enum.length > 1
-      ? `z.union([${schema.enum.map((v) => `z.literal(${v})`).join(',')}])`
+      ? `z.union([${schema.enum.map((v: unknown) => `z.literal(${v})`).join(',')}])`
       : `z.literal(${schema.enum[0]})`
   }
 
   /* ----------------------- boolean enum ------------------------ */
   if (hasType('boolean')) {
     return schema.enum.length > 1
-      ? `z.union([${schema.enum.map((v) => `z.literal(${v})`).join(',')}])`
+      ? `z.union([${schema.enum.map((v: unknown) => `z.literal(${v})`).join(',')}])`
       : `z.literal(${schema.enum[0]})`
   }
 
@@ -224,12 +224,14 @@ export function _enum(schema: Schema): string {
       return tuple(schema.enum[0])
     }
 
-    const parts = schema.enum.map((v) => (Array.isArray(v) ? tuple(v) : `z.literal(${lit(v)})`))
+    const parts = schema.enum.map((v: unknown) =>
+      Array.isArray(v) ? tuple(v) : `z.literal(${lit(v)})`,
+    )
     return `z.union([${parts.join(',')}])`
   }
 
   /* ----------------------- string enum ------------------------- */
-  if (schema.enum.every((v) => typeof v === 'string')) {
+  if (schema.enum.every((v: unknown) => typeof v === 'string')) {
     return schema.enum.length > 1
       ? `z.enum(${JSON.stringify(schema.enum)})`
       : `z.literal('${schema.enum[0]}')`
@@ -237,7 +239,7 @@ export function _enum(schema: Schema): string {
 
   /* -------------------- mixed / null only ---------------------- */
   if (schema.enum.length > 1) {
-    const parts = schema.enum.map((v) => `z.literal(${lit(v)})`)
+    const parts = schema.enum.map((v: unknown) => `z.literal(${lit(v)})`)
     return `z.union([${parts.join(',')}])`
   }
 
