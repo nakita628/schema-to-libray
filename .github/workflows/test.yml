@@ -23,7 +23,7 @@ jobs:
           version: 10
 
       - name: Install Dependencies
-        run: pnpm schema-to-library-deps
+        run: pnpm -F schema-to-library deps
 
       - name: Check
         run: pnpm check
