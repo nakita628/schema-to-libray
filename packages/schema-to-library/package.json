@@ -1,0 +1,21 @@
+{
+  "name": "schema-to-library",
+  "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "keywords": [
+    "zod"
+  ],
+  "bin": {
+    "schema-to-zod": "dist/zod.js"
+  },
+  "scripts": {
+    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "build": "rm -rf ./dist/* && tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@schema-to-library/cli": "workspace:^",
+    "@schema-to-library/zod": "workspace:^"
+  }
+}

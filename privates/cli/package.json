@@ -1,0 +1,16 @@
+{
+  "name": "@schema-to-library/cli",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "build": "rm -rf ./dist/* && tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "prettier": "^3.6.2",
+    "valibot": "^1.1.0",
+    "yaml": "^2.8.0"
+  }
+}
