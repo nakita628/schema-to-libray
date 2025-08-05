@@ -1,0 +1,38 @@
+{
+  "name": "schema-to-library",
+  "description": "Generate Zod schemas from JSON or YAML files",
+  "version": "0.0.1",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "zod"
+  ],
+  "homepage": "https://github.com/nakita628/schema-to-libray",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nakita628/schema-to-libray.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nakita628/schema-to-libray/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "schema-to-zod": "dist/zod.js"
+  },
+  "scripts": {
+    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "build": "rm -rf ./dist/* && tsc",
+    "typecheck": "tsc --noEmit",
+    "release": "pnpm build && pnpm publish"
+  },
+  "dependencies": {
+    "@schema-to-library/cli": "workspace:^",
+    "@schema-to-library/zod": "workspace:^"
+  }
+}

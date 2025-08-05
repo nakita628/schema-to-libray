@@ -1,0 +1,14 @@
+{
+  "name": "@apps/generated",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "build": "rm -rf ./dist/* && tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "zod": "^4.0.14"
+  }
+}
