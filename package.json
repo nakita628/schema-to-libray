@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "pnpm -F @apps/generated dev",
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
-    "all-deps": "pnpm -F @schema-to-library/types deps && pnpm -F @schema-to-library/zod deps && pnpm -F @schema-to-library/helper deps && pnpm -F schema-to-library deps",
     "check": "pnpm biome check --write ./",
     "typecheck": "tsc --noEmit",
     "build": "pnpm -r --workspace-concurrency=Infinity build",

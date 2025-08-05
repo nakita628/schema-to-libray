@@ -23,7 +23,7 @@ jobs:
           version: 10
 
       - name: Install Dependencies
-        run: pnpm all-deps
+        run: pnpm deps
 
       - name: Check
         run: pnpm check
