@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { resolveSchemaDependenciesFromSchema } from './resolve-schema-dependencies-from-shema.js'
 
 // Test run
-// pnpm vitest run ./private/helper/src/dep/resolve-schema-dependencies-from-shema.test.ts
+// pnpm vitest run ./src/dep/resolve-schema-dependencies-from-shema.test.ts
 
 describe('resolveSchemaDependenciesFromSchema', () => {
   it('should return empty array for schema without definitions', () => {

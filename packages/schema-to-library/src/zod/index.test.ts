@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { schemaToZod } from './index.js'
 
 // Test run
-// pnpm vitest run ./private/zod/src/index.test.ts
+// pnpm vitest run ./src/zod/index.test.ts
 
 describe('schemaToZod', () => {
   it('should generate simple schema without definitions', () => {
