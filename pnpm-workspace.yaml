@@ -2,5 +2,3 @@ packages:
   - apps/*
   - packages/*
   - privates/*
-overrides:
-  schema-to-library: link:packages/schema-to-library
