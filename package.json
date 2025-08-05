@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm -F @apps/generated dev",
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "schema-to-library-deps": "pnpm -F schema-to-library deps",
     "check": "pnpm biome check --write ./",
     "typecheck": "pnpm -F schema-to-library typecheck",
     "build": "pnpm -F schema-to-library build",
