@@ -9,7 +9,7 @@
     "all-deps": "pnpm -F @schema-to-library/types deps && pnpm -F @schema-to-library/zod deps && pnpm -F @schema-to-library/helper deps && pnpm -F schema-to-library deps",
     "check": "pnpm biome check --write ./",
     "typecheck": "tsc --noEmit",
-    "build": "pnpm -r build",
+    "build": "pnpm -r --workspace-concurrency=Infinity build",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "release": "pnpm install && pnpm build && pnpm -F schema-to-library release"
