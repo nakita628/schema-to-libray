@@ -29,7 +29,7 @@
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "build": "rm -rf ./dist/* && tsc",
     "typecheck": "tsc --noEmit",
-    "release": "pnpm install && pnpm build && pnpm publish"
+    "release": "pnpm install && pnpm -F @schema-to-library/cli build && pnpm -F @schema-to-library/zod build && pnpm build && pnpm publish"
   },
   "dependencies": {
     "@schema-to-library/cli": "workspace:^",
