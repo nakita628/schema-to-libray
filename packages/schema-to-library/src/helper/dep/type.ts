@@ -1,4 +1,4 @@
-import type { Schema } from '@schema-to-library/cli'
+import type { Schema } from '../../cli/index.js'
 import { normalizeTypes, toPascalCase } from '../utils/index.js'
 
 export function type(schema: Schema, rootName: string = 'Schema'): string {
@@ -75,11 +75,11 @@ export function type(schema: Schema, rootName: string = 'Schema'): string {
       const v = schema.enum[0]
       return typeof v === 'string' ? `"${v}"` : String(v)
     }
-    const allStrings = schema.enum.every((v) => typeof v === 'string')
+    const allStrings = schema.enum.every((v: unknown) => typeof v === 'string')
     if (allStrings) {
-      return `(${schema.enum.map((v) => `"${v}"`).join(' | ')})`
+      return `(${schema.enum.map((v: unknown) => `"${v}"`).join(' | ')})`
     }
-    return `(${schema.enum.map((v) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
+    return `(${schema.enum.map((v: unknown) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
   }
 
   // properties

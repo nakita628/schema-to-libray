@@ -8,7 +8,6 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "schema-to-library": "^0.0.1",
     "tsx": "^4.20.3",
     "zod": "^4.0.14"
   }

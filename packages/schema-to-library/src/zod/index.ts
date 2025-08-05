@@ -1,5 +1,5 @@
-import type { Schema } from '@schema-to-library/cli'
-import { resolveSchemaDependenciesFromSchema, toPascalCase, type } from '@schema-to-library/helper'
+import type { Schema } from '../cli/index.js'
+import { resolveSchemaDependenciesFromSchema, toPascalCase, type } from '../helper/index.js'
 import zod from './zod/index.js'
 
 export function schemaToZod(schema: Schema): string {

@@ -1,9 +1,9 @@
-import type { Schema } from '@schema-to-library/cli'
 import { describe, expect, it } from 'vitest'
+import type { Schema } from '../../cli/index.js'
 import zod from './index.js'
 
 // Test run
-// pnpm vitest run ./private/zod/src/zod/index.test.ts
+// pnpm vitest run ./src/zod/zod/index.test.ts
 
 describe('zod', () => {
   describe('ref', () => {

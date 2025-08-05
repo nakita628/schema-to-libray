@@ -29,10 +29,18 @@
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "build": "rm -rf ./dist/* && tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "release": "pnpm publish"
   },
   "dependencies": {
-    "@schema-to-library/cli": "file:../../privates/cli",
-    "@schema-to-library/zod": "file:../../privates/zod"
+    "prettier": "^3.6.2",
+    "valibot": "^1.1.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "vitest": "^3.2.4"
   }
 }

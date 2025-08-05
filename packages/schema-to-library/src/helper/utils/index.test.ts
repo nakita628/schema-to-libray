@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizeTypes, toPascalCase } from './index.js'
 
 // Test run
-// pnpm vitest run ./private/helper/src/utils/index.test.ts
+// pnpm vitest run ./src/utils/index.test.ts
 
 describe('helper', () => {
   describe('toPascalCase', () => {

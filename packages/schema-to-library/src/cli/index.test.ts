@@ -5,7 +5,7 @@ import type { Schema } from './index.js'
 import { cli } from './index.js'
 
 // Test run
-// pnpm vitest run ./privates/cli/src/index.test.ts
+// pnpm vitest run ./src/index.test.ts
 
 const mockReadFile = vi.spyOn(fsp, 'readFile')
 const mockWriteFile = vi.spyOn(fsp, 'writeFile')
