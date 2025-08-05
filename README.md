@@ -6,7 +6,7 @@ npm install -D schema-to-library
 
 ## What is schema-to-library?
 
-**schema-to-library** is a CLI tool that converts JSON Schema into code for validation libraries like Zod,
+**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a CLI tool that converts JSON Schema into code for validation libraries like Zod,
 It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions.
 
 ## Upcoming Support
@@ -24,7 +24,7 @@ Support for additional libraries is planned:
 ```bash
 npx schema-to-zod path/to/input.{json,yaml} -o path/to/output.ts
 ```
-
+-
 ### Example
 
 input:
