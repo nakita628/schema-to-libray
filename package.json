@@ -9,10 +9,10 @@
     "all-deps": "pnpm -F @schema-to-library/types deps && pnpm -F @schema-to-library/zod deps && pnpm -F @schema-to-library/helper deps && pnpm -F schema-to-library deps",
     "check": "pnpm biome check --write ./",
     "typecheck": "tsc --noEmit",
-    "build": "pnpm -r --workspace-concurrency=Infinity build",
+    "build": "pnpm -r build",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "release": "pnpm build && pnpm -F schema-to-library release"
+    "release": "pnpm install && pnpm build && pnpm -F schema-to-library release"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
