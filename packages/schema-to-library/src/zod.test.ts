@@ -27,7 +27,7 @@ describe('bin/schema-to-zod CLI', () => {
     process.argv = ['node', '*/dist/index.js', 'input.yaml', '-o', 'output.ts']
 
     // biome-ignore lint: test
-    await import('./index.ts' as any)
+    await import('./zod.ts' as any)
 
     expect(console.log).toHaveBeenCalledWith('output.ts created')
   })
