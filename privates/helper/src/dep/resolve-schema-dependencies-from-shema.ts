@@ -75,7 +75,7 @@ export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
     if (perm.has(name)) return
     if (temp.has(name)) {
       // Circular dependency detected - skip this dependency but continue processing
-      console.warn(`Warning: Circular dependency detected for type "${name}", skipping...`)
+      // console.warn(`Warning: Circular dependency detected for type "${name}", skipping...`)
       return
     }
 
