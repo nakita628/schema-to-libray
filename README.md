@@ -75,4 +75,4 @@ export type Schema = z.infer<typeof Schema>
 
 ## License
 
-Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/schema-to-library?tab=MIT-1-ov-file) for more information.
+Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/schema-to-libray?tab=MIT-1-ov-file) for more information.
