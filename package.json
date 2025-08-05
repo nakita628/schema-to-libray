@@ -9,6 +9,7 @@
     "check": "pnpm biome check --write ./",
     "typecheck": "tsc --noEmit",
     "build": "pnpm -r build",
+    "ci:build": "pnpm --filter @schema-to-library/zod build && pnpm --filter @schema-to-library/cli build && pnpm --filter @schema-to-library/schema-to-library build",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "release": "pnpm install && pnpm build && pnpm -F schema-to-library release"
