@@ -8,8 +8,8 @@
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
     "schema-to-library-deps": "pnpm -F schema-to-library deps",
     "check": "pnpm biome check --write ./",
-    "typecheck": "pnpm -F schema-to-library typecheck",
-    "build": "pnpm -F schema-to-library build",
+    "typecheck": "tsc --noEmit",
+    "build": "pnpm -r --workspace-concurrency=Infinity build",
     "test": "vitest run",
     "coverage": "vitest run --coverage"
   },
