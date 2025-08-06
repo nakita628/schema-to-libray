@@ -1,4 +1,4 @@
-import type { Schema } from '../../cli/index.js'
+import type { Schema } from '../../../../cli/src/index.js'
 import { normalizeTypes, toPascalCase } from '../../helper/index.js'
 
 export default function zod(

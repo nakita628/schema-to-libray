@@ -1,4 +1,4 @@
-import type { Schema } from '../cli/index.js'
+import type { Schema } from '../../../cli/src/index.js'
 import { resolveSchemaDependenciesFromSchema, toPascalCase, type } from '../helper/index.js'
 import zod from './zod/index.js'
 

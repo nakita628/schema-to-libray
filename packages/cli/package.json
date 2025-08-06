@@ -1,0 +1,14 @@
+{
+  "name": "@schema-to-library/cli",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rm -rf ./dist/* && tsc"
+  },
+  "dependencies": {
+    "prettier": "^3.6.2",
+    "valibot": "^1.1.0",
+    "yaml": "^2.8.1"
+  }
+}

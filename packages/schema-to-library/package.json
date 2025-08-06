@@ -30,13 +30,5 @@
     "build": "rm -rf ./dist/* && tsc",
     "typecheck": "tsc --noEmit",
     "release": "pnpm publish"
-  },
-  "dependencies": {
-    "prettier": "^3.6.2",
-    "valibot": "^1.1.0",
-    "yaml": "^2.8.0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.2.0"
   }
 }

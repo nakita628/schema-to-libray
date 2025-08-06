@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cli } from './cli/index.js'
+import { cli } from '@schema-to-library/cli'
 import { schemaToZod } from './zod/index.js'
 
 const HELP_TEXT = `Usage: schema-to-zod <input.{json,yaml}> -o <output.ts>

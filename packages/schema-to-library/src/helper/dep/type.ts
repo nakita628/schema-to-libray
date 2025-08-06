@@ -1,4 +1,4 @@
-import type { Schema } from '../../cli/index.js'
+import type { Schema } from '../../../../cli/src/index.js'
 import { normalizeTypes, toPascalCase } from '../utils/index.js'
 
 export function type(schema: Schema, rootName: string = 'Schema'): string {
