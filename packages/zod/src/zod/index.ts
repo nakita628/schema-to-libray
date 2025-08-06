@@ -1,5 +1,5 @@
 import type { Schema } from '@schema-to-library/cli'
-import { normalizeTypes, toPascalCase } from '../../helper/index.js'
+import { normalizeTypes, toPascalCase } from '@schema-to-library/helper'
 
 export default function zod(
   schema: Schema,
