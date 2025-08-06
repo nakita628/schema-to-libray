@@ -10,13 +10,12 @@
     "check": "pnpm biome check --write ./",
     "typecheck": "pnpm -F schema-to-library typecheck",
     "build": "pnpm -F schema-to-library build",
-    "test": "pnpm -F schema-to-library test",
-    "coverage": "pnpm -F schema-to-library coverage",
-    "release": "pnpm -F schema-to-library release"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
-    "@types/node": "^24.1.0",
+    "@types/node": "^24.2.0",
     "@vitest/coverage-v8": "^3.2.4",
     "vitest": "^3.2.4"
   }

@@ -1,0 +1,6 @@
+---
+description: cursor-base
+globs: "**/*"
+alwaysApply: true
+---
+
