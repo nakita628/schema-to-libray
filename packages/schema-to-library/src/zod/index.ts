@@ -88,7 +88,7 @@ export function schemaToZod(schema: Schema): string {
   })()
 
   // Generate type definition
-  const typeDefinition = type(schema, 'Schema')
+  const typeDefinition = type(schema, rootName)
 
   // Generate schema definitions for all referenced types
   const schemaDefinitions =
@@ -108,15 +108,15 @@ export function schemaToZod(schema: Schema): string {
         })()
       : ''
 
-  const generated = zod(schema, 'Schema', true)
+  const generated = zod(schema, rootName, true)
   const schemaDefinitionsCode = schemaDefinitions ? `${schemaDefinitions}\n\n` : ''
 
   // Always include type definition when there are references
-  const typeCode = hasReferences ? `type SchemaType = ${typeDefinition}\n\n` : ''
+  const typeCode = hasReferences ? `type ${rootName}Type = ${typeDefinition}\n\n` : ''
 
   const schemaExport = hasReferences
-    ? `export const Schema: z.ZodType<SchemaType> = ${generated}`
-    : `export const Schema = ${generated}`
+    ? `export const ${rootName}: z.ZodType<${rootName}Type> = ${generated}`
+    : `export const ${rootName} = ${generated}`
 
-  return `import * as z from 'zod'\n\n${typeCode}${schemaDefinitionsCode}${schemaExport}\n\nexport type Schema = z.infer<typeof Schema>`
+  return `import * as z from 'zod'\n\n${typeCode}${schemaDefinitionsCode}${schemaExport}\n\nexport type ${rootName} = z.infer<typeof ${rootName}>`
 }

@@ -1,28 +1,11 @@
 import * as z from 'zod'
 
-export const Schema = z.object({
-  value: z.enum([
-    '1',
-    '2',
-    'Fizz',
-    '4',
-    'Buzz',
-    'Fizz',
-    '7',
-    '8',
-    'Fizz',
-    'Buzz',
-    '11',
-    'Fizz',
-    '13',
-    '14',
-    'FizzBuzz',
-    '16',
-    '17',
-    'Fizz',
-    '19',
-    'Buzz',
-  ]),
-})
+type AType = {b?: BType}
 
-export type Schema = z.infer<typeof Schema>
+const CSchema = z.string()
+
+const BSchema = z.object({c:z.lazy(() => C)}).partial()
+
+export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
+
+export type A = z.infer<typeof A>
