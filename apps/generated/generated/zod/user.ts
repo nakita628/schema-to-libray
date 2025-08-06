@@ -1,6 +1,6 @@
 import * as z from 'zod'
 
-export const Schema = z.strictObject({
+export const User = z.strictObject({
   id: z.uuid(),
   name: z.string().min(1),
   age: z.int().min(0).optional(),
@@ -8,4 +8,4 @@ export const Schema = z.strictObject({
   isActive: z.boolean().default(true).optional(),
 })
 
-export type Schema = z.infer<typeof Schema>
+export type User = z.infer<typeof User>

@@ -1,5 +1,21 @@
 import type { Schema } from '../../cli/index.js'
 
+/**
+ * Resolve schema dependencies and return them in topological order
+ *
+ * @param schema - JSON Schema object containing definitions or $defs
+ * @returns Array of schema names in dependency order
+ * @example
+ * ```ts
+ * const schema = {
+ *   $defs: {
+ *     animal: { type: 'object', properties: { name: { type: 'string' } } },
+ *     zoo: { type: 'object', properties: { animals: { $ref: '#/$defs/animal' } } }
+ *   }
+ * }
+ * resolveSchemaDependenciesFromSchema(schema) // ['animal', 'zoo']
+ * ```
+ */
 export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
   // Merge both definitions and $defs
   const definitions: Record<string, Schema> = {
@@ -9,6 +25,12 @@ export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
 
   const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 
+  /**
+   * Collect all $ref references from a schema recursively
+   *
+   * @param schema - Schema to analyze
+   * @returns Set of referenced schema names
+   */
   const collectRefs = (schema: Schema): string[] => {
     const refs = new Set<string>()
     const stack = [schema]
@@ -71,6 +93,11 @@ export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
   const perm = new Set<string>()
   const temp = new Set<string>()
 
+  /**
+   * Visit a schema and its dependencies (topological sort)
+   *
+   * @param name - Schema name to visit
+   */
   const visit = (name: string): void => {
     if (perm.has(name)) return
     if (temp.has(name)) {

@@ -32,9 +32,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string()}).partial()
+export const User = z.object({name:z.string()}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
   })
 
@@ -57,11 +57,8 @@ export type Schema = z.infer<typeof Schema>`
     const expected = `import * as z from 'zod'
 
 type NodeType = {children?: NodeType[]}
-type NodeType = Record<string, unknown>
 
 export const Node: z.ZodType<NodeType> = z.object({children:z.array(z.lazy(() => Node))}).partial()
-
-export const Node: z.ZodType<NodeType> = z.object({})
 
 export type Node = z.infer<typeof Node>`
     expect(result).toBe(expected)
@@ -86,15 +83,19 @@ export type Node = z.infer<typeof Node>`
     })
     const expected = `import * as z from 'zod'
 
-type SchemaType = {b?: BType}
+type AType = {b?: BType}
 
-const CSchema = z.string()
+type CType = string
 
-const BSchema = z.object({c:z.lazy(() => C)}).partial()
+type BType = {c?: CType}
 
-export const Schema: z.ZodType<SchemaType> = z.object({b:z.lazy(() => B)}).partial()
+const C: z.ZodType<CType> = z.string()
 
-export type Schema = z.infer<typeof Schema>`
+const B: z.ZodType<BType> = z.object({c:z.lazy(() => C)}).partial()
+
+export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
+
+export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
   })
 
@@ -116,13 +117,15 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-type SchemaType = {address?: AddressType}
+type UserType = {address?: AddressType}
 
-const AddressSchema = z.object({street:z.string()}).partial()
+type AddressType = {street?: string}
 
-export const Schema: z.ZodType<SchemaType> = z.object({address:z.lazy(() => Address)}).partial()
+const Address: z.ZodType<AddressType> = z.object({street:z.string()}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export const User: z.ZodType<UserType> = z.object({address:z.lazy(() => Address)}).partial()
+
+export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
   })
 
@@ -145,17 +148,18 @@ export type Schema = z.infer<typeof Schema>`
         },
       },
     })
+    console.log(result)
     const expected = `import * as z from 'zod'
 
-type SchemaType = Record<string, unknown>
+type AType = {b?: BType}
 
-const BSchema = z.object({a:z.lazy(() => A)}).partial()
+type BType = {a?: AType}
 
-const ASchema = z.object({b:z.lazy(() => B)}).partial()
+const B: z.ZodType<BType> = z.object({a:z.lazy(() => A)}).partial()
 
-export const Schema: z.ZodType<SchemaType> = z.object({})
+export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
   })
 
@@ -207,9 +211,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({value:z.union([z.string(),z.number()])}).partial()
+export const Union = z.object({value:z.union([z.string(),z.number()])}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Union = z.infer<typeof Union>`
     expect(result).toBe(expected)
   })
 
@@ -225,9 +229,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({value:z.union([z.string(),z.number()])}).partial()
+export const AnyOf = z.object({value:z.union([z.string(),z.number()])}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type AnyOf = z.infer<typeof AnyOf>`
     expect(result).toBe(expected)
   })
 
@@ -246,9 +250,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({value:z.intersection(z.object({name:z.string()}).partial(),z.object({age:z.number()}).partial())}).partial()
+export const AllOf = z.object({value:z.intersection(z.object({name:z.string()}).partial(),z.object({age:z.number()}).partial())}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type AllOf = z.infer<typeof AllOf>`
     expect(result).toBe(expected)
   })
 
@@ -265,9 +269,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({status:z.enum(["active","inactive"])}).partial()
+export const Enum = z.object({status:z.enum(["active","inactive"])}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Enum = z.infer<typeof Enum>`
     expect(result).toBe(expected)
   })
 
@@ -283,9 +287,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({type:z.literal("user")}).partial()
+export const Const = z.object({type:z.literal("user")}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Const = z.infer<typeof Const>`
     expect(result).toBe(expected)
   })
 
@@ -302,9 +306,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({items:z.array(z.string())}).partial()
+export const Array = z.object({items:z.array(z.string())}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Array = z.infer<typeof Array>`
     expect(result).toBe(expected)
   })
 
@@ -324,9 +328,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({user:z.object({name:z.string(),age:z.number()}).partial()}).partial()
+export const Nested = z.object({user:z.object({name:z.string(),age:z.number()}).partial()}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Nested = z.infer<typeof Nested>`
     expect(result).toBe(expected)
   })
 
@@ -342,9 +346,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string(),age:z.number()})
+export const Required = z.object({name:z.string(),age:z.number()})
 
-export type Schema = z.infer<typeof Schema>`
+export type Required = z.infer<typeof Required>`
     expect(result).toBe(expected)
   })
 
@@ -356,9 +360,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.record(z.string(),z.string())
+export const Additional = z.record(z.string(),z.string())
 
-export type Schema = z.infer<typeof Schema>`
+export type Additional = z.infer<typeof Additional>`
     expect(result).toBe(expected)
   })
 
@@ -379,9 +383,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({email:z.email(),uuid:z.uuid()}).partial()
+export const Format = z.object({email:z.email(),uuid:z.uuid()}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Format = z.infer<typeof Format>`
     expect(result).toBe(expected)
   })
 
@@ -399,9 +403,9 @@ export type Schema = z.infer<typeof Schema>`
 
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({phone:z.string().regex(/^d+$/)}).partial()
+export const Pattern = z.object({phone:z.string().regex(/^d+$/)}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Pattern = z.infer<typeof Pattern>`
     expect(result).toBe(expected)
   })
 
@@ -419,9 +423,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({age:z.number().min(0).max(120)}).partial()
+export const MinMax = z.object({age:z.number().min(0).max(120)}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type MinMax = z.infer<typeof MinMax>`
     expect(result).toBe(expected)
   })
 
@@ -439,9 +443,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string().min(1).max(100)}).partial()
+export const Length = z.object({name:z.string().min(1).max(100)}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type Length = z.infer<typeof Length>`
     expect(result).toBe(expected)
   })
 })

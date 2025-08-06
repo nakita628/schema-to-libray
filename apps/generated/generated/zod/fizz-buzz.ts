@@ -1,6 +1,6 @@
 import * as z from 'zod'
 
-export const Schema = z.object({
+export const FizzBuzzString = z.object({
   value: z.enum([
     '1',
     '2',
@@ -25,4 +25,4 @@ export const Schema = z.object({
   ]),
 })
 
-export type Schema = z.infer<typeof Schema>
+export type FizzBuzzString = z.infer<typeof FizzBuzzString>

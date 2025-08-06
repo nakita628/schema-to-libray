@@ -4,6 +4,9 @@ import { format } from 'prettier'
 import * as v from 'valibot'
 import { parse } from 'yaml'
 
+/**
+ * Schema for validating input/output file paths
+ */
 const IOSchema = v.object({
   input: v.custom<`${string}.yaml` | `${string}.json`>(
     (value) => typeof value === 'string' && (value.endsWith('.yaml') || value.endsWith('.json')),
@@ -15,22 +18,39 @@ const IOSchema = v.object({
   ),
 })
 
-const IsYAMLSchema = v.custom<`${string}.yaml`>(
-  (value) => typeof value === 'string' && value.endsWith('.yaml'),
-  'Must end with .yaml',
-)
+/**
+ * Schema generator function type
+ */
+type SchemaGenerator = (schema: Schema, rootName?: string) => string
 
-const IsJSONSchema = v.custom<`${string}.json`>(
-  (value) => typeof value === 'string' && value.endsWith('.json'),
-  'Must end with .json',
-)
+/**
+ * CLI result type
+ */
+type CLIResult =
+  | {
+      ok: true
+      value: string
+    }
+  | {
+      ok: false
+      error: string
+    }
 
-export async function cli(fn: (schema: Schema, rootName?: string) => string, helpText: string) {
+/**
+ * Main CLI function that processes schema files and generates output
+ *
+ * @param fn - Schema generator function
+ * @param helpText - Help text to display when --help is used
+ * @returns Promise resolving to CLI result
+ */
+export async function cli(fn: SchemaGenerator, helpText: string): Promise<CLIResult> {
   // Slice the arguments to remove the first two (node and script path)
   const args = process.argv.slice(2)
+
   const isHelpRequested = (args: readonly string[]): boolean => {
     return args.length === 1 && (args[0] === '--help' || args[0] === '-h')
   }
+
   if (isHelpRequested(args)) {
     return {
       ok: true,
@@ -98,74 +118,63 @@ export async function cli(fn: (schema: Schema, rootName?: string) => string, hel
       error: writeFileResult.error,
     }
   }
+
   return {
     ok: true,
-    value: `${output} created`,
+    value: `Generated: ${output}`,
   }
 }
 
-async function parseSchema(i: `${string}.yaml` | `${string}.json`) {
-  if (i.endsWith('.yaml')) {
-    const valid = v.safeParse(IsYAMLSchema, i)
-    if (!valid.success) {
-      return {
-        ok: false,
-        error: valid.issues.map((issue) => issue.message)[0],
-      }
+/**
+ * Parse schema from file (JSON or YAML)
+ *
+ * @param i - Input file path
+ * @returns Promise resolving to parse result
+ */
+async function parseSchema(i: `${string}.yaml` | `${string}.json`): Promise<
+  | {
+      ok: true
+      value: unknown
     }
-    const input = valid.output
-
-    const file = await readFile(input)
-    if (!file.ok) {
-      return {
-        ok: false,
-        error: file.error,
-      }
+  | {
+      ok: false
+      error: string
     }
-
-    const yaml = parseYaml(file.value)
-    if (!yaml.ok) {
-      return {
-        ok: false,
-        error: yaml.error,
-      }
-    }
-
+> {
+  const readResult = await readFile(i)
+  if (!readResult.ok) {
     return {
-      ok: true,
-      value: yaml.value,
+      ok: false,
+      error: readResult.error,
     }
   }
-  if (i.endsWith('.json')) {
-    const valid = v.safeParse(IsJSONSchema, i)
-    if (!valid.success) {
-      return {
-        ok: false,
-        error: valid.issues.map((issue) => issue.message)[0],
-      }
-    }
-    const input = valid.output
 
-    const file = await readFile(input)
-    if (!file.ok) {
-      return {
-        ok: false,
-        error: file.error,
-      }
-    }
+  const content = readResult.value
 
+  if (i.endsWith('.yaml') || i.endsWith('.yml')) {
+    return parseYaml(content)
+  }
+
+  try {
+    const parsed = JSON.parse(content)
     return {
       ok: true,
-      value: JSON.parse(file.value),
+      value: parsed,
     }
-  }
-  return {
-    ok: false,
-    error: 'Invalid input file type',
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Failed to parse JSON: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
   }
 }
 
-// parseYaml
+/**
+ * Parse YAML content
+ *
+ * @param i - YAML content string
+ * @returns Parse result
+ */
 export function parseYaml(i: string):
   | {
       ok: true
@@ -176,20 +185,25 @@ export function parseYaml(i: string):
       error: string
     } {
   try {
-    const yaml = parse(i)
+    const parsed = parse(i)
     return {
       ok: true,
-      value: yaml,
+      value: parsed,
     }
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: String(e),
+      error: `Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
 
-// readFile
+/**
+ * Read file content
+ *
+ * @param path - File path to read
+ * @returns Promise resolving to read result
+ */
 async function readFile(path: string): Promise<
   | {
       ok: false
@@ -201,21 +215,24 @@ async function readFile(path: string): Promise<
     }
 > {
   try {
-    const res = await fsp.readFile(path, 'utf-8')
-    return { ok: true, value: res }
-  } catch (e) {
+    const content = await fsp.readFile(path, 'utf-8')
+    return {
+      ok: true,
+      value: content,
+    }
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : String(e),
+      error: `Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
 
 /**
- * Formats TypeScript source with Prettier.
+ * Format code using Prettier
  *
- * @param code - Source code to format.
- * @returns A `Result` containing the formatted code or an error message.
+ * @param code - Code to format
+ * @returns Promise resolving to format result
  */
 async function fmt(code: string): Promise<
   | {
@@ -232,24 +249,27 @@ async function fmt(code: string): Promise<
   try {
     const formatted = await format(code, {
       parser: 'typescript',
-      printWidth: 100,
-      singleQuote: true,
       semi: false,
+      singleQuote: true,
+      trailingComma: 'es5',
     })
-    return { ok: true, value: formatted }
-  } catch (e) {
+    return {
+      ok: true,
+      value: formatted,
+    }
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : String(e),
+      error: `Failed to format code: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
 
 /**
- * Creates a directory if it does not already exist.
+ * Create directory if it doesn't exist
  *
- * @param dir - Directory path to create.
- * @returns A `Result` that is `ok` on success, otherwise an error message.
+ * @param dir - Directory path to create
+ * @returns Promise resolving to mkdir result
  */
 async function mkdir(dir: string): Promise<
   | {
@@ -267,20 +287,20 @@ async function mkdir(dir: string): Promise<
       ok: true,
       value: undefined,
     }
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : String(e),
+      error: `Failed to create directory: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
 
 /**
- * Writes UTF-8 text to a file, creating it if necessary.
+ * Write file with content
  *
- * @param path - File path to write.
- * @param data - Text data to write.
- * @returns A `Result` that is `ok` on success, otherwise an error message.
+ * @param path - File path to write
+ * @param data - Content to write
+ * @returns Promise resolving to write result
  */
 async function writeFile(
   path: string,
@@ -297,12 +317,21 @@ async function writeFile(
 > {
   try {
     await fsp.writeFile(path, data, 'utf-8')
-    return { ok: true, value: undefined }
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    return {
+      ok: true,
+      value: undefined,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Failed to write file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    }
   }
 }
 
+/**
+ * Schema for validating JSON Schema type values
+ */
 const TypeSchema = v.union([
   v.literal('string'),
   v.literal('number'),
@@ -314,8 +343,14 @@ const TypeSchema = v.union([
   v.literal('null'),
 ])
 
+/**
+ * JSON Schema type values
+ */
 type Type = v.InferInput<typeof TypeSchema>
 
+/**
+ * Schema for validating JSON Schema format values
+ */
 export const FormatSchema = v.union([
   v.literal('email'),
   v.literal('uuid'),
@@ -354,8 +389,14 @@ export const FormatSchema = v.union([
   v.literal('decimal'),
 ])
 
+/**
+ * JSON Schema format values
+ */
 type Format = v.InferInput<typeof FormatSchema>
 
+/**
+ * JSON Schema object type definition
+ */
 type SchemaType = {
   title?: string
   definitions?: Record<string, SchemaType>
@@ -401,6 +442,9 @@ type SchemaType = {
   const?: unknown
 }
 
+/**
+ * Schema for validating JSON Schema objects
+ */
 const Schema: v.GenericSchema<SchemaType> = v.looseObject({
   title: v.optional(v.string()),
   definitions: v.optional(
@@ -477,4 +521,7 @@ const Schema: v.GenericSchema<SchemaType> = v.looseObject({
   const: v.optional(v.unknown()),
 })
 
+/**
+ * JSON Schema type for validation and processing
+ */
 export type Schema = v.InferInput<typeof Schema>
