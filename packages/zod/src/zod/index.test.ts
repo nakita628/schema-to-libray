@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import type { Schema } from '@schema-to-library/cli'
+import { describe, expect, it } from 'vitest'
 import zod from './index.js'
 
 // Test run

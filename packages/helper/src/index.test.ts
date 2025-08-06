@@ -17,4 +17,4 @@ describe('barrel', () => {
   it('should export type', () => {
     expect(typeof type).toBe('function')
   })
-})-
+})
