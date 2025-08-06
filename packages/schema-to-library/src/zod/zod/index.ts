@@ -1,6 +1,19 @@
 import type { Schema } from '../../cli/index.js'
 import { normalizeTypes, toPascalCase } from '../../helper/index.js'
 
+/**
+ * Generate Zod schema code from JSON Schema
+ *
+ * @param schema - JSON Schema object to convert
+ * @param rootName - Root schema name for reference resolution
+ * @param isSchemaToZod - Whether this is called from schemaToZod function
+ * @returns Generated Zod schema code string
+ * @example
+ * ```ts
+ * const schema = { type: 'string' }
+ * zod(schema, 'MySchema') // 'z.string()'
+ * ```
+ */
 export default function zod(
   schema: Schema,
   rootName: string = 'Schema',
@@ -130,8 +143,17 @@ export default function zod(
   return wrap('z.any()', schema)
 }
 
-// string
-/** Build a Zod string schema from an OpenAPI string schema. */
+/**
+ * Generate Zod string schema from JSON Schema
+ *
+ * @param schema - JSON Schema object with string type
+ * @returns Generated Zod string schema code
+ * @example
+ * ```ts
+ * const schema = { type: 'string', format: 'email' }
+ * string(schema) // 'z.email()'
+ * ```
+ */
 export function string(schema: Schema): string {
   const FORMAT_STRING: Record<string, string> = {
     email: 'email()',
@@ -189,7 +211,17 @@ export function string(schema: Schema): string {
   return o.join('')
 }
 
-// _enum
+/**
+ * Generate Zod enum schema from JSON Schema
+ *
+ * @param schema - JSON Schema object with enum values
+ * @returns Generated Zod enum schema code
+ * @example
+ * ```ts
+ * const schema = { enum: ['red', 'green', 'blue'] }
+ * _enum(schema) // 'z.union([z.literal("red"),z.literal("green"),z.literal("blue")])'
+ * ```
+ */
 export function _enum(schema: Schema): string {
   /* -------------------------- helpers -------------------------- */
   const hasType = (t: string): boolean =>
@@ -253,6 +285,17 @@ export function _enum(schema: Schema): string {
  *
  * @param schema - The OpenAPI schema object
  * @returns The Zod schema string
+ */
+/**
+ * Generate Zod number schema from JSON Schema
+ *
+ * @param schema - JSON Schema object with number type
+ * @returns Generated Zod number schema code
+ * @example
+ * ```ts
+ * const schema = { type: 'number', minimum: 0, maximum: 100 }
+ * number(schema) // 'z.number().min(0).max(100)'
+ * ```
  */
 function number(schema: Schema): string {
   const o: string[] = [
@@ -327,13 +370,16 @@ function number(schema: Schema): string {
   return o.join('')
 }
 
-// integer
 /**
- * Generates a Zod schema for integer types based on OpenAPI schema.
- * Supports int32, int64, and bigint formats.
+ * Generate Zod integer schema from JSON Schema
  *
- * @param schema - The OpenAPI schema object
- * @returns The Zod schema string
+ * @param schema - JSON Schema object with integer type
+ * @returns Generated Zod integer schema code
+ * @example
+ * ```ts
+ * const schema = { type: 'integer', format: 'int64', minimum: 0 }
+ * integer(schema) // 'z.int64().min(0)'
+ * ```
  */
 function integer(schema: Schema): string {
   const isInt32 = schema.format === 'int32'
@@ -427,7 +473,19 @@ function integer(schema: Schema): string {
   return o.join('')
 }
 
-// array
+/**
+ * Generate Zod array schema from JSON Schema
+ *
+ * @param schema - JSON Schema object with array type
+ * @param rootName - Root schema name for reference resolution
+ * @param isSchemaToZod - Whether this is called from schemaToZod function
+ * @returns Generated Zod array schema code
+ * @example
+ * ```ts
+ * const schema = { type: 'array', items: { type: 'string' }, minItems: 1 }
+ * array(schema, 'MySchema') // 'z.array(z.string()).min(1)'
+ * ```
+ */
 function array(schema: Schema, rootName: string, isSchemaToZod: boolean = false): string {
   // const array = `z.array(${schema.items ? zod(schema.items) : 'z.any()'})`
   const array = `z.array(${schema.items ? zod(schema.items, rootName, isSchemaToZod) : 'z.any()'})`
@@ -446,12 +504,22 @@ function array(schema: Schema, rootName: string, isSchemaToZod: boolean = false)
   return array
 }
 
-// object
 /**
- * Generates a Zod object schema from an OpenAPI schema definition.
+ * Generate Zod object schema from JSON Schema
  *
- * @param schema - Schema definition.
- * @returns The Zod object schema string.
+ * @param schema - JSON Schema object with object type
+ * @param rootName - Root schema name for reference resolution
+ * @param isSchemaToZod - Whether this is called from schemaToZod function
+ * @returns Generated Zod object schema code
+ * @example
+ * ```ts
+ * const schema = {
+ *   type: 'object',
+ *   properties: { name: { type: 'string' } },
+ *   required: ['name']
+ * }
+ * object(schema, 'MySchema') // 'z.object({name:z.string()})'
+ * ```
  */
 function object(schema: Schema, rootName: string, isSchemaToZod: boolean = false): string {
   if (schema.additionalProperties) {
@@ -498,7 +566,18 @@ function object(schema: Schema, rootName: string, isSchemaToZod: boolean = false
   return 'z.object({})'
 }
 
-// wrap
+/**
+ * Wrap Zod schema with default value and nullable modifiers
+ *
+ * @param zod - Base Zod schema string
+ * @param schema - JSON Schema object for modifiers
+ * @returns Wrapped Zod schema string
+ * @example
+ * ```ts
+ * wrap('z.string()', { default: 'hello', nullable: true })
+ * // 'z.string().default("hello").nullable()'
+ * ```
+ */
 export function wrap(zod: string, schema: Schema): string {
   const formatLiteral = (v: unknown): string => {
     // boolean true or false
@@ -538,7 +617,22 @@ export function wrap(zod: string, schema: Schema): string {
   return z
 }
 
-// propertySchema
+/**
+ * Generate Zod object properties schema from JSON Schema properties
+ *
+ * @param properties - Object properties from JSON Schema
+ * @param required - Array of required property names
+ * @param rootName - Root schema name for reference resolution
+ * @param isSchemaToZod - Whether this is called from schemaToZod function
+ * @returns Generated Zod object properties schema code
+ * @example
+ * ```ts
+ * const properties = { name: { type: 'string' }, age: { type: 'number' } }
+ * const required = ['name']
+ * propertiesSchema(properties, required, 'MySchema')
+ * // 'z.object({name:z.string(),age:z.number().optional()})'
+ * ```
+ */
 function propertiesSchema(
   properties: Record<string, Schema>,
   required: string[],
@@ -563,6 +657,19 @@ function propertiesSchema(
   return `z.object({${objectProperties}})`
 }
 
+/**
+ * Generate Zod reference schema from JSON Schema $ref
+ *
+ * @param schema - JSON Schema object with $ref
+ * @param rootName - Root schema name for reference resolution
+ * @param isSchemaToZod - Whether this is called from schemaToZod function
+ * @returns Generated Zod reference schema code
+ * @example
+ * ```ts
+ * const schema = { $ref: '#/definitions/Animal' }
+ * ref(schema, 'MySchema') // 'z.lazy(() => Animal)'
+ * ```
+ */
 function ref(schema: Schema, rootName: string, isSchemaToZod: boolean = false): string {
   // self reference (#)
   if (schema.$ref === '#' || schema.$ref === '') {

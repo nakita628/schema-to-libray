@@ -1,6 +1,17 @@
 import type { Schema } from '../../cli/index.js'
 import { normalizeTypes, toPascalCase } from '../utils/index.js'
 
+/**
+ * Generate TypeScript type definition from JSON Schema
+ *
+ * @param schema - JSON Schema object
+ * @param rootName - Root schema name for reference resolution
+ * @returns TypeScript type definition string
+ * @example
+ * ```ts
+ * type(schema, 'Animal') // 'string' | '{ name: string; species: string; offspring?: AnimalType[] }'
+ * ```
+ */
 export function type(schema: Schema, rootName: string = 'Schema'): string {
   if (schema === undefined) return ''
 
@@ -100,11 +111,25 @@ export function type(schema: Schema, rootName: string = 'Schema'): string {
   return 'unknown'
 }
 
+/**
+ * Generate union type from multiple schemas
+ *
+ * @param schemas - Array of schemas to union
+ * @param rootName - Root schema name for reference resolution
+ * @returns Union type string
+ */
 function union(schemas: Schema[], rootName: string): string {
   const types = schemas.map((s) => type(s, rootName))
   return `(${types.join(' | ')})`
 }
 
+/**
+ * Generate intersection type from multiple schemas
+ *
+ * @param schemas - Array of schemas to intersect
+ * @param rootName - Root schema name for reference resolution
+ * @returns Intersection type string
+ */
 function intersection(schemas: Schema[], rootName: string): string {
   const types = schemas
     .filter((s) => {
@@ -125,6 +150,13 @@ function intersection(schemas: Schema[], rootName: string): string {
   return `(${types.join(' & ')})`
 }
 
+/**
+ * Generate array type from schema
+ *
+ * @param schema - Schema object
+ * @param rootName - Root schema name for reference resolution
+ * @returns Array type string
+ */
 function array(schema: Schema, rootName: string): string {
   if (schema.items) {
     const itemType = type(schema.items, rootName)
@@ -133,6 +165,13 @@ function array(schema: Schema, rootName: string): string {
   return 'unknown[]'
 }
 
+/**
+ * Generate object type from schema
+ *
+ * @param schema - Schema object
+ * @param rootName - Root schema name for reference resolution
+ * @returns Object type string
+ */
 function object(schema: Schema, rootName: string): string {
   if (!schema.properties) {
     if (schema.additionalProperties) {

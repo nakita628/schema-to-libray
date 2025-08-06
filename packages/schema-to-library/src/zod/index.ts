@@ -2,6 +2,21 @@ import type { Schema } from '../cli/index.js'
 import { resolveSchemaDependenciesFromSchema, toPascalCase, type } from '../helper/index.js'
 import zod from './zod/index.js'
 
+/**
+ * Convert JSON Schema to Zod schema code
+ *
+ * @param schema - JSON Schema object to convert
+ * @returns Generated TypeScript/Zod code string
+ * @example
+ * ```ts
+ * const schema = {
+ *   type: 'object',
+ *   properties: { name: { type: 'string' } },
+ *   required: ['name']
+ * }
+ * schemaToZod(schema) // Generated Zod code
+ * ```
+ */
 export function schemaToZod(schema: Schema): string {
   // Get the root schema name from title or use default
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'

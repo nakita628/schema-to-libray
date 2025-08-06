@@ -51,7 +51,7 @@ describe('cli()', () => {
     mockWriteFile.mockResolvedValueOnce(undefined)
 
     const result = await cli(dummyFn, 'help')
-    expect(result).toStrictEqual({ ok: true, value: `${tsPath} created` })
+    expect(result).toStrictEqual({ ok: true, value: `Generated: ${tsPath}` })
     expect(mockReadFile).toHaveBeenCalledWith(jsonPath, 'utf-8')
     expect(mockMkdir).toHaveBeenCalled()
     expect(mockWriteFile).toHaveBeenCalledWith(
@@ -73,6 +73,6 @@ describe('cli()', () => {
     process.argv = ['node', 'cli.js', jsonPath, '-o', tsPath]
     mockReadFile.mockRejectedValueOnce(new Error('File not found'))
     const result = await cli(dummyFn, 'help')
-    expect(result).toStrictEqual({ ok: false, error: 'File not found' })
+    expect(result).toStrictEqual({ ok: false, error: 'Failed to read file: File not found' })
   })
 })
