@@ -32,9 +32,9 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string()}).partial()
+export const User = z.object({name:z.string()}).partial()
 
-export type Schema = z.infer<typeof Schema>`
+export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
   })
 
@@ -57,11 +57,8 @@ export type Schema = z.infer<typeof Schema>`
     const expected = `import * as z from 'zod'
 
 type NodeType = {children?: NodeType[]}
-type NodeType = Record<string, unknown>
 
 export const Node: z.ZodType<NodeType> = z.object({children:z.array(z.lazy(() => Node))}).partial()
-
-export const Node: z.ZodType<NodeType> = z.object({})
 
 export type Node = z.infer<typeof Node>`
     expect(result).toBe(expected)
@@ -88,9 +85,13 @@ export type Node = z.infer<typeof Node>`
 
 type AType = {b?: BType}
 
-const CSchema = z.string()
+type CType = string
 
-const BSchema = z.object({c:z.lazy(() => C)}).partial()
+type BType = {c?: CType}
+
+const C: z.ZodType<CType> = z.string()
+
+const B: z.ZodType<BType> = z.object({c:z.lazy(() => C)}).partial()
 
 export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
 
@@ -118,7 +119,9 @@ export type A = z.infer<typeof A>`
 
 type UserType = {address?: AddressType}
 
-const AddressSchema = z.object({street:z.string()}).partial()
+type AddressType = {street?: string}
+
+const Address: z.ZodType<AddressType> = z.object({street:z.string()}).partial()
 
 export const User: z.ZodType<UserType> = z.object({address:z.lazy(() => Address)}).partial()
 
@@ -146,18 +149,18 @@ export type User = z.infer<typeof User>`
       },
     })
     console.log(result)
-//     const expected = `import * as z from 'zod'
+    const expected = `import * as z from 'zod'
 
-// type SchemaType = Record<string, unknown>
+type AType = {b?: BType}
 
-// const BSchema = z.object({a:z.lazy(() => A)}).partial()
+type BType = {a?: AType}
 
-// const ASchema = z.object({b:z.lazy(() => B)}).partial()
+const B: z.ZodType<BType> = z.object({a:z.lazy(() => A)}).partial()
 
-// export const Schema: z.ZodType<SchemaType> = z.object({})
+export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
 
-// export type Schema = z.infer<typeof Schema>`
-//     expect(result).toBe(expected)
+export type A = z.infer<typeof A>`
+    expect(result).toBe(expected)
   })
 
   it('should handle schema with direct self reference', () => {
