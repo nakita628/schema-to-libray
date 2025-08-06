@@ -45,7 +45,7 @@ export function schemaToZod(schema: Schema): string {
                 const typeDef = type(def, pascalCaseName)
                 return `type ${pascalCaseName}Type = ${typeDef}`
               })
-              .filter((typeDef, index) => {
+              .filter((_, index) => {
                 // Exclude root schema type definition if it exists in definitions
                 const rootDefinition = definitions[rootName]
                 if (rootDefinition) {
@@ -58,9 +58,6 @@ export function schemaToZod(schema: Schema): string {
               .join('\n\n')
           })()
         : ''
-
-    // Generate type definition for root schema (not used in this branch)
-    const _rootTypeDefinition = type(schema, rootName)
 
     // Generate schema definitions for all referenced types (not exported)
     const schemaDefinitions =
@@ -76,7 +73,7 @@ export function schemaToZod(schema: Schema): string {
                 const zodCode = zod(def, pascalCaseName, true)
                 return `const ${pascalCaseName}: z.ZodType<${pascalCaseName}Type> = ${zodCode}`
               })
-              .filter((schemaDef, index) => {
+              .filter((_, index) => {
                 // Exclude root schema definition if it exists in definitions
                 const rootDefinition = definitions[rootName]
                 if (rootDefinition) {
