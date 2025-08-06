@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "build": "pnpm -r --workspace-concurrency=Infinity build",
     "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "release": "pnpm -F schema-to-library release"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
