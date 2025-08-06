@@ -19,22 +19,6 @@ const IOSchema = v.object({
 })
 
 /**
- * Schema for validating YAML file paths
- */
-const IsYAMLSchema = v.custom<`${string}.yaml`>(
-  (value) => typeof value === 'string' && value.endsWith('.yaml'),
-  'Must end with .yaml',
-)
-
-/**
- * Schema for validating JSON file paths
- */
-const IsJSONSchema = v.custom<`${string}.json`>(
-  (value) => typeof value === 'string' && value.endsWith('.json'),
-  'Must end with .json',
-)
-
-/**
  * Schema generator function type
  */
 type SchemaGenerator = (schema: Schema, rootName?: string) => string
