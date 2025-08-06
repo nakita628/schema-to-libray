@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/index.js",
   "scripts": {
-    "build": "rm -rf ./dist/* && tsc --build"
+    "build": "rm -rf ./dist/* && tsc"
   },
   "dependencies": {
     "prettier": "^3.6.2",

@@ -4,4 +4,3 @@ pnpm-lock.yaml
 dist
 coverage
 .DS_Store
-tsconfig.tsbuildinfo
