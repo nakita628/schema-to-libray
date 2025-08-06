@@ -23,18 +23,18 @@ jobs:
           version: 10
 
       - name: Install Dependencies
-        run: pnpm -F schema-to-library deps
+        run: pnpm install
 
       - name: Check
         run: pnpm check
 
       - name: Build
-        run: pnpm -F schema-to-library build
+        run: pnpm build
 
       - name: Typecheck
-        run: pnpm -F schema-to-library typecheck
+        run: pnpm typecheck
 
       - name: Run Coverage
-        run: pnpm -F schema-to-library coverage
+        run: pnpm coverage
 
       

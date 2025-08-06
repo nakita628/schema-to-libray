@@ -1,4 +1,4 @@
-import type { Schema } from '../../../../cli/src/index.js'
+import type { Schema } from '@schema-to-library/cli'
 
 export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
   // Merge both definitions and $defs

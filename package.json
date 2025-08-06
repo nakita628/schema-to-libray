@@ -1,5 +1,5 @@
 {
-  "name": "schema-to-library",
+  "name": "schema-to-library-monorepo",
   "type": "module",
   "private": true,
   "license": "MIT",

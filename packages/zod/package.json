@@ -1,0 +1,13 @@
+{
+  "name": "@schema-to-library/zod",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "build": "rm -rf ./dist/* && tsc"
+  },
+  "dependencies": {
+    "@schema-to-library/cli": "workspace:^"
+  }
+}

@@ -30,5 +30,9 @@
     "build": "rm -rf ./dist/* && tsc",
     "typecheck": "tsc --noEmit",
     "release": "pnpm publish"
+  },
+  "dependencies": {
+    "@schema-to-library/cli": "workspace:^",
+    "@schema-to-library/zod": "workspace:^"
   }
 }
