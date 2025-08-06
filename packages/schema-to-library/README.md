@@ -17,14 +17,12 @@ Support for additional libraries is planned:
 
 ## Usage
 
-
-
 ### CLI Usage
 
 ```bash
 npx schema-to-zod path/to/input.{json,yaml} -o path/to/output.ts
 ```
--
+
 ### Example
 
 input:
