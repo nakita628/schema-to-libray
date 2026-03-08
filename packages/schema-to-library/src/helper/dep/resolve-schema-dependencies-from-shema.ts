@@ -1,4 +1,4 @@
-import type { Schema } from '../../cli/index.js'
+import type { JSONSchema } from '../../types/index.js'
 
 /**
  * Resolve schema dependencies and return them in topological order
@@ -16,9 +16,9 @@ import type { Schema } from '../../cli/index.js'
  * resolveSchemaDependenciesFromSchema(schema) // ['animal', 'zoo']
  * ```
  */
-export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
+export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[] {
   // Merge both definitions and $defs
-  const definitions: Record<string, Schema> = {
+  const definitions: Record<string, JSONSchema> = {
     ...(schema.definitions ?? {}),
     ...(schema.$defs ?? {}),
   }
@@ -31,7 +31,7 @@ export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
    * @param schema - Schema to analyze
    * @returns Set of referenced schema names
    */
-  const collectRefs = (schema: Schema): string[] => {
+  const collectRefs = (schema: JSONSchema): string[] => {
     const refs = new Set<string>()
     const stack = [schema]
 
@@ -57,7 +57,7 @@ export function resolveSchemaDependenciesFromSchema(schema: Schema): string[] {
 
         // Check for external file references with fragments
         if (ref.includes('#')) {
-          const [filePath, fragment] = ref.split('#')
+          const [, fragment] = ref.split('#')
           if (fragment) {
             // Extract the schema name from the fragment
             const fragmentMatch = fragment.match(/^\/(?:definitions|\$defs)\/([^/]+)$/)

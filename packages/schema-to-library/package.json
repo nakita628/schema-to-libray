@@ -1,11 +1,13 @@
 {
   "name": "schema-to-library",
-  "description": "Generate Zod schemas from JSON or YAML files",
+  "description": "Generate Zod/Valibot/Effect schemas from JSON or YAML files",
   "version": "0.0.5",
   "type": "module",
   "license": "MIT",
   "keywords": [
-    "zod"
+    "zod",
+    "valibot",
+    "effect"
   ],
   "homepage": "https://github.com/nakita628/schema-to-libray",
   "publishConfig": {
@@ -22,25 +24,35 @@
     "dist"
   ],
   "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "schema-to-zod": "dist/zod.js"
+    "schema-to-zod": "dist/zod.js",
+    "schema-to-valibot": "dist/valibot.js",
+    "schema-to-effect": "dist/effect.js"
   },
   "scripts": {
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
-    "build": "rm -rf ./dist/* && tsc",
+    "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "release": "pnpm publish"
+    "release": "pnpm build && pnpm publish"
   },
   "dependencies": {
-    "prettier": "^3.6.2",
-    "valibot": "^1.1.0",
-    "yaml": "^2.8.0"
+    "@apidevtools/json-schema-ref-parser": "^15.3.1",
+    "oxfmt": "^0.36.0",
+    "valibot": "^1.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
     "@vitest/coverage-v8": "^3.2.4",
+    "tsdown": "^0.21.0",
+    "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
 }

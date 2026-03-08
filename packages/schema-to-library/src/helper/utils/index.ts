@@ -16,8 +16,8 @@ export function toPascalCase(name: string): string {
 /**
  * Normalize schema type to array format
  *
- * @param t - Schema type or array of types
- * @returns Array of normalized types
+ * @param t - Schema type value (string or array of strings)
+ * @returns Array of type strings
  * @example
  * ```ts
  * normalizeTypes('string') // ['string']
@@ -25,20 +25,27 @@ export function toPascalCase(name: string): string {
  * normalizeTypes(undefined) // []
  * ```
  */
-export function normalizeTypes(
-  t?:
-    | 'string'
-    | 'number'
-    | 'integer'
-    | 'date'
-    | 'boolean'
-    | 'array'
-    | 'object'
-    | 'null'
-    | [
-        'string' | 'number' | 'integer' | 'date' | 'boolean' | 'array' | 'object' | 'null',
-        ...('string' | 'number' | 'integer' | 'date' | 'boolean' | 'array' | 'object' | 'null')[],
-      ],
-): ('string' | 'number' | 'integer' | 'date' | 'boolean' | 'array' | 'object' | 'null')[] {
+export function normalizeTypes(t?: string | string[]): string[] {
   return t === undefined ? [] : Array.isArray(t) ? t : [t]
+}
+
+/**
+ * Format an error message argument using the Zod v4 unified `error` parameter
+ *
+ * @param message - The error message string or arrow function expression
+ * @returns `{error:"message"}` or `{error:(v)=>expr}` formatted string
+ * @example
+ * ```ts
+ * error('Name must be 3-20 characters')
+ * // → '{error:"Name must be 3-20 characters"}'
+ *
+ * error('(v) => `Expected ${v}`')
+ * // → '{error:(v) => `Expected ${v}`}'
+ * ```
+ */
+export function error(message: string): string {
+  if (/^\s*\(.*?\)\s*=>/.test(message)) {
+    return `{error:${message}}`
+  }
+  return `{error:${JSON.stringify(message)}}`
 }

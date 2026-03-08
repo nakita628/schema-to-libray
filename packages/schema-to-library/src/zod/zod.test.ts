@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { Schema } from '../../cli/index.js'
-import zod from './index.js'
+import type { JSONSchema } from '../types/index.js'
+import { zod } from './zod.js'
 
 // Test run
-// pnpm vitest run ./src/zod/zod/index.test.ts
+// pnpm vitest run ./src/zod/zod.test.ts
 
 describe('zod', () => {
   describe('ref', () => {
-    it.concurrent.each<[Schema, string]>([
+    it.concurrent.each<[JSONSchema, string]>([
       [{ $ref: '#/components/schemas/Test' }, 'TestSchema'],
       [
         {
@@ -24,7 +24,7 @@ describe('zod', () => {
   })
 
   describe('oneOf', () => {
-    it.concurrent.each<[Schema, string]>([
+    it.concurrent.each<[JSONSchema, string]>([
       [
         {
           type: 'object',
@@ -71,7 +71,7 @@ describe('zod', () => {
     // anyOf
     // not support zod-to-openapi
     describe('anyOf', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [
           {
             type: 'object',
@@ -119,7 +119,7 @@ describe('zod', () => {
     // allOf
     // not support zod
     describe('allOf', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [
           {
             description:
@@ -285,7 +285,7 @@ describe('zod', () => {
     // TODO add not
 
     describe('const', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [{ const: 'fixed' }, 'z.literal("fixed")'],
         [{ const: 'fixed', nullable: true }, 'z.literal("fixed").nullable()'],
         [{ type: ['null'], const: 'fixed' }, 'z.literal("fixed").nullable()'],
@@ -296,7 +296,7 @@ describe('zod', () => {
 
     // enum
     describe('enum', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [{ enum: ['A', 'B'] }, 'z.enum(["A","B"])'],
         [{ enum: ['A', 'B'], type: ['string'], nullable: true }, 'z.enum(["A","B"]).nullable()'],
         [{ enum: ['A', 'B'], type: ['string', 'null'] }, 'z.enum(["A","B"]).nullable()'],
@@ -372,7 +372,7 @@ describe('zod', () => {
 
     // string
     describe('string', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [{ type: 'string' }, 'z.string()'],
         [{ type: ['string'], nullable: true }, 'z.string().nullable()'],
         [{ type: ['string', 'null'] }, 'z.string().nullable()'],
@@ -415,7 +415,7 @@ describe('zod', () => {
       // number
       describe('number', () => {
         describe('type: number', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'number' }, 'z.number()'],
             [{ type: ['number'], nullable: true }, 'z.number().nullable()'],
             [{ type: ['number', 'null'] }, 'z.number().nullable()'],
@@ -456,7 +456,7 @@ describe('zod', () => {
         })
 
         describe('type: number, format: float', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'number', format: 'float' }, 'z.float32()'],
             [{ type: 'number', format: 'float', nullable: true }, 'z.float32().nullable()'],
             [
@@ -478,7 +478,7 @@ describe('zod', () => {
       // integer
       describe('integer', () => {
         describe('type: integer', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'integer' }, 'z.int()'],
             [{ type: ['integer'], nullable: true }, 'z.int().nullable()'],
             [{ type: ['integer', 'null'] }, 'z.int().nullable()'],
@@ -503,7 +503,7 @@ describe('zod', () => {
         })
 
         describe('type: integer, format: int32', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'integer', format: 'int32' }, 'z.int32()'],
             [{ type: 'integer', format: 'int32', nullable: true }, 'z.int32().nullable()'],
             [{ type: ['integer', 'null'], format: 'int32' }, 'z.int32().nullable()'],
@@ -552,7 +552,7 @@ describe('zod', () => {
         })
 
         describe('type: integer, format: int64', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'integer', format: 'int64' }, 'z.int64()'],
             [{ type: 'integer', format: 'int64', nullable: true }, 'z.int64().nullable()'],
             [{ type: ['integer', 'null'], format: 'int64' }, 'z.int64().nullable()'],
@@ -601,7 +601,7 @@ describe('zod', () => {
         })
 
         describe('type: integer, format: bigint', () => {
-          it.concurrent.each<[Schema, string]>([
+          it.concurrent.each<[JSONSchema, string]>([
             [{ type: 'integer', format: 'bigint' }, 'z.bigint()'],
             [{ type: 'integer', format: 'bigint', nullable: true }, 'z.bigint().nullable()'],
             [{ type: ['integer', 'null'], format: 'bigint' }, 'z.bigint().nullable()'],
@@ -661,7 +661,7 @@ describe('zod', () => {
 
       // boolean
       describe('boolean', () => {
-        it.concurrent.each<[Schema, string]>([
+        it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'boolean' }, 'z.boolean()'],
           [{ type: ['boolean'], nullable: true }, 'z.boolean().nullable()'],
           [{ type: ['boolean', 'null'] }, 'z.boolean().nullable()'],
@@ -677,7 +677,7 @@ describe('zod', () => {
 
     // array
     describe('array', () => {
-      it.concurrent.each<[Schema, string]>([
+      it.concurrent.each<[JSONSchema, string]>([
         [{ type: 'array', items: { type: 'string' } }, 'z.array(z.string())'],
         [
           { type: 'array', items: { type: 'string', nullable: true } },
@@ -770,7 +770,7 @@ describe('zod', () => {
 
       // object
       describe('object', () => {
-        it.concurrent.each<[Schema, string]>([
+        it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'object' }, 'z.object({})'],
           [{ type: 'object', nullable: true }, 'z.object({}).nullable()'],
           [{ type: ['object', 'null'] }, 'z.object({}).nullable()'],
@@ -840,7 +840,7 @@ describe('zod', () => {
       })
 
       describe('date', () => {
-        it.concurrent.each<[Schema, string]>([
+        it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'date' }, 'z.date()'],
           [{ type: 'date', nullable: true }, 'z.date().nullable()'],
           [{ type: ['date', 'null'] }, 'z.date().nullable()'],
@@ -852,7 +852,7 @@ describe('zod', () => {
 
       // null
       describe('null', () => {
-        it.concurrent.each<[Schema, string]>([
+        it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'null' }, 'z.null().nullable()'],
           [{ type: 'null', nullable: true }, 'z.null().nullable()'],
           [{ type: ['null'] }, 'z.null().nullable()'],
@@ -868,7 +868,7 @@ describe('zod', () => {
       })
 
       describe('any', () => {
-        it.concurrent.each<[Schema, string]>([
+        it.concurrent.each<[JSONSchema, string]>([
           [
             {
               // biome-ignore lint: test
@@ -920,6 +920,165 @@ describe('zod', () => {
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
         })
+      })
+    })
+  })
+
+  describe('x-error-message vendor extensions', () => {
+    describe('string', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [
+          { type: 'string', 'x-error-message': 'Name is required' },
+          'z.string({error:"Name is required"})',
+        ],
+        [
+          { type: 'string', format: 'email', 'x-error-message': 'Invalid email' },
+          'z.email({error:"Invalid email"})',
+        ],
+        [
+          {
+            type: 'string',
+            pattern: '^[a-z]+$',
+            'x-pattern-message': 'Only lowercase letters',
+          },
+          'z.string().regex(/^[a-z]+$/,{error:"Only lowercase letters"})',
+        ],
+        [
+          {
+            type: 'string',
+            minLength: 3,
+            maxLength: 20,
+            'x-minimum-message': 'Min 3 chars',
+            'x-maximum-message': 'Max 20 chars',
+          },
+          'z.string().min(3,{error:"Min 3 chars"}).max(20,{error:"Max 20 chars"})',
+        ],
+        [
+          {
+            type: 'string',
+            minLength: 10,
+            maxLength: 10,
+            'x-size-message': 'Must be exactly 10 characters',
+          },
+          'z.string().length(10,{error:"Must be exactly 10 characters"})',
+        ],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
+      })
+    })
+
+    describe('number', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [
+          { type: 'number', 'x-error-message': 'Must be a number' },
+          'z.number({error:"Must be a number"})',
+        ],
+        [
+          {
+            type: 'number',
+            minimum: 0,
+            maximum: 100,
+            'x-minimum-message': 'Cannot be negative',
+            'x-maximum-message': 'Cannot exceed 100',
+          },
+          'z.number().min(0,{error:"Cannot be negative"}).max(100,{error:"Cannot exceed 100"})',
+        ],
+        [
+          {
+            type: 'number',
+            minimum: 0,
+            exclusiveMinimum: true,
+            'x-minimum-message': 'Must be positive',
+          },
+          'z.number().positive({error:"Must be positive"})',
+        ],
+        [
+          {
+            type: 'number',
+            multipleOf: 5,
+            'x-multipleOf-message': 'Must be a multiple of 5',
+          },
+          'z.number().multipleOf(5,{error:"Must be a multiple of 5"})',
+        ],
+        [
+          {
+            type: 'number',
+            format: 'float32',
+            'x-error-message': 'Must be a float',
+          },
+          'z.float32({error:"Must be a float"})',
+        ],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
+      })
+    })
+
+    describe('integer', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [
+          { type: 'integer', 'x-error-message': 'Must be an integer' },
+          'z.int({error:"Must be an integer"})',
+        ],
+        [
+          {
+            type: 'integer',
+            format: 'int32',
+            'x-error-message': 'Must be int32',
+          },
+          'z.int32({error:"Must be int32"})',
+        ],
+        [
+          {
+            type: 'integer',
+            minimum: 1,
+            maximum: 999,
+            'x-minimum-message': 'Min 1',
+            'x-maximum-message': 'Max 999',
+          },
+          'z.int().min(1,{error:"Min 1"}).max(999,{error:"Max 999"})',
+        ],
+        [
+          {
+            type: 'integer',
+            multipleOf: 10,
+            'x-multipleOf-message': 'Must be a multiple of 10',
+          },
+          'z.int().multipleOf(10,{error:"Must be a multiple of 10"})',
+        ],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
+      })
+    })
+
+    describe('enum', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [
+          {
+            enum: ['active', 'inactive'],
+            'x-error-message': 'Invalid status',
+          },
+          'z.enum(["active","inactive"],{error:"Invalid status"})',
+        ],
+        [
+          {
+            enum: ['active', 'inactive'],
+            'x-enum-error-messages': {
+              active: 'Must be active',
+              inactive: 'Must be inactive',
+            },
+          },
+          "z.union([z.literal('active',{error:\"Must be active\"}),z.literal('inactive',{error:\"Must be inactive\"})])",
+        ],
+        [
+          {
+            type: 'number',
+            enum: [1, 2, 3],
+            'x-error-message': 'Must be 1, 2, or 3',
+          },
+          'z.union([z.literal(1,{error:"Must be 1, 2, or 3"}),z.literal(2,{error:"Must be 1, 2, or 3"}),z.literal(3,{error:"Must be 1, 2, or 3"})],{error:"Must be 1, 2, or 3"})',
+        ],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
       })
     })
   })

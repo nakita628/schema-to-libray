@@ -17,4 +17,4 @@ export { type } from './dep/type.js'
  *
  * @see {@link normalizeTypes} and {@link toPascalCase} for details
  */
-export { normalizeTypes, toPascalCase } from './utils/index.js'
+export { error, normalizeTypes, toPascalCase } from './utils/index.js'

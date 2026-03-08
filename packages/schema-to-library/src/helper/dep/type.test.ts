@@ -6,8 +6,7 @@ import { type } from './type.js'
 
 describe('type', () => {
   it('should return empty string for undefined schema', () => {
-    // biome-ignore lint: test
-    expect(type(undefined as any)).toBe('')
+    expect(type(undefined)).toBe('')
   })
 
   describe('$ref cases', () => {

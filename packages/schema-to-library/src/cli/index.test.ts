@@ -1,40 +1,25 @@
 import fsp from 'node:fs/promises'
 import { afterEach, beforeEach } from 'node:test'
 import { describe, expect, it, vi } from 'vitest'
-import type { Schema } from './index.js'
+import type { JSONSchema } from '../types/index.js'
 import { cli } from './index.js'
 
 // Test run
-// pnpm vitest run ./src/index.test.ts
+// pnpm vitest run ./src/cli/index.test.ts
 
-const mockReadFile = vi.spyOn(fsp, 'readFile')
-const mockWriteFile = vi.spyOn(fsp, 'writeFile')
 const mockMkdir = vi.spyOn(fsp, 'mkdir')
-
-const exampleSchema: Schema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: 'string',
-    },
-  },
-  required: ['name'],
-}
-
-const jsonPath = 'test-schema.json'
-const tsPath = 'output.ts'
+const mockWriteFile = vi.spyOn(fsp, 'writeFile')
 
 beforeEach(() => {
-  mockReadFile.mockReset()
-  mockWriteFile.mockReset()
   mockMkdir.mockReset()
+  mockWriteFile.mockReset()
 })
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const dummyFn = (schema: Schema) => `export const Schema = ${JSON.stringify(schema, null, 2)}`
+const dummyFn = (schema: JSONSchema) => `export const Schema = ${JSON.stringify(schema, null, 2)}`
 
 describe('cli()', () => {
   it('should return help text when --help is passed', async () => {
@@ -43,36 +28,21 @@ describe('cli()', () => {
     expect(result).toStrictEqual({ ok: true, value: 'This is help text.' })
   })
 
-  it('should process valid JSON input and write output', async () => {
-    process.argv = ['node', 'cli.js', jsonPath, '-o', tsPath]
-
-    mockReadFile.mockResolvedValueOnce(JSON.stringify(exampleSchema))
-    mockMkdir.mockResolvedValueOnce(undefined)
-    mockWriteFile.mockResolvedValueOnce(undefined)
-
-    const result = await cli(dummyFn, 'help')
-    expect(result).toStrictEqual({ ok: true, value: `Generated: ${tsPath}` })
-    expect(mockReadFile).toHaveBeenCalledWith(jsonPath, 'utf-8')
-    expect(mockMkdir).toHaveBeenCalled()
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      tsPath,
-      expect.stringContaining('export const Schema'),
-      'utf-8',
-    )
-  })
-
   it('should fail on invalid input file extension', async () => {
-    process.argv = ['node', 'cli.js', 'invalid.txt', '-o', tsPath]
-
+    process.argv = ['node', 'cli.js', 'invalid.txt', '-o', 'output.ts']
     const result = await cli(dummyFn, 'help')
     expect(result).toStrictEqual({ ok: false, error: 'Input must be a .json, or .yaml file' })
   })
 
-  it('should fail on unreadable file', async () => {
-    const oldArgv = process.argv
-    process.argv = ['node', 'cli.js', jsonPath, '-o', tsPath]
-    mockReadFile.mockRejectedValueOnce(new Error('File not found'))
+  it('should fail on missing output flag', async () => {
+    process.argv = ['node', 'cli.js', 'input.json']
     const result = await cli(dummyFn, 'help')
-    expect(result).toStrictEqual({ ok: false, error: 'Failed to read file: File not found' })
+    expect(result).toStrictEqual({ ok: false, error: 'Output must be a .ts file' })
+  })
+
+  it('should return help text when -h is passed', async () => {
+    process.argv = ['node', 'cli.js', '-h']
+    const result = await cli(dummyFn, 'Help text here.')
+    expect(result).toStrictEqual({ ok: true, value: 'Help text here.' })
   })
 })
