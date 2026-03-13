@@ -1,5 +1,4 @@
-export { defineConfig, parseConfig, readConfig } from './config/index.js'
-export { fmt, setFormatOptions } from './format/index.js'
+export { fmt } from './format/index.js'
 export { schemaToArktype } from './generator/arktype/index.js'
 export { schemaToEffect } from './generator/effect/index.js'
 export { schemaToTypebox } from './generator/typebox/index.js'

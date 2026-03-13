@@ -3,7 +3,8 @@ import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
-export function schemaToArktype(schema: JSONSchema): string {
+export function schemaToArktype(schema: JSONSchema, options?: { exportType?: boolean }): string {
+  const { exportType = true } = options ?? {}
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
 
   const definitions: Record<string, JSONSchema> = {
@@ -34,7 +35,7 @@ export function schemaToArktype(schema: JSONSchema): string {
       `import { scope } from "arktype"`,
       `const types = scope({${scopeEntries.join(',')}}).export()`,
       `export const ${rootName} = types.${rootName}`,
-      `export type ${rootName} = typeof ${rootName}.infer`,
+      ...(exportType ? [`export type ${rootName} = typeof ${rootName}.infer`] : []),
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -52,7 +53,7 @@ export function schemaToArktype(schema: JSONSchema): string {
   return [
     `import { type } from "arktype"`,
     `export const ${rootName} = ${rootExpr}`,
-    `export type ${rootName} = typeof ${rootName}.infer`,
+    ...(exportType ? [`export type ${rootName} = typeof ${rootName}.infer`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

@@ -36,7 +36,8 @@ function hasSelfReference(schema: JSONSchema): boolean {
 /**
  * Convert JSON Schema to Valibot schema code
  */
-export function schemaToValibot(schema: JSONSchema): string {
+export function schemaToValibot(schema: JSONSchema, options?: { exportType?: boolean }): string {
+  const { exportType = true } = options ?? {}
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
 
   const definitions: Record<string, JSONSchema> = {
@@ -95,8 +96,12 @@ export function schemaToValibot(schema: JSONSchema): string {
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    `export type ${rootName}Input = v.InferInput<typeof ${rootName}>`,
-    `export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`,
+    ...(exportType
+      ? [
+          `export type ${rootName}Input = v.InferInput<typeof ${rootName}>`,
+          `export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`,
+        ]
+      : []),
   ]
     .filter(Boolean)
     .join('\n\n')

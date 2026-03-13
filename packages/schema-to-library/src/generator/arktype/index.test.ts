@@ -236,4 +236,20 @@ export const Bool = type("boolean")
 export type Bool = typeof Bool.infer`
     expect(result).toBe(expected)
   })
+
+  it('should omit type export when exportType is false', () => {
+    const result = schemaToArktype(
+      {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      { exportType: false },
+    )
+    const expected = `import { type } from "arktype"
+
+export const Schema = type({"name?":"string"})`
+    expect(result).toBe(expected)
+  })
 })

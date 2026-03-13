@@ -448,4 +448,20 @@ export const Length = z.object({name:z.string().min(1).max(100)}).partial()
 export type Length = z.infer<typeof Length>`
     expect(result).toBe(expected)
   })
+
+  it('should omit type export when exportType is false', () => {
+    const result = schemaToZod(
+      {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      { exportType: false },
+    )
+    const expected = `import * as z from 'zod'
+
+export const Schema = z.object({name:z.string()}).partial()`
+    expect(result).toBe(expected)
+  })
 })

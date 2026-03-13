@@ -19,7 +19,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const dummyFn = (schema: JSONSchema) => `export const Schema = ${JSON.stringify(schema, null, 2)}`
+const dummyFn = (schema: JSONSchema, options?: { exportType?: boolean }) =>
+  `export const Schema = ${JSON.stringify({ ...schema, exportType: options?.exportType }, null, 2)}`
 
 describe('cli()', () => {
   it('should return help text when --help is passed', async () => {
@@ -44,5 +45,16 @@ describe('cli()', () => {
     process.argv = ['node', 'cli.js', '-h']
     const result = await cli(dummyFn, 'Help text here.')
     expect(result).toStrictEqual({ ok: true, value: 'Help text here.' })
+  })
+
+  it('should parse --export-type flag', async () => {
+    process.argv = ['node', 'cli.js', '--export-type', 'input.json', '-o', 'output.ts']
+    const result = await cli(dummyFn, 'help')
+    // Will fail on parseSchemaFile since input.json doesn't exist,
+    // but validates that --export-type is stripped from IO args (no validation error)
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toContain('input.json')
+    }
   })
 })

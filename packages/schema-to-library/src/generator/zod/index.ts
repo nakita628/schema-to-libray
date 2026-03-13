@@ -37,18 +37,12 @@ function hasSelfReference(schema: JSONSchema): boolean {
  * Convert JSON Schema to Zod schema code
  *
  * @param schema - JSON Schema object to convert
+ * @param options - Generation options
+ * @param options.exportType - Whether to include type export (default: true)
  * @returns Generated TypeScript/Zod code string
- * @example
- * ```ts
- * const schema = {
- *   type: 'object',
- *   properties: { name: { type: 'string' } },
- *   required: ['name']
- * }
- * schemaToZod(schema) // Generated Zod code
- * ```
  */
-export function schemaToZod(schema: JSONSchema): string {
+export function schemaToZod(schema: JSONSchema, options?: { exportType?: boolean }): string {
+  const { exportType = true } = options ?? {}
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
 
   const definitions: Record<string, JSONSchema> = {
@@ -77,7 +71,7 @@ export function schemaToZod(schema: JSONSchema): string {
         const rootTypeDef = `type ${rootName}Type = ${type(rootDefinition ?? schema, rootName)}`
         const otherTypeDefs = nonRootDefs.map((name) => {
           const def = definitions[name]
-          if (!def) return `// \u26a0\ufe0f missing definition for ${name}`
+          if (!def) return `// ⚠️ missing definition for ${name}`
           const pc = toPascalCase(name)
           return `type ${pc}Type = ${type(def, pc)}`
         })
@@ -89,7 +83,7 @@ export function schemaToZod(schema: JSONSchema): string {
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
-      if (!def) return `// \u26a0\ufe0f missing definition for ${name}`
+      if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toPascalCase(name)
       return `const ${pc}: z.ZodType<${pc}Type> = ${zod(def, pc, true)}`
     })
@@ -108,7 +102,7 @@ export function schemaToZod(schema: JSONSchema): string {
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    `export type ${rootName} = z.infer<typeof ${rootName}>`,
+    ...(exportType ? [`export type ${rootName} = z.infer<typeof ${rootName}>`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

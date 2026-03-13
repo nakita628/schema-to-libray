@@ -1,20 +1,4 @@
-import { type FormatOptions, format } from 'oxfmt'
-
-const defaultOptions: FormatOptions = {
-  printWidth: 100,
-  singleQuote: true,
-  semi: false,
-}
-
-let currentOptions: FormatOptions = defaultOptions
-
-/**
- * Sets the format options for all subsequent `fmt()` calls.
- * Unspecified keys fall back to the default values.
- */
-export function setFormatOptions(opts: FormatOptions): void {
-  currentOptions = { ...defaultOptions, ...opts }
-}
+import { format } from 'oxfmt'
 
 /**
  * Formats TypeScript code using oxfmt.
@@ -27,7 +11,11 @@ export async function fmt(
 ): Promise<
   { readonly ok: true; readonly value: string } | { readonly ok: false; readonly error: string }
 > {
-  const { code, errors } = await format('<stdin>.ts', input, currentOptions)
+  const { code, errors } = await format('<stdin>.ts', input, {
+    printWidth: 100,
+    singleQuote: true,
+    semi: false,
+  })
   if (errors.length > 0) {
     return {
       ok: false,

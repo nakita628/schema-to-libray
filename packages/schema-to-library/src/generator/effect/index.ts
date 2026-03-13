@@ -36,7 +36,8 @@ function hasSelfReference(schema: JSONSchema): boolean {
 /**
  * Convert JSON Schema to Effect Schema code
  */
-export function schemaToEffect(schema: JSONSchema): string {
+export function schemaToEffect(schema: JSONSchema, options?: { exportType?: boolean }): string {
+  const { exportType = true } = options ?? {}
   const pascalTitle = schema.title ? toPascalCase(schema.title) : 'Schema_'
   // Avoid conflict with `import { Schema } from "effect"`
   const rootName = pascalTitle === 'Schema' ? 'Schema_' : pascalTitle
@@ -97,8 +98,12 @@ export function schemaToEffect(schema: JSONSchema): string {
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    `export type ${rootName}Type_ = typeof ${rootName}.Type`,
-    `export type ${rootName}Encoded = typeof ${rootName}.Encoded`,
+    ...(exportType
+      ? [
+          `export type ${rootName}Type_ = typeof ${rootName}.Type`,
+          `export type ${rootName}Encoded = typeof ${rootName}.Encoded`,
+        ]
+      : []),
   ]
     .filter(Boolean)
     .join('\n\n')

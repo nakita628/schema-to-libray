@@ -5,6 +5,7 @@ import { schemaToValibot } from './generator/valibot/index.js'
 const HELP_TEXT = `Usage: schema-to-valibot <input.{json,yaml}> -o <output.ts>
 
 Options:
+  --export-type        include type export in output
   -h, --help           display help for command`
 
 cli(schemaToValibot, HELP_TEXT).then((result) => {

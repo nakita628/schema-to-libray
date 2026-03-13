@@ -5,6 +5,7 @@ import { schemaToArktype } from './generator/arktype/index.js'
 const HELP_TEXT = `Usage: schema-to-arktype <input.{json,yaml}> -o <output.ts>
 
 Options:
+  --export-type        include type export in output
   -h, --help           display help for command`
 
 cli(schemaToArktype, HELP_TEXT).then((result) => {

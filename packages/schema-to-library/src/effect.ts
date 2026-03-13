@@ -5,6 +5,7 @@ import { schemaToEffect } from './generator/effect/index.js'
 const HELP_TEXT = `Usage: schema-to-effect <input.{json,yaml}> -o <output.ts>
 
 Options:
+  --export-type        include type export in output
   -h, --help           display help for command`
 
 cli(schemaToEffect, HELP_TEXT).then((result) => {

@@ -412,4 +412,20 @@ export type ArrType_ = typeof Arr.Type
 export type ArrEncoded = typeof Arr.Encoded`
     expect(result).toBe(expected)
   })
+
+  it('should omit type export when exportType is false', () => {
+    const result = schemaToEffect(
+      {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      { exportType: false },
+    )
+    const expected = `import { Schema } from "effect"
+
+export const Schema_ = Schema.partial(Schema.Struct({name:Schema.String}))`
+    expect(result).toBe(expected)
+  })
 })

@@ -302,4 +302,20 @@ export const A = Type.Object({b:Type.Optional(B)})
 export type A = Static<typeof A>`
     expect(result).toBe(expected)
   })
+
+  it('should omit type export when exportType is false', () => {
+    const result = schemaToTypebox(
+      {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      { exportType: false },
+    )
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Schema = Type.Object({name:Type.Optional(Type.String())})`
+    expect(result).toBe(expected)
+  })
 })

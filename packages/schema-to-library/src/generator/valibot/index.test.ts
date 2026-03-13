@@ -446,4 +446,20 @@ export type SchemaInput = v.InferInput<typeof Schema>
 export type SchemaOutput = v.InferOutput<typeof Schema>`
     expect(result).toBe(expected)
   })
+
+  it('should omit type export when exportType is false', () => {
+    const result = schemaToValibot(
+      {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+      },
+      { exportType: false },
+    )
+    const expected = `import * as v from 'valibot'
+
+export const Schema = v.partial(v.object({name:v.string()}))`
+    expect(result).toBe(expected)
+  })
 })

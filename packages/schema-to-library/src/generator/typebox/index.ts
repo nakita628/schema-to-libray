@@ -3,7 +3,8 @@ import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
-export function schemaToTypebox(schema: JSONSchema): string {
+export function schemaToTypebox(schema: JSONSchema, options?: { exportType?: boolean }): string {
+  const { exportType = true } = options ?? {}
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
 
   const definitions: Record<string, JSONSchema> = {
@@ -44,7 +45,7 @@ export function schemaToTypebox(schema: JSONSchema): string {
     `import { Type, type Static } from '@sinclair/typebox'`,
     schemaDefsCode,
     rootExport,
-    `export type ${rootName} = Static<typeof ${rootName}>`,
+    ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

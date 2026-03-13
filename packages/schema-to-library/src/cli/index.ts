@@ -1,25 +1,23 @@
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import * as v from 'valibot'
 import { fmt } from '../format/index.js'
 import { parseSchemaFile } from '../parser/index.js'
 import type { JSONSchema } from '../types/index.js'
 
-/**
- * Schema for validating CLI input/output file paths
- */
-const IOSchema = v.object({
-  input: v.custom<`${string}.yaml` | `${string}.json`>(
-    (value) => typeof value === 'string' && (value.endsWith('.yaml') || value.endsWith('.json')),
-    'Input must be a .json, or .yaml file',
-  ),
-  output: v.custom<`${string}.ts`>(
-    (value) => typeof value === 'string' && value.endsWith('.ts'),
-    'Output must be a .ts file',
-  ),
-})
+function validateIO(
+  input: string | undefined,
+  output: string | undefined,
+): { ok: true; input: string; output: string } | { ok: false; error: string } {
+  if (typeof input !== 'string' || !(input.endsWith('.yaml') || input.endsWith('.json'))) {
+    return { ok: false, error: 'Input must be a .json, or .yaml file' }
+  }
+  if (typeof output !== 'string' || !output.endsWith('.ts')) {
+    return { ok: false, error: 'Output must be a .ts file' }
+  }
+  return { ok: true, input, output }
+}
 
-type SchemaGenerator = (schema: JSONSchema, rootName?: string) => string
+type SchemaGenerator = (schema: JSONSchema, options?: { exportType?: boolean }) => string
 
 /**
  * Main CLI function that processes schema files and generates output
@@ -34,23 +32,26 @@ export async function cli(
     return { ok: true, value: helpText }
   }
 
-  const i = args[0]
-  const oIdx = args.indexOf('-o')
-  const o = oIdx !== -1 ? args[oIdx + 1] : undefined
+  const exportType = args.includes('--export-type')
+  const filteredArgs = args.filter((arg) => arg !== '--export-type')
 
-  const valid = v.safeParse(IOSchema, { input: i, output: o })
-  if (!valid.success) {
-    return { ok: false, error: valid.issues.map((issue) => issue.message)[0] }
+  const i = filteredArgs[0]
+  const oIdx = filteredArgs.indexOf('-o')
+  const o = oIdx !== -1 ? filteredArgs[oIdx + 1] : undefined
+
+  const valid = validateIO(i, o)
+  if (!valid.ok) {
+    return { ok: false, error: valid.error }
   }
 
-  const { input, output } = valid.output
+  const { input, output } = valid
 
   const schemaResult = await parseSchemaFile(input)
   if (!schemaResult.ok) {
     return { ok: false, error: schemaResult.error }
   }
 
-  const result = fn(schemaResult.value)
+  const result = fn(schemaResult.value, { exportType })
   const fmtResult = await fmt(result)
   if (!fmtResult.ok) {
     return { ok: false, error: fmtResult.error }
