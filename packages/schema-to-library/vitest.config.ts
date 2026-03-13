@@ -4,6 +4,8 @@ export default defineConfig({
     includeSource: ['src/**/*.ts'],
     include: ['src/**/*.test.ts'],
     coverage: {
+      provider: 'v8',
+      reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
       all: true,
     },
