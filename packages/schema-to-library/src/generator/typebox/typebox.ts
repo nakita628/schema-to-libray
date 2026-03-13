@@ -14,11 +14,11 @@ export function typebox(
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName, isTypebox), schema)
+      return wrap(ref(schema, rootName), schema)
     }
     if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
       if (schema.items?.$ref) {
-        return `Type.Array(${wrap(ref(schema.items, rootName, isTypebox), schema.items)})`
+        return `Type.Array(${wrap(ref(schema.items, rootName), schema.items)})`
       }
       return wrap('Type.Array(Type.Any())', schema)
     }
