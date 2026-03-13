@@ -67,11 +67,9 @@ function allOf(schema: JSONSchema, rootName: string, isEffect: boolean): string 
   const isNullType = (s: JSONSchema) =>
     s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
 
-  const isDefaultOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.default !== undefined
+  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
 
-  const isConstOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.const !== undefined
+  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
 
   const nullable =
     schema.nullable === true ||
@@ -81,7 +79,7 @@ function allOf(schema: JSONSchema, rootName: string, isEffect: boolean): string 
   const defaultValue = schema.allOf.find(isDefaultOnly)?.default
 
   const schemas = schema.allOf
-    .filter((s) => !isNullType(s) && !isDefaultOnly(s) && !isConstOnly(s))
+    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
     .map((s) => effect(s, rootName, isEffect))
 
   if (!schemas.length) return wrap('Schema.Unknown', { ...schema, nullable })

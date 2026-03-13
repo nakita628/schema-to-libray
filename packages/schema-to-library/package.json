@@ -1,7 +1,7 @@
 {
   "name": "schema-to-library",
   "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "type": "module",
   "license": "MIT",
   "keywords": [

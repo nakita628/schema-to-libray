@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JSONSchema } from '../../types/index.js'
-import { zod } from './zod.js'
 import { object } from './object.js'
+import { zod } from './zod.js'
 
 // Test run
 // pnpm vitest run ./src/zod/object.test.ts

@@ -1,6 +1,6 @@
+import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { arktype } from './arktype.js'
 
 export function schemaToArktype(schema: JSONSchema): string {
@@ -13,21 +13,18 @@ export function schemaToArktype(schema: JSONSchema): string {
 
   const hasDefinitions = Object.keys(definitions).length > 0
 
-  const orderedSchemas = hasDefinitions
-    ? resolveSchemaDependenciesFromSchema(schema)
-    : []
+  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
   const rootInDefs = definitions[rootName] !== undefined
 
   // Check if we need scope (definitions exist)
   if (hasDefinitions) {
-    const defEntries = orderedSchemas
-      .map((name) => {
-        const def = definitions[name]
-        if (!def) return `// ⚠️ missing definition for ${name}`
-        const pc = toPascalCase(name)
-        return `${pc}:${arktype(def, pc, true)}`
-      })
+    const defEntries = orderedSchemas.map((name) => {
+      const def = definitions[name]
+      if (!def) return `// ⚠️ missing definition for ${name}`
+      const pc = toPascalCase(name)
+      return `${pc}:${arktype(def, pc, true)}`
+    })
 
     const scopeEntries = rootInDefs
       ? defEntries

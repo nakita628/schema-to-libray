@@ -55,8 +55,12 @@ function propertiesSchema(
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
-        ? isRequired ? key : `"${key}?"`
-        : isRequired ? JSON.stringify(key) : JSON.stringify(`${key}?`)
+        ? isRequired
+          ? key
+          : `"${key}?"`
+        : isRequired
+          ? JSON.stringify(key)
+          : JSON.stringify(`${key}?`)
       return `${safeKey}:${parsed}`
     })
     .filter((v): v is string => v !== null)

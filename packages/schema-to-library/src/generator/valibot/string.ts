@@ -23,9 +23,7 @@ export function string(schema: JSONSchema): string {
 
   const actions = [
     format,
-    schema.pattern
-      ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/)`
-      : undefined,
+    schema.pattern ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/)` : undefined,
     isFixedLength ? `v.length(${schema.minLength})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `v.minLength(${schema.minLength})`

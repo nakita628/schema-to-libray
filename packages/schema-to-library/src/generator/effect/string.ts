@@ -22,9 +22,7 @@ export function string(schema: JSONSchema): string {
     schema.minLength === schema.maxLength
 
   const lengthActions = [
-    schema.pattern
-      ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/)`
-      : undefined,
+    schema.pattern ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/)` : undefined,
     isFixedLength ? `Schema.length(${schema.minLength})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `Schema.minLength(${schema.minLength})`

@@ -1,6 +1,6 @@
+import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { typebox } from './typebox.js'
 
 export function schemaToTypebox(schema: JSONSchema): string {
@@ -13,9 +13,7 @@ export function schemaToTypebox(schema: JSONSchema): string {
 
   const hasDefinitions = Object.keys(definitions).length > 0
 
-  const orderedSchemas = hasDefinitions
-    ? resolveSchemaDependenciesFromSchema(schema)
-    : []
+  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
   const rootInDefs = definitions[rootName] !== undefined
   const rootDefinition = definitions[rootName]

@@ -66,11 +66,9 @@ function allOf(schema: JSONSchema, rootName: string, isTypebox: boolean): string
   const isNullType = (s: JSONSchema) =>
     s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
 
-  const isDefaultOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.default !== undefined
+  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
 
-  const isConstOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.const !== undefined
+  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
 
   const nullable =
     schema.nullable === true ||
@@ -80,7 +78,7 @@ function allOf(schema: JSONSchema, rootName: string, isTypebox: boolean): string
   const defaultValue = schema.allOf.find(isDefaultOnly)?.default
 
   const schemas = schema.allOf
-    .filter((s) => !isNullType(s) && !isDefaultOnly(s) && !isConstOnly(s))
+    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
     .map((s) => typebox(s, rootName, isTypebox))
 
   if (!schemas.length) return wrap('Type.Any()', { ...schema, nullable })
@@ -142,9 +140,9 @@ export function wrap(typeboxStr: string, schema: JSONSchema): string {
   return isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
 }
 
-function ref(schema: JSONSchema, rootName: string, isTypebox: boolean = false): string {
+function ref(schema: JSONSchema, rootName: string): string {
   if (schema.$ref === '#' || schema.$ref === '') {
-    return wrap(`Type.Recursive((Self) => ${rootName})`, schema)
+    return wrap(`Type.Recursive((_Self) => ${rootName})`, schema)
   }
 
   const TABLE = [

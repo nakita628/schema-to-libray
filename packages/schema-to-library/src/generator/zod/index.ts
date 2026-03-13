@@ -1,6 +1,6 @@
+import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { type } from './type.js'
 import { zod } from './zod.js'
 
@@ -8,8 +8,7 @@ import { zod } from './zod.js'
  * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
  */
 function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is Record<string, unknown> =>
-    typeof v === 'object' && v !== null
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 
   const stack: unknown[] = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
@@ -61,9 +60,7 @@ export function schemaToZod(schema: JSONSchema): string {
   const needsTypeDef = hasDefinitions || hasSelfReference(schema)
 
   // Resolve dependency order once
-  const orderedSchemas = hasDefinitions
-    ? resolveSchemaDependenciesFromSchema(schema)
-    : []
+  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
   // Check if root schema is defined in definitions
   const rootInDefs = definitions[rootName] !== undefined
@@ -99,9 +96,7 @@ export function schemaToZod(schema: JSONSchema): string {
     .join('\n\n')
 
   // Generate root schema
-  const rootSchema = rootInDefs
-    ? zod(rootDefinition, rootName, true)
-    : zod(schema, rootName, true)
+  const rootSchema = rootInDefs ? zod(rootDefinition, rootName, true) : zod(schema, rootName, true)
 
   const rootExport = needsTypeDef
     ? `export const ${rootName}: z.ZodType<${rootName}Type> = ${rootSchema}`

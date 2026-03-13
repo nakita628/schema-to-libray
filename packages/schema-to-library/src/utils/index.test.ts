@@ -47,6 +47,7 @@ describe('helper', () => {
     })
 
     it('should handle arrow function expression as-is', () => {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
       expect(error('(v) => `Expected ${v}`')).toBe('{error:(v) => `Expected ${v}`}')
     })
 

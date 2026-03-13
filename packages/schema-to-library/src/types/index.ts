@@ -1,1 +1,1 @@
-export type { JSONSchema, JSONSchemaType, JSONSchemaFormat } from './json-schema.js'
+export type { JSONSchema, JSONSchemaFormat, JSONSchemaType } from './json-schema.js'

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
 import { fmt, parseSchemaFile, schemaToEffect } from 'schema-to-library'
+import { describe, expect, it } from 'vitest'
 
 const fixturesDir = join(import.meta.dirname, '..')
 

@@ -3,13 +3,15 @@ import type { JSONSchema } from '../../types/index.js'
 export function number(schema: JSONSchema): string {
   const minimum = (() => {
     if (schema.minimum !== undefined) return `Schema.greaterThanOrEqualTo(${schema.minimum})`
-    if (typeof schema.exclusiveMinimum === 'number') return `Schema.greaterThan(${schema.exclusiveMinimum})`
+    if (typeof schema.exclusiveMinimum === 'number')
+      return `Schema.greaterThan(${schema.exclusiveMinimum})`
     return undefined
   })()
 
   const maximum = (() => {
     if (schema.maximum !== undefined) return `Schema.lessThanOrEqualTo(${schema.maximum})`
-    if (typeof schema.exclusiveMaximum === 'number') return `Schema.lessThan(${schema.exclusiveMaximum})`
+    if (typeof schema.exclusiveMaximum === 'number')
+      return `Schema.lessThan(${schema.exclusiveMaximum})`
     return undefined
   })()
 

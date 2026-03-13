@@ -21,17 +21,11 @@ export function string(schema: JSONSchema): string {
     schema.format && FORMAT_MAP[schema.format]
       ? `format:${JSON.stringify(FORMAT_MAP[schema.format])}`
       : undefined,
-    schema.pattern
-      ? `pattern:${JSON.stringify(schema.pattern)}`
-      : undefined,
+    schema.pattern ? `pattern:${JSON.stringify(schema.pattern)}` : undefined,
     isFixedLength ? `minLength:${schema.minLength}` : undefined,
     isFixedLength ? `maxLength:${schema.maxLength}` : undefined,
-    !isFixedLength && schema.minLength !== undefined
-      ? `minLength:${schema.minLength}`
-      : undefined,
-    !isFixedLength && schema.maxLength !== undefined
-      ? `maxLength:${schema.maxLength}`
-      : undefined,
+    !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
+    !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {

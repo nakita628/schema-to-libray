@@ -46,9 +46,7 @@ export function string(schema: JSONSchema): string {
 
   const base = (() => {
     if (!format) return errorMessage ? `z.string(${error(errorMessage)})` : 'z.string()'
-    return errorMessage
-      ? `z.${format.replace(/\(\)$/, `(${error(errorMessage)})`)}`
-      : `z.${format}`
+    return errorMessage ? `z.${format.replace(/\(\)$/, `(${error(errorMessage)})`)}` : `z.${format}`
   })()
 
   const patternMessage = schema['x-pattern-message'] as string | undefined

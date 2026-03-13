@@ -1,15 +1,14 @@
+import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import type { JSONSchema } from '../../types/index.js'
 import { toPascalCase } from '../../utils/index.js'
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import { type } from './type.js'
 import { effect } from './effect.js'
+import { type } from './type.js'
 
 /**
  * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
  */
 function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is Record<string, unknown> =>
-    typeof v === 'object' && v !== null
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 
   const stack: unknown[] = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
@@ -50,9 +49,7 @@ export function schemaToEffect(schema: JSONSchema): string {
   const hasDefinitions = Object.keys(definitions).length > 0
   const needsTypeDef = hasDefinitions || hasSelfReference(schema)
 
-  const orderedSchemas = hasDefinitions
-    ? resolveSchemaDependenciesFromSchema(schema)
-    : []
+  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
   const rootInDefs = definitions[rootName] !== undefined
   const rootDefinition = definitions[rootName]

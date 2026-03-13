@@ -79,6 +79,7 @@ describe('JSONSchema type', () => {
   it('should accept conditional keywords', () => {
     const schema: JSONSchema = {
       if: { properties: { type: { const: 'A' } } },
+      // biome-ignore lint/suspicious/noThenProperty: testing JSON Schema conditional keywords
       then: { properties: { a: { type: 'string' } } },
       else: { properties: { b: { type: 'number' } } },
     }

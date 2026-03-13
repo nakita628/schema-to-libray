@@ -13,8 +13,7 @@ export function number(schema: JSONSchema): string {
     return undefined
   })()
 
-  const multipleOf =
-    schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
+  const multipleOf = schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
 
   const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
 

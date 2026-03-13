@@ -26,9 +26,7 @@ const ConfigSchema = v.object({
       quoteProps: v.optional(
         v.union([v.literal('as-needed'), v.literal('consistent'), v.literal('preserve')]),
       ),
-      trailingComma: v.optional(
-        v.union([v.literal('all'), v.literal('es5'), v.literal('none')]),
-      ),
+      trailingComma: v.optional(v.union([v.literal('all'), v.literal('es5'), v.literal('none')])),
       bracketSpacing: v.optional(v.boolean()),
       bracketSameLine: v.optional(v.boolean()),
       arrowParens: v.optional(v.union([v.literal('always'), v.literal('avoid')])),

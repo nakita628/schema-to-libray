@@ -1067,7 +1067,7 @@ describe('zod', () => {
               inactive: 'Must be inactive',
             },
           },
-          "z.union([z.literal('active',{error:\"Must be active\"}),z.literal('inactive',{error:\"Must be inactive\"})])",
+          'z.union([z.literal(\'active\',{error:"Must be active"}),z.literal(\'inactive\',{error:"Must be inactive"})])',
         ],
         [
           {

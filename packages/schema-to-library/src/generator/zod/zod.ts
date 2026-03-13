@@ -82,11 +82,9 @@ function allOf(schema: JSONSchema, rootName: string, isZod: boolean): string {
   const isNullType = (s: JSONSchema) =>
     s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
 
-  const isDefaultOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.default !== undefined
+  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
 
-  const isConstOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.const !== undefined
+  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
 
   const nullable =
     schema.nullable === true ||
@@ -96,7 +94,7 @@ function allOf(schema: JSONSchema, rootName: string, isZod: boolean): string {
   const defaultValue = schema.allOf.find(isDefaultOnly)?.default
 
   const schemas = schema.allOf
-    .filter((s) => !isNullType(s) && !isDefaultOnly(s) && !isConstOnly(s))
+    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
     .map((s) => zod(s, rootName, isZod))
 
   if (!schemas.length) return wrap('z.any()', { ...schema, nullable })
@@ -144,9 +142,7 @@ export function wrap(zodStr: string, schema: JSONSchema): string {
   }
 
   const withDefault =
-    schema.default !== undefined
-      ? `${zodStr}.default(${formatLiteral(schema.default)})`
-      : zodStr
+    schema.default !== undefined ? `${zodStr}.default(${formatLiteral(schema.default)})` : zodStr
 
   const isNullable =
     schema.nullable === true ||

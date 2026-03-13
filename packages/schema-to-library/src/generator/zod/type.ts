@@ -158,13 +158,12 @@ function object(schema: JSONSchema, rootName: string): string {
 
   const required = Array.isArray(schema.required) ? schema.required : []
 
-  const properties = Object.entries(schema.properties)
-    .map(([key, propSchema]) => {
-      const propType = type(propSchema, rootName)
-      const isRequired = required.includes(key)
-      const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : `"${key}"`
-      return isRequired ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
-    })
+  const properties = Object.entries(schema.properties).map(([key, propSchema]) => {
+    const propType = type(propSchema, rootName)
+    const isRequired = required.includes(key)
+    const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : `"${key}"`
+    return isRequired ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
+  })
 
   return `{${properties.join('; ')}}`
 }

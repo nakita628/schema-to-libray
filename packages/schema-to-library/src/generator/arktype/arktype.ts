@@ -67,11 +67,9 @@ function allOf(schema: JSONSchema, rootName: string, isArktype: boolean): string
   const isNullType = (s: JSONSchema) =>
     s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
 
-  const isDefaultOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.default !== undefined
+  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
 
-  const isConstOnly = (s: JSONSchema) =>
-    Object.keys(s).length === 1 && s.const !== undefined
+  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
 
   const nullable =
     schema.nullable === true ||
@@ -79,7 +77,7 @@ function allOf(schema: JSONSchema, rootName: string, isArktype: boolean): string
     schema.allOf.some(isNullType)
 
   const schemas = schema.allOf
-    .filter((s) => !isNullType(s) && !isDefaultOnly(s) && !isConstOnly(s))
+    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
     .map((s) => arktype(s, rootName, isArktype))
 
   if (!schemas.length) return wrap('"unknown"', { ...schema, nullable })
@@ -106,7 +104,8 @@ function array(schema: JSONSchema, rootName: string, isArktype: boolean = false)
 
     const hasMin = typeof schema.minItems === 'number'
     const hasMax = typeof schema.maxItems === 'number'
-    if (hasMin && hasMax) return `type(${base}).and(type("${schema.minItems} <= unknown[] <= ${schema.maxItems}"))`
+    if (hasMin && hasMax)
+      return `type(${base}).and(type("${schema.minItems} <= unknown[] <= ${schema.maxItems}"))`
     if (hasMin) return `type(${base}).and(type("unknown[] >= ${schema.minItems}"))`
     if (hasMax) return `type(${base}).and(type("unknown[] <= ${schema.maxItems}"))`
 
