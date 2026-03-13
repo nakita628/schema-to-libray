@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { cli } from './cli/index.js'
-import { schemaToZod } from './zod/index.js'
+import { schemaToZod } from './generator/zod/index.js'
 
 /**
  * Help text displayed when --help is used

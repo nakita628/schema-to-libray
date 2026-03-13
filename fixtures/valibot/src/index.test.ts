@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parseSchemaFile, schemaToValibot } from 'schema-to-library'
+import { fmt, parseSchemaFile, schemaToValibot } from 'schema-to-library'
 
 const fixturesDir = join(import.meta.dirname, '..')
 
@@ -18,11 +18,16 @@ const fixtures = readdirSync(fixturesDir, { withFileTypes: true })
   .map((d) => d.name)
 
 describe('schemaToValibot fixtures', () => {
-  it.each(fixtures)('%s', (name) => {
+  it.each(fixtures)('%s', async (name) => {
     const dir = join(fixturesDir, name)
     const input = JSON.parse(readFileSync(join(dir, 'input.json'), 'utf-8'))
-    const expected = readFileSync(join(dir, 'output.ts'), 'utf-8').trimEnd()
-    expect(schemaToValibot(input)).toBe(expected)
+    const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
+    const raw = schemaToValibot(input)
+    const fmtResult = await fmt(raw)
+    expect(fmtResult.ok).toBe(true)
+    if (fmtResult.ok) {
+      expect(fmtResult.value).toBe(expected)
+    }
   })
 })
 
@@ -30,12 +35,17 @@ describe('schemaToValibot split fixtures (parseSchemaFile + schemaToValibot)', (
   it.each(SPLIT_FIXTURES)('%s', async (name) => {
     const dir = join(fixturesDir, name)
     const inputPath = join(dir, 'input.json')
-    const expected = readFileSync(join(dir, 'output.ts'), 'utf-8').trimEnd()
+    const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
 
     const result = await parseSchemaFile(inputPath)
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(schemaToValibot(result.value)).toBe(expected)
+      const raw = schemaToValibot(result.value)
+      const fmtResult = await fmt(raw)
+      expect(fmtResult.ok).toBe(true)
+      if (fmtResult.ok) {
+        expect(fmtResult.value).toBe(expected)
+      }
     }
   })
 })

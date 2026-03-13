@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { cli } from './cli/index.js'
-import { schemaToEffect } from './effect/index.js'
+import { schemaToEffect } from './generator/effect/index.js'
 
 const HELP_TEXT = `Usage: schema-to-effect <input.{json,yaml}> -o <output.ts>
 

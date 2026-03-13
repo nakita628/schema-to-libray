@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { cli } from './cli/index.js'
-import { schemaToValibot } from './valibot/index.js'
+import { schemaToValibot } from './generator/valibot/index.js'
 
 const HELP_TEXT = `Usage: schema-to-valibot <input.{json,yaml}> -o <output.ts>
 

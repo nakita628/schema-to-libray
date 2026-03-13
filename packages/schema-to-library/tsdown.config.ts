@@ -6,6 +6,8 @@ export default defineConfig({
     zod: './src/zod.ts',
     valibot: './src/valibot.ts',
     effect: './src/effect.ts',
+    typebox: './src/typebox.ts',
+    arktype: './src/arktype.ts',
   },
   format: 'esm',
   dts: true,

@@ -1,13 +1,15 @@
 {
   "name": "schema-to-library",
-  "description": "Generate Zod/Valibot/Effect schemas from JSON or YAML files",
+  "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
   "version": "0.0.5",
   "type": "module",
   "license": "MIT",
   "keywords": [
     "zod",
     "valibot",
-    "effect"
+    "effect",
+    "typebox",
+    "arktype"
   ],
   "homepage": "https://github.com/nakita628/schema-to-libray",
   "publishConfig": {
@@ -33,7 +35,9 @@
   "bin": {
     "schema-to-zod": "dist/zod.js",
     "schema-to-valibot": "dist/valibot.js",
-    "schema-to-effect": "dist/effect.js"
+    "schema-to-effect": "dist/effect.js",
+    "schema-to-typebox": "dist/typebox.js",
+    "schema-to-arktype": "dist/arktype.js"
   },
   "scripts": {
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",

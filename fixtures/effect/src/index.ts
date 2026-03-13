@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseSchemaFile, schemaToEffect } from 'schema-to-library'
+import { fmt, parseSchemaFile, schemaToEffect } from 'schema-to-library'
 
 const fixturesDir = join(import.meta.dirname, '..')
 
@@ -15,17 +15,25 @@ for (const name of fixtures) {
   const inputPath = join(dir, 'input.json')
   const outputPath = join(dir, 'output.ts')
 
+  let raw: string
   if (SPLIT_FIXTURES.includes(name)) {
     const result = await parseSchemaFile(inputPath)
     if (!result.ok) {
       console.error(`${name}: ${result.error}`)
       continue
     }
-    writeFileSync(outputPath, `${schemaToEffect(result.value)}\n`)
+    raw = schemaToEffect(result.value)
   } else {
     const input = JSON.parse(readFileSync(inputPath, 'utf-8'))
-    writeFileSync(outputPath, `${schemaToEffect(input)}\n`)
+    raw = schemaToEffect(input)
   }
+
+  const fmtResult = await fmt(raw)
+  if (!fmtResult.ok) {
+    console.error(`${name}: fmt error: ${fmtResult.error}`)
+    continue
+  }
+  writeFileSync(outputPath, fmtResult.value)
 
   console.log(`generated: ${name}/output.ts`)
 }

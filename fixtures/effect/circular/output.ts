@@ -1,12 +1,12 @@
-import { Schema } from "effect"
+import { Schema } from 'effect'
 
-type AType = {readonly b?: BType}
+type AType = { readonly b?: BType }
 
-type BType = {readonly a?: AType}
+type BType = { readonly a?: AType }
 
-const B: Schema.Schema<BType> = Schema.partial(Schema.Struct({a:Schema.suspend(() => A)}))
+const B: Schema.Schema<BType> = Schema.partial(Schema.Struct({ a: Schema.suspend(() => A) }))
 
-export const A: Schema.Schema<AType> = Schema.partial(Schema.Struct({b:Schema.suspend(() => B)}))
+export const A: Schema.Schema<AType> = Schema.partial(Schema.Struct({ b: Schema.suspend(() => B) }))
 
 export type AType_ = typeof A.Type
 
