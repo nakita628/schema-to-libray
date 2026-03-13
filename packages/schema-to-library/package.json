@@ -44,7 +44,6 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "coverage": "vitest run --coverage",
     "release": "pnpm build && pnpm publish"
   },
   "dependencies": {
@@ -53,9 +52,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
-    "@vitest/coverage-v8": "^3.2.4",
     "tsdown": "^0.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.9.3"
   }
 }
