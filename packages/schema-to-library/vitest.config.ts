@@ -8,6 +8,7 @@ export default defineConfig({
       reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
       all: true,
+      reportOnFailure: true,
     },
   },
 })
