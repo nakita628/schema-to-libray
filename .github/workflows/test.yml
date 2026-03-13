@@ -35,6 +35,6 @@ jobs:
         run: pnpm -F schema-to-library typecheck
 
       - name: Run Coverage
-        run: pnpm -F schema-to-library coverage
+        run: pnpm coverage
 
       
