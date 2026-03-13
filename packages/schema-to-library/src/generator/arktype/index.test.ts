@@ -252,4 +252,254 @@ export type Bool = typeof Bool.infer`
 export const Schema = type({"name?":"string"})`
     expect(result).toBe(expected)
   })
+
+  it('should handle anyOf combinator', () => {
+    const result = schemaToArktype({
+      title: 'AnyOf',
+      type: 'object',
+      properties: {
+        value: {
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+    })
+    const expected = `import { type } from "arktype"
+
+export const AnyOf = type({"value?":"string | number"})
+
+export type AnyOf = typeof AnyOf.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with minItems/maxItems', () => {
+    const result = schemaToArktype({
+      title: 'Arr',
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 10 },
+      },
+      required: ['tags'],
+    })
+    const expected = `import { type } from "arktype"
+
+export const Arr = type({tags:type("string[]").and(type("1 <= unknown[] <= 10"))})
+
+export type Arr = typeof Arr.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with fixed length', () => {
+    const result = schemaToArktype({
+      title: 'Fixed',
+      type: 'object',
+      properties: {
+        pair: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+      },
+      required: ['pair'],
+    })
+    const expected = `import { type } from "arktype"
+
+export const Fixed = type({pair:type("number[]").and(type("unknown[] == 3"))})
+
+export type Fixed = typeof Fixed.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with minItems only', () => {
+    const result = schemaToArktype({
+      title: 'MinOnly',
+      type: 'object',
+      properties: {
+        items: { type: 'array', items: { type: 'string' }, minItems: 1 },
+      },
+      required: ['items'],
+    })
+    const expected = `import { type } from "arktype"
+
+export const MinOnly = type({items:type("string[]").and(type("unknown[] >= 1"))})
+
+export type MinOnly = typeof MinOnly.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle allOf combinator', () => {
+    const result = schemaToArktype({
+      title: 'AllOf',
+      type: 'object',
+      properties: {
+        value: {
+          allOf: [
+            { type: 'object', properties: { name: { type: 'string' } } },
+            { type: 'object', properties: { age: { type: 'number' } } },
+          ],
+        },
+      },
+    })
+    const expected = `import { type } from "arktype"
+
+export const AllOf = type({"value?":type(type({"name?":"string"})).and(type({"age?":"number"}))})
+
+export type AllOf = typeof AllOf.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle date type', () => {
+    const result = schemaToArktype({
+      title: 'D',
+      type: 'date',
+    })
+    const expected = `import { type } from "arktype"
+
+export const D = type("Date")
+
+export type D = typeof D.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle null type', () => {
+    const result = schemaToArktype({
+      title: 'N',
+      type: 'null',
+    })
+    const expected = `import { type } from "arktype"
+
+export const N = type("null | null")
+
+export type N = typeof N.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle object type without properties', () => {
+    const result = schemaToArktype({
+      title: 'Empty',
+      type: 'object',
+    })
+    const expected = `import { type } from "arktype"
+
+export const Empty = type({})
+
+export type Empty = typeof Empty.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle schema with $defs using scope', () => {
+    const result = schemaToArktype({
+      title: 'User',
+      type: 'object',
+      $defs: {
+        Address: {
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+          },
+        },
+      },
+      properties: {
+        address: { $ref: '#/$defs/Address' },
+      },
+    })
+    const expected = `import { scope } from "arktype"
+
+const types = scope({Address:{"street?":"string"},User:{"address?":"Address"}}).export()
+
+export const User = types.User
+
+export type User = typeof User.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle additionalProperties: false', () => {
+    const result = schemaToArktype({
+      type: 'object',
+      properties: { test: { type: 'string' } },
+      required: ['test'],
+      additionalProperties: false,
+    })
+    const expected = `import { type } from "arktype"
+
+export const Schema = type({test:"string","+":"reject"})
+
+export type Schema = typeof Schema.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle string type at root', () => {
+    const result = schemaToArktype({
+      title: 'Name',
+      type: 'string',
+    })
+    const expected = `import { type } from "arktype"
+
+export const Name = type("string")
+
+export type Name = typeof Name.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle additionalProperties: true with properties', () => {
+    const result = schemaToArktype({
+      title: 'Loose',
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+      },
+      required: ['name'],
+      additionalProperties: true,
+    })
+    const expected = `import { type } from "arktype"
+
+export const Loose = type({name:"string","+":"delete"})
+
+export type Loose = typeof Loose.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle special key escaping in properties', () => {
+    const result = schemaToArktype({
+      title: 'Special',
+      type: 'object',
+      properties: {
+        'x-value': { type: 'string' },
+        normal: { type: 'number' },
+      },
+      required: ['x-value'],
+    })
+    const expected = `import { type } from "arktype"
+
+export const Special = type({"x-value":"string","normal?":"number"})
+
+export type Special = typeof Special.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with maxItems only', () => {
+    const result = schemaToArktype({
+      title: 'MaxOnly',
+      type: 'object',
+      properties: {
+        items: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+      },
+      required: ['items'],
+    })
+    const expected = `import { type } from "arktype"
+
+export const MaxOnly = type({items:type("string[]").and(type("unknown[] <= 5"))})
+
+export type MaxOnly = typeof MaxOnly.infer`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle additionalProperties: true boolean without properties', () => {
+    const result = schemaToArktype({
+      title: 'AnyObj',
+      type: 'object',
+      additionalProperties: true,
+    })
+    const expected = `import { type } from "arktype"
+
+export const AnyObj = type("unknown")
+
+export type AnyObj = typeof AnyObj.infer`
+    expect(result).toBe(expected)
+  })
 })

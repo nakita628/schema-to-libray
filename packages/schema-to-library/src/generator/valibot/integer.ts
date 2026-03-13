@@ -1,32 +1,54 @@
 import type { JSONSchema } from '../../types/index.js'
+import { valibotMessage } from '../../utils/index.js'
 
 export function integer(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
+  const baseMsgPart = errorMessage ? valibotMessage(errorMessage) : ''
+
   if (schema.format === 'bigint') {
+    const minimumMessage = schema['x-minimum-message'] as string | undefined
+    const maximumMessage = schema['x-maximum-message'] as string | undefined
+
     const actions = [
-      schema.minimum !== undefined ? `v.minValue(BigInt(${schema.minimum}))` : undefined,
-      schema.maximum !== undefined ? `v.maxValue(BigInt(${schema.maximum}))` : undefined,
+      schema.minimum !== undefined
+        ? `v.minValue(BigInt(${schema.minimum})${minimumMessage ? `,${valibotMessage(minimumMessage)}` : ''})`
+        : undefined,
+      schema.maximum !== undefined
+        ? `v.maxValue(BigInt(${schema.maximum})${maximumMessage ? `,${valibotMessage(maximumMessage)}` : ''})`
+        : undefined,
     ].filter((v) => v !== undefined)
 
-    if (actions.length > 0) return `v.pipe(v.bigint(),${actions.join(',')})`
-    return 'v.bigint()'
+    if (actions.length > 0) return `v.pipe(v.bigint(${baseMsgPart}),${actions.join(',')})`
+    return errorMessage ? `v.bigint(${baseMsgPart})` : 'v.bigint()'
   }
 
+  const minimumMessage = schema['x-minimum-message'] as string | undefined
+  const maximumMessage = schema['x-maximum-message'] as string | undefined
+  const multipleOfMessage = schema['x-multipleOf-message'] as string | undefined
+
   const minimum = (() => {
-    if (schema.minimum !== undefined) return `v.minValue(${schema.minimum})`
-    if (typeof schema.exclusiveMinimum === 'number') return `v.minValue(${schema.exclusiveMinimum})`
+    if (schema.minimum !== undefined)
+      return `v.minValue(${schema.minimum}${minimumMessage ? `,${valibotMessage(minimumMessage)}` : ''})`
+    if (typeof schema.exclusiveMinimum === 'number')
+      return `v.minValue(${schema.exclusiveMinimum}${minimumMessage ? `,${valibotMessage(minimumMessage)}` : ''})`
     return undefined
   })()
 
   const maximum = (() => {
-    if (schema.maximum !== undefined) return `v.maxValue(${schema.maximum})`
-    if (typeof schema.exclusiveMaximum === 'number') return `v.maxValue(${schema.exclusiveMaximum})`
+    if (schema.maximum !== undefined)
+      return `v.maxValue(${schema.maximum}${maximumMessage ? `,${valibotMessage(maximumMessage)}` : ''})`
+    if (typeof schema.exclusiveMaximum === 'number')
+      return `v.maxValue(${schema.exclusiveMaximum}${maximumMessage ? `,${valibotMessage(maximumMessage)}` : ''})`
     return undefined
   })()
 
   const multipleOf =
-    schema.multipleOf !== undefined ? `v.multipleOf(${schema.multipleOf})` : undefined
+    schema.multipleOf !== undefined
+      ? `v.multipleOf(${schema.multipleOf}${multipleOfMessage ? `,${valibotMessage(multipleOfMessage)}` : ''})`
+      : undefined
 
-  const actions = ['v.integer()', minimum, maximum, multipleOf].filter((v) => v !== undefined)
+  const integerMsg = errorMessage ? `v.integer(${baseMsgPart})` : 'v.integer()'
+  const actions = [integerMsg, minimum, maximum, multipleOf].filter((v) => v !== undefined)
 
-  return `v.pipe(v.number(),${actions.join(',')})`
+  return `v.pipe(v.number(${baseMsgPart}),${actions.join(',')})`
 }

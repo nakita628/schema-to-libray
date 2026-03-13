@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { error, normalizeTypes, toPascalCase } from './index.js'
+import { effectMessage, error, normalizeTypes, toPascalCase, valibotMessage } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/utils/index.test.ts
@@ -57,6 +57,34 @@ describe('helper', () => {
 
     it('should escape quotes in string messages', () => {
       expect(error('Must be "valid"')).toBe('{error:"Must be \\"valid\\""}')
+    })
+  })
+
+  describe('valibotMessage', () => {
+    it('should wrap plain string in JSON.stringify', () => {
+      expect(valibotMessage('Must be valid')).toBe('"Must be valid"')
+    })
+
+    it('should pass through arrow function expression', () => {
+      expect(valibotMessage('(issue) => issue.message')).toBe('(issue) => issue.message')
+    })
+
+    it('should detect arrow function with spaces', () => {
+      expect(valibotMessage('  (val) => val.toString()')).toBe('  (val) => val.toString()')
+    })
+  })
+
+  describe('effectMessage', () => {
+    it('should wrap plain string in message annotation', () => {
+      expect(effectMessage('Required field')).toBe('{message:()=>"Required field"}')
+    })
+
+    it('should pass through arrow function in message annotation', () => {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
+      expect(effectMessage('(issue) => `Error: ${issue}`')).toBe(
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
+        '{message:(issue) => `Error: ${issue}`}',
+      )
     })
   })
 })

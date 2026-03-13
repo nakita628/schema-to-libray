@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../../types/index.js'
+import { valibotMessage } from '../../utils/index.js'
 
 export function _enum(schema: JSONSchema): string {
   const hasType = (t: string): boolean =>
@@ -6,6 +7,17 @@ export function _enum(schema: JSONSchema): string {
 
   const lit = (v: unknown): string =>
     v === null ? 'null' : typeof v === 'string' ? `'${v}'` : String(v)
+
+  const errorMessage = schema['x-error-message'] as string | undefined
+  const errArg = errorMessage ? `,${valibotMessage(errorMessage)}` : ''
+  const enumMessages = schema['x-enum-error-messages'] as Record<string, string> | undefined
+  const litErrArg = (v: unknown): string => {
+    if (enumMessages) {
+      const key = String(v)
+      if (key in enumMessages) return `,${valibotMessage(enumMessages[key])}`
+    }
+    return errArg
+  }
 
   const tuple = (arr: readonly unknown[]): string =>
     `v.tuple([${arr.map((i: unknown) => `v.literal(${lit(i)})`).join(',')}])`
@@ -15,15 +27,15 @@ export function _enum(schema: JSONSchema): string {
   // number / integer enum
   if (hasType('number') || hasType('integer')) {
     return schema.enum.length > 1
-      ? `v.union([${schema.enum.map((v: unknown) => `v.literal(${lit(v)})`).join(',')}])`
-      : `v.literal(${lit(schema.enum[0])})`
+      ? `v.union([${schema.enum.map((v: unknown) => `v.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
+      : `v.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
   }
 
   // boolean enum
   if (hasType('boolean')) {
     return schema.enum.length > 1
-      ? `v.union([${schema.enum.map((v: unknown) => `v.literal(${lit(v)})`).join(',')}])`
-      : `v.literal(${lit(schema.enum[0])})`
+      ? `v.union([${schema.enum.map((v: unknown) => `v.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
+      : `v.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
   }
 
   // array enum
@@ -32,24 +44,27 @@ export function _enum(schema: JSONSchema): string {
       return tuple(schema.enum[0])
     }
     const parts = schema.enum.map((v: unknown) =>
-      Array.isArray(v) ? tuple(v) : `v.literal(${lit(v)})`,
+      Array.isArray(v) ? tuple(v) : `v.literal(${lit(v)}${litErrArg(v)})`,
     )
-    return `v.union([${parts.join(',')}])`
+    return `v.union([${parts.join(',')}]${errArg})`
   }
 
   // string enum
   if (schema.enum.every((v: unknown) => typeof v === 'string')) {
     if (schema.enum.length > 1) {
-      return `v.picklist(${JSON.stringify(schema.enum)})`
+      if (enumMessages) {
+        return `v.union([${schema.enum.map((v: unknown) => `v.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
+      }
+      return `v.picklist(${JSON.stringify(schema.enum)}${errArg})`
     }
-    return `v.literal('${schema.enum[0]}')`
+    return `v.literal('${schema.enum[0]}'${litErrArg(schema.enum[0])})`
   }
 
   // mixed / null only
   if (schema.enum.length > 1) {
-    const parts = schema.enum.map((v: unknown) => `v.literal(${lit(v)})`)
-    return `v.union([${parts.join(',')}])`
+    const parts = schema.enum.map((v: unknown) => `v.literal(${lit(v)}${litErrArg(v)})`)
+    return `v.union([${parts.join(',')}]${errArg})`
   }
 
-  return `v.literal(${lit(schema.enum[0])})`
+  return `v.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
 }

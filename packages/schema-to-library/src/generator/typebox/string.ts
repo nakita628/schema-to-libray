@@ -12,6 +12,8 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
+
   const isFixedLength =
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
@@ -26,6 +28,7 @@ export function string(schema: JSONSchema): string {
     isFixedLength ? `maxLength:${schema.maxLength}` : undefined,
     !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
     !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
+    errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {

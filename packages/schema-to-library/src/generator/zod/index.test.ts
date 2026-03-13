@@ -464,4 +464,164 @@ export type Length = z.infer<typeof Length>`
 export const Schema = z.object({name:z.string()}).partial()`
     expect(result).toBe(expected)
   })
+
+  it('should handle allOf with default value', () => {
+    const result = schemaToZod({
+      title: 'WithDefault',
+      type: 'object',
+      properties: {
+        status: {
+          allOf: [{ type: 'string' }, { default: 'active' }],
+        },
+      },
+    })
+    const expected = `import * as z from 'zod'
+
+export const WithDefault = z.object({status:z.string().default("active")}).partial()
+
+export type WithDefault = z.infer<typeof WithDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle allOf with nullable and default', () => {
+    const result = schemaToZod({
+      title: 'NullDefault',
+      type: 'object',
+      properties: {
+        value: {
+          allOf: [{ type: 'string' }, { default: 'x' }, { type: 'null' }],
+        },
+      },
+    })
+    const expected = `import * as z from 'zod'
+
+export const NullDefault = z.object({value:z.string().default("x").nullable()}).partial()
+
+export type NullDefault = z.infer<typeof NullDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle date type', () => {
+    const result = schemaToZod({
+      title: 'D',
+      type: 'date',
+    })
+    const expected = `import * as z from 'zod'
+
+export const D = z.date()
+
+export type D = z.infer<typeof D>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle null type', () => {
+    const result = schemaToZod({
+      title: 'N',
+      type: 'null',
+    })
+    const expected = `import * as z from 'zod'
+
+export const N = z.null().nullable()
+
+export type N = z.infer<typeof N>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle anyOf combinator', () => {
+    const result = schemaToZod({
+      title: 'AnyOf',
+      type: 'object',
+      properties: {
+        value: {
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+    })
+    const expected = `import * as z from 'zod'
+
+export const AnyOf = z.object({value:z.union([z.string(),z.number()])}).partial()
+
+export type AnyOf = z.infer<typeof AnyOf>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with minItems/maxItems', () => {
+    const result = schemaToZod({
+      title: 'Arr',
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 10 },
+      },
+      required: ['tags'],
+    })
+    const expected = `import * as z from 'zod'
+
+export const Arr = z.object({tags:z.array(z.string()).min(1).max(10)})
+
+export type Arr = z.infer<typeof Arr>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with fixed length', () => {
+    const result = schemaToZod({
+      title: 'Fixed',
+      type: 'object',
+      properties: {
+        pair: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+      },
+      required: ['pair'],
+    })
+    const expected = `import * as z from 'zod'
+
+export const Fixed = z.object({pair:z.array(z.number()).length(3)})
+
+export type Fixed = z.infer<typeof Fixed>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle default boolean value', () => {
+    const result = schemaToZod({
+      title: 'Def',
+      type: 'object',
+      properties: {
+        enabled: { type: 'boolean', default: true },
+      },
+    })
+    const expected = `import * as z from 'zod'
+
+export const Def = z.object({enabled:z.boolean().default(true)}).partial()
+
+export type Def = z.infer<typeof Def>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle nullable string', () => {
+    const result = schemaToZod({
+      title: 'Null',
+      type: 'object',
+      properties: {
+        value: { type: 'string', nullable: true },
+      },
+      required: ['value'],
+    })
+    const expected = `import * as z from 'zod'
+
+export const Null = z.object({value:z.string().nullable()})
+
+export type Null = z.infer<typeof Null>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle object type without properties', () => {
+    const result = schemaToZod({
+      title: 'Empty',
+      type: 'object',
+    })
+    const expected = `import * as z from 'zod'
+
+export const Empty = z.object({})
+
+export type Empty = z.infer<typeof Empty>`
+    expect(result).toBe(expected)
+  })
 })

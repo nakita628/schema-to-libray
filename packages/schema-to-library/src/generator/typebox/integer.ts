@@ -1,10 +1,13 @@
 import type { JSONSchema } from '../../types/index.js'
 
 export function integer(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
+
   if (schema.format === 'bigint') {
     const opts = [
       schema.minimum !== undefined ? `minimum:BigInt(${schema.minimum})` : undefined,
       schema.maximum !== undefined ? `maximum:BigInt(${schema.maximum})` : undefined,
+      errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
     ].filter((v) => v !== undefined)
 
     if (opts.length > 0) return `Type.BigInt({${opts.join(',')}})`
@@ -21,6 +24,7 @@ export function integer(schema: JSONSchema): string {
       ? `exclusiveMaximum:${schema.exclusiveMaximum}`
       : undefined,
     schema.multipleOf !== undefined ? `multipleOf:${schema.multipleOf}` : undefined,
+    errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {

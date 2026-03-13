@@ -12,11 +12,14 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
+  const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
+
   const format = schema.format && FORMAT_MAP[schema.format]
   const base = format ? `"${format}"` : '"string"'
 
   if (schema.pattern) {
-    return `type(${base}).and(/${schema.pattern}/)`
+    return `type(${base}).and(/${schema.pattern}/)${describe}`
   }
 
   const isFixedLength =
@@ -25,20 +28,24 @@ export function string(schema: JSONSchema): string {
     schema.minLength === schema.maxLength
 
   if (isFixedLength) {
-    return `type("string == ${schema.minLength}")`
+    return `type("string == ${schema.minLength}")${describe}`
   }
 
   const hasMin = schema.minLength !== undefined
   const hasMax = schema.maxLength !== undefined
 
   if (hasMin && hasMax) {
-    return `type("${schema.minLength} <= string <= ${schema.maxLength}")`
+    return `type("${schema.minLength} <= string <= ${schema.maxLength}")${describe}`
   }
   if (hasMin) {
-    return `type("string >= ${schema.minLength}")`
+    return `type("string >= ${schema.minLength}")${describe}`
   }
   if (hasMax) {
-    return `type("string <= ${schema.maxLength}")`
+    return `type("string <= ${schema.maxLength}")${describe}`
+  }
+
+  if (errorMessage) {
+    return format ? `type(${base})${describe}` : `type("string")${describe}`
   }
 
   if (format) return base

@@ -1,6 +1,9 @@
 import type { JSONSchema } from '../../types/index.js'
 
 export function number(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
+  const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
+
   const minimum = (() => {
     if (schema.minimum !== undefined) return `>= ${schema.minimum}`
     if (typeof schema.exclusiveMinimum === 'number') return `> ${schema.exclusiveMinimum}`
@@ -18,7 +21,11 @@ export function number(schema: JSONSchema): string {
   const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
 
   if (constraints.length > 0) {
-    return `"number ${constraints.join(' ')}"`
+    const expr = `"number ${constraints.join(' ')}"`
+    if (errorMessage) return `type(${expr})${describe}`
+    return expr
   }
+
+  if (errorMessage) return `type("number")${describe}`
   return '"number"'
 }

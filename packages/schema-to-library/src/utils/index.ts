@@ -49,3 +49,29 @@ export function error(message: string): string {
   }
   return `{error:${JSON.stringify(message)}}`
 }
+
+/**
+ * Format an error message argument for Valibot
+ *
+ * @param message - The error message string or arrow function expression
+ * @returns `"message"` or `(issue)=>expr` formatted string
+ */
+export function valibotMessage(message: string): string {
+  if (/^\s*\(.*?\)\s*=>/.test(message)) {
+    return message
+  }
+  return JSON.stringify(message)
+}
+
+/**
+ * Format an error message annotation for Effect Schema
+ *
+ * @param message - The error message string or arrow function expression
+ * @returns `{message:()=>"message"}` or `{message:(issue)=>expr}` formatted string
+ */
+export function effectMessage(message: string): string {
+  if (/^\s*\(.*?\)\s*=>/.test(message)) {
+    return `{message:${message}}`
+  }
+  return `{message:()=>${JSON.stringify(message)}}`
+}

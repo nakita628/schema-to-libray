@@ -318,4 +318,288 @@ export type A = Static<typeof A>`
 export const Schema = Type.Object({name:Type.Optional(Type.String())})`
     expect(result).toBe(expected)
   })
+
+  it('should handle allOf with default value', () => {
+    const result = schemaToTypebox({
+      title: 'WithDefault',
+      type: 'object',
+      properties: {
+        status: {
+          allOf: [{ type: 'string' }, { default: 'active' }],
+        },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.String(),{default:"active"}))})
+
+export type WithDefault = Static<typeof WithDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle allOf with nullable and default', () => {
+    const result = schemaToTypebox({
+      title: 'NullDefault',
+      type: 'object',
+      properties: {
+        value: {
+          allOf: [{ type: 'string' }, { default: 'x' }, { type: 'null' }],
+        },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.String(),{default:"x"}),Type.Null()]))})
+
+export type NullDefault = Static<typeof NullDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle anyOf combinator', () => {
+    const result = schemaToTypebox({
+      title: 'AnyOf',
+      type: 'object',
+      properties: {
+        value: {
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const AnyOf = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
+
+export type AnyOf = Static<typeof AnyOf>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with minItems/maxItems', () => {
+    const result = schemaToTypebox({
+      title: 'Arr',
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 10 },
+      },
+      required: ['tags'],
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Arr = Type.Object({tags:Type.Array(Type.String(),{minItems:1,maxItems:10})})
+
+export type Arr = Static<typeof Arr>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with fixed length', () => {
+    const result = schemaToTypebox({
+      title: 'Fixed',
+      type: 'object',
+      properties: {
+        pair: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+      },
+      required: ['pair'],
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Fixed = Type.Object({pair:Type.Array(Type.Number(),{minItems:3,maxItems:3})})
+
+export type Fixed = Static<typeof Fixed>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle default value', () => {
+    const result = schemaToTypebox({
+      title: 'Def',
+      type: 'object',
+      properties: {
+        enabled: { type: 'boolean', default: true },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean(),{default:true}))})
+
+export type Def = Static<typeof Def>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle date type', () => {
+    const result = schemaToTypebox({
+      title: 'D',
+      type: 'date',
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const D = Type.Date()
+
+export type D = Static<typeof D>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle null type', () => {
+    const result = schemaToTypebox({
+      title: 'N',
+      type: 'null',
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const N = Type.Union([Type.Null(),Type.Null()])
+
+export type N = Static<typeof N>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle schema with $defs', () => {
+    const result = schemaToTypebox({
+      title: 'User',
+      type: 'object',
+      $defs: {
+        Address: {
+          type: 'object',
+          properties: {
+            street: { type: 'string' },
+          },
+        },
+      },
+      properties: {
+        address: { $ref: '#/$defs/Address' },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+const Address = Type.Object({street:Type.Optional(Type.String())})
+
+export const User = Type.Object({address:Type.Optional(Address)})
+
+export type User = Static<typeof User>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle strictObject (additionalProperties: false)', () => {
+    const result = schemaToTypebox({
+      type: 'object',
+      properties: { test: { type: 'string' } },
+      required: ['test'],
+      additionalProperties: false,
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Schema = Type.Object({test:Type.String()},{additionalProperties:false})
+
+export type Schema = Static<typeof Schema>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle object type without properties', () => {
+    const result = schemaToTypebox({
+      title: 'Empty',
+      type: 'object',
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Empty = Type.Object({})
+
+export type Empty = Static<typeof Empty>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle additionalProperties: true with properties', () => {
+    const result = schemaToTypebox({
+      title: 'Loose',
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+      },
+      required: ['name'],
+      additionalProperties: true,
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Loose = Type.Object({name:Type.String()})
+
+export type Loose = Static<typeof Loose>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle additionalProperties: true boolean without properties', () => {
+    const result = schemaToTypebox({
+      title: 'AnyObj',
+      type: 'object',
+      additionalProperties: true,
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const AnyObj = Type.Any()
+
+export type AnyObj = Static<typeof AnyObj>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle special key escaping', () => {
+    const result = schemaToTypebox({
+      title: 'Special',
+      type: 'object',
+      properties: {
+        'x-value': { type: 'string' },
+      },
+      required: ['x-value'],
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Special = Type.Object({"x-value":Type.String()})
+
+export type Special = Static<typeof Special>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle anyOf combinator', () => {
+    const result = schemaToTypebox({
+      title: 'AnyOf',
+      type: 'object',
+      properties: {
+        value: {
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const AnyOf = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
+
+export type AnyOf = Static<typeof AnyOf>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle default string value', () => {
+    const result = schemaToTypebox({
+      title: 'Def',
+      type: 'object',
+      properties: {
+        label: { type: 'string', default: 'untitled' },
+      },
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String(),{default:"untitled"}))})
+
+export type Def = Static<typeof Def>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle nullable type', () => {
+    const result = schemaToTypebox({
+      title: 'Null',
+      type: 'object',
+      properties: {
+        value: { type: 'string', nullable: true },
+      },
+      required: ['value'],
+    })
+    const expected = `import { Type, type Static } from '@sinclair/typebox'
+
+export const Null = Type.Object({value:Type.Union([Type.String(),Type.Null()])})
+
+export type Null = Static<typeof Null>`
+    expect(result).toBe(expected)
+  })
 })

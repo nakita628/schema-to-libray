@@ -462,4 +462,425 @@ export type SchemaOutput = v.InferOutput<typeof Schema>`
 export const Schema = v.partial(v.object({name:v.string()}))`
     expect(result).toBe(expected)
   })
+
+  it('should handle allOf with default value', () => {
+    const result = schemaToValibot({
+      title: 'WithDefault',
+      type: 'object',
+      properties: {
+        status: {
+          allOf: [{ type: 'string' }, { default: 'active' }],
+        },
+      },
+    })
+    const expected = `import * as v from 'valibot'
+
+export const WithDefault = v.partial(v.object({status:v.optional(v.string(),"active")}))
+
+export type WithDefaultInput = v.InferInput<typeof WithDefault>
+
+export type WithDefaultOutput = v.InferOutput<typeof WithDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle allOf with nullable and default', () => {
+    const result = schemaToValibot({
+      title: 'NullDefault',
+      type: 'object',
+      properties: {
+        value: {
+          allOf: [{ type: 'string' }, { default: 'x' }, { type: 'null' }],
+        },
+      },
+    })
+    const expected = `import * as v from 'valibot'
+
+export const NullDefault = v.partial(v.object({value:v.nullable(v.optional(v.string(),"x"))}))
+
+export type NullDefaultInput = v.InferInput<typeof NullDefault>
+
+export type NullDefaultOutput = v.InferOutput<typeof NullDefault>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle anyOf combinator', () => {
+    const result = schemaToValibot({
+      title: 'AnyOf',
+      type: 'object',
+      properties: {
+        value: {
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+    })
+    const expected = `import * as v from 'valibot'
+
+export const AnyOf = v.partial(v.object({value:v.union([v.string(),v.number()])}))
+
+export type AnyOfInput = v.InferInput<typeof AnyOf>
+
+export type AnyOfOutput = v.InferOutput<typeof AnyOf>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with minItems/maxItems', () => {
+    const result = schemaToValibot({
+      title: 'Arr',
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 10 },
+      },
+      required: ['tags'],
+    })
+    const expected = `import * as v from 'valibot'
+
+export const Arr = v.object({tags:v.pipe(v.array(v.string()),v.minLength(1),v.maxLength(10))})
+
+export type ArrInput = v.InferInput<typeof Arr>
+
+export type ArrOutput = v.InferOutput<typeof Arr>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle array with fixed length', () => {
+    const result = schemaToValibot({
+      title: 'Fixed',
+      type: 'object',
+      properties: {
+        pair: { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 },
+      },
+      required: ['pair'],
+    })
+    const expected = `import * as v from 'valibot'
+
+export const Fixed = v.object({pair:v.pipe(v.array(v.number()),v.length(3))})
+
+export type FixedInput = v.InferInput<typeof Fixed>
+
+export type FixedOutput = v.InferOutput<typeof Fixed>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle nullable type', () => {
+    const result = schemaToValibot({
+      title: 'Null',
+      type: 'object',
+      properties: {
+        value: { type: 'string', nullable: true },
+      },
+      required: ['value'],
+    })
+    const expected = `import * as v from 'valibot'
+
+export const Null = v.object({value:v.nullable(v.string())})
+
+export type NullInput = v.InferInput<typeof Null>
+
+export type NullOutput = v.InferOutput<typeof Null>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle default value', () => {
+    const result = schemaToValibot({
+      title: 'Def',
+      type: 'object',
+      properties: {
+        enabled: { type: 'boolean', default: true },
+      },
+    })
+    const expected = `import * as v from 'valibot'
+
+export const Def = v.partial(v.object({enabled:v.optional(v.boolean(),true)}))
+
+export type DefInput = v.InferInput<typeof Def>
+
+export type DefOutput = v.InferOutput<typeof Def>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle date type', () => {
+    const result = schemaToValibot({
+      title: 'D',
+      type: 'date',
+    })
+    const expected = `import * as v from 'valibot'
+
+export const D = v.date()
+
+export type DInput = v.InferInput<typeof D>
+
+export type DOutput = v.InferOutput<typeof D>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle null type', () => {
+    const result = schemaToValibot({
+      title: 'N',
+      type: 'null',
+    })
+    const expected = `import * as v from 'valibot'
+
+export const N = v.nullable(v.null())
+
+export type NInput = v.InferInput<typeof N>
+
+export type NOutput = v.InferOutput<typeof N>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle object type without properties', () => {
+    const result = schemaToValibot({
+      title: 'Empty',
+      type: 'object',
+    })
+    const expected = `import * as v from 'valibot'
+
+export const Empty = v.object({})
+
+export type EmptyInput = v.InferInput<typeof Empty>
+
+export type EmptyOutput = v.InferOutput<typeof Empty>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with oneOf type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Status: {
+          oneOf: [{ type: 'string' }, { type: 'number' }],
+        },
+      },
+      properties: {
+        status: { $ref: '#/definitions/Status' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {status?: StatusType}\n\ntype StatusType = (string | number)\n\nconst Status: v.GenericSchema<StatusType> = v.union([v.string(),v.number()])\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({status:v.lazy(() => Status)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with anyOf type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Value: {
+          anyOf: [{ type: 'boolean' }, { type: 'string' }],
+        },
+      },
+      properties: {
+        value: { $ref: '#/definitions/Value' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {value?: ValueType}\n\ntype ValueType = (boolean | string)\n\nconst Value: v.GenericSchema<ValueType> = v.union([v.boolean(),v.string()])\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({value:v.lazy(() => Value)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with allOf type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Combined: {
+          allOf: [
+            { type: 'object', properties: { a: { type: 'string' } } },
+            { type: 'object', properties: { b: { type: 'number' } } },
+          ],
+        },
+      },
+      properties: {
+        data: { $ref: '#/definitions/Combined' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {data?: CombinedType}\n\ntype CombinedType = ({a?: string} & {b?: number})\n\nconst Combined: v.GenericSchema<CombinedType> = v.intersect([v.partial(v.object({a:v.string()})),v.partial(v.object({b:v.number()}))])\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({data:v.lazy(() => Combined)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with const value', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Version: { const: 'v1' },
+      },
+      properties: {
+        version: { $ref: '#/definitions/Version' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {version?: VersionType}\n\ntype VersionType = "v1"\n\nconst Version: v.GenericSchema<VersionType> = v.literal("v1")\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({version:v.lazy(() => Version)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with enum', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Color: { enum: ['red', 'green', 'blue'] },
+      },
+      properties: {
+        color: { $ref: '#/definitions/Color' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {color?: ColorType}\n\ntype ColorType = ("red" | "green" | "blue")\n\nconst Color: v.GenericSchema<ColorType> = v.picklist(["red","green","blue"])\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({color:v.lazy(() => Color)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with single enum', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        SingleVal: { enum: ['only'] },
+      },
+      properties: {
+        val: { $ref: '#/definitions/SingleVal' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {val?: SingleValType}\n\ntype SingleValType = "only"\n\nconst SingleVal: v.GenericSchema<SingleValType> = v.literal('only')\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({val:v.lazy(() => SingleVal)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with array type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Tags: { type: 'array', items: { type: 'string' } },
+      },
+      properties: {
+        tags: { $ref: '#/definitions/Tags' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {tags?: TagsType}\n\ntype TagsType = string[]\n\nconst Tags: v.GenericSchema<TagsType> = v.array(v.string())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({tags:v.lazy(() => Tags)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with date type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Timestamp: { type: 'date' },
+      },
+      properties: {
+        ts: { $ref: '#/definitions/Timestamp' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {ts?: TimestampType}\n\ntype TimestampType = Date\n\nconst Timestamp: v.GenericSchema<TimestampType> = v.date()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({ts:v.lazy(() => Timestamp)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with null type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Nothing: { type: 'null' },
+      },
+      properties: {
+        n: { $ref: '#/definitions/Nothing' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {n?: NothingType}\n\ntype NothingType = null\n\nconst Nothing: v.GenericSchema<NothingType> = v.nullable(v.null())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({n:v.lazy(() => Nothing)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with boolean type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Flag: { type: 'boolean' },
+      },
+      properties: {
+        flag: { $ref: '#/definitions/Flag' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {flag?: FlagType}\n\ntype FlagType = boolean\n\nconst Flag: v.GenericSchema<FlagType> = v.boolean()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({flag:v.lazy(() => Flag)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with integer type', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Count: { type: 'integer' },
+      },
+      properties: {
+        count: { $ref: '#/definitions/Count' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {count?: CountType}\n\ntype CountType = number\n\nconst Count: v.GenericSchema<CountType> = v.pipe(v.number(),v.integer())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({count:v.lazy(() => Count)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with additionalProperties boolean true', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Loose: { type: 'object', additionalProperties: true },
+      },
+      properties: {
+        l: { $ref: '#/definitions/Loose' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {l?: LooseType}\n\ntype LooseType = Record<string, unknown>\n\nconst Loose: v.GenericSchema<LooseType> = v.any()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({l:v.lazy(() => Loose)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with additionalProperties schema', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Dict: { type: 'object', additionalProperties: { type: 'number' } },
+      },
+      properties: {
+        d: { $ref: '#/definitions/Dict' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {d?: DictType}\n\ntype DictType = Record<string, number>\n\nconst Dict: v.GenericSchema<DictType> = v.record(v.string(),v.number())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({d:v.lazy(() => Dict)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with not keyword', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Neg: { not: { type: 'string' } },
+      },
+      properties: {
+        neg: { $ref: '#/definitions/Neg' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {neg?: NegType}\n\ntype NegType = unknown\n\nconst Neg: v.GenericSchema<NegType> = v.any()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({neg:v.lazy(() => Neg)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
+
+  it('should handle definitions with key escaping', () => {
+    const result = schemaToValibot({
+      title: 'Root',
+      type: 'object',
+      definitions: {
+        Special: {
+          type: 'object',
+          properties: {
+            'x-value': { type: 'string' },
+            normal: { type: 'number' },
+          },
+          required: ['x-value'],
+        },
+      },
+      properties: {
+        data: { $ref: '#/definitions/Special' },
+      },
+    })
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {data?: SpecialType}\n\ntype SpecialType = {"x-value": string; normal?: number}\n\nconst Special: v.GenericSchema<SpecialType> = v.object({"x-value":v.string(),normal:v.optional(v.number())})\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({data:v.lazy(() => Special)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    expect(result).toBe(expected)
+  })
 })

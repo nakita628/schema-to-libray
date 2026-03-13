@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../../types/index.js'
+import { valibotMessage } from '../../utils/index.js'
 
 const FORMAT_PIPE: { readonly [k: string]: string } = {
   email: 'v.email()',
@@ -14,27 +15,45 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema): string {
+  const errorMessage = schema['x-error-message'] as string | undefined
   const format = schema.format && FORMAT_PIPE[schema.format]
+
+  const baseMsgPart = errorMessage ? valibotMessage(errorMessage) : ''
+
+  const formatWithMsg = (() => {
+    if (!format) return undefined
+    if (!errorMessage) return format
+    return format.replace(/\(\)$/, `(${baseMsgPart})`)
+  })()
 
   const isFixedLength =
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
 
+  const patternMessage = schema['x-pattern-message'] as string | undefined
+  const sizeMessage = schema['x-size-message'] as string | undefined
+  const minimumMessage = schema['x-minimum-message'] as string | undefined
+  const maximumMessage = schema['x-maximum-message'] as string | undefined
+
   const actions = [
-    format,
-    schema.pattern ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/)` : undefined,
-    isFixedLength ? `v.length(${schema.minLength})` : undefined,
+    formatWithMsg ?? format,
+    schema.pattern
+      ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternMessage ? `,${valibotMessage(patternMessage)}` : ''})`
+      : undefined,
+    isFixedLength
+      ? `v.length(${schema.minLength}${sizeMessage ? `,${valibotMessage(sizeMessage)}` : ''})`
+      : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `v.minLength(${schema.minLength})`
+      ? `v.minLength(${schema.minLength}${minimumMessage ? `,${valibotMessage(minimumMessage)}` : ''})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `v.maxLength(${schema.maxLength})`
+      ? `v.maxLength(${schema.maxLength}${maximumMessage ? `,${valibotMessage(maximumMessage)}` : ''})`
       : undefined,
   ].filter((v) => v !== undefined)
 
   if (actions.length > 0) {
-    return `v.pipe(v.string(),${actions.join(',')})`
+    return `v.pipe(v.string(${baseMsgPart}),${actions.join(',')})`
   }
-  return 'v.string()'
+  return errorMessage ? `v.string(${baseMsgPart})` : 'v.string()'
 }
