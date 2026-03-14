@@ -6,14 +6,16 @@ npm install -D schema-to-library
 
 ## What is schema-to-library?
 
-**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a CLI tool that converts JSON Schema into code for validation libraries like Zod,
+**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a CLI tool that converts JSON Schema into code for validation libraries.
 It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions.
 
-## Upcoming Support
+## Supported Libraries
 
-Support for additional libraries is planned:
-
-- **Valibot**: Coming soon
+- **[Zod](https://zod.dev/)**
+- **[Valibot](https://valibot.dev/)**
+- **[Effect Schema](https://effect.website/)**
+- **[TypeBox](https://github.com/sinclairzx81/typebox)**
+- **[Arktype](https://arktype.io/)**
 
 ## Usage
 
@@ -21,7 +23,18 @@ Support for additional libraries is planned:
 
 ```bash
 npx schema-to-zod path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-valibot path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-effect path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-typebox path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 ```
+
+#### Options
+
+| Flag | Description |
+|------|-------------|
+| `--export-type` | Include type export in output |
+| `-h, --help` | Display help for command |
 
 ### Example
 
@@ -29,46 +42,49 @@ input:
 
 ```json
 {
+  "title": "User",
   "type": "object",
   "properties": {
-    "first_name": { "type": "string" },
-    "last_name": { "type": "string" },
-    "birthday": { "type": "string", "format": "date" },
-    "address": {
-      "type": "object",
-      "properties": {
-        "street_address": { "type": "string" },
-        "city": { "type": "string" },
-        "state": { "type": "string" },
-        "country": { "type": "string" }
-      }
-    }
-  }
+    "name": { "type": "string" },
+    "email": { "type": "string", "format": "email" },
+    "age": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["name", "email"]
 }
 ```
 
-output:
+Default output (schema only):
+
+```bash
+npx schema-to-zod user.json -o user.ts
+```
 
 ```ts
 import * as z from 'zod'
 
-export const Schema = z
-  .object({
-    first_name: z.string(),
-    last_name: z.string(),
-    birthday: z.iso.date(),
-    address: z
-      .object({
-        street_address: z.string(),
-        city: z.string(),
-        state: z.string(),
-        country: z.string(),
-      })
-      .partial(),
-  })
-  .partial()
+export const User = z.object({
+  name: z.string(),
+  email: z.email(),
+  age: z.int().min(0).optional(),
+})
+```
 
-export type Schema = z.infer<typeof Schema>
+With `--export-type`:
+
+```bash
+npx schema-to-zod user.json -o user.ts --export-type
+```
+
+```ts
+import * as z from 'zod'
+
+export const User = z.object({
+  name: z.string(),
+  email: z.email(),
+  age: z.int().min(0).optional(),
+})
+
+export type User = z.infer<typeof User>
 ```
 
 ## License

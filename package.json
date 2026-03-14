@@ -10,8 +10,8 @@
     "check": "pnpm biome check --write ./",
     "typecheck": "pnpm -F schema-to-library typecheck",
     "build": "pnpm -F schema-to-library build",
-    "test": "pnpm -F schema-to-library test",
-    "coverage": "pnpm -F schema-to-library coverage",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "release": "pnpm -F schema-to-library release"
   },
   "devDependencies": {
