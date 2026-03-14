@@ -18,10 +18,7 @@ describe('valibot number', () => {
 
   describe('x-error-message', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [
-        { type: 'number', 'x-error-message': 'Must be a number' },
-        'v.number("Must be a number")',
-      ],
+      [{ type: 'number', 'x-error-message': 'Must be a number' }, 'v.number("Must be a number")'],
       [
         {
           type: 'number',

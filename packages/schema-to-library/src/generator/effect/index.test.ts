@@ -930,7 +930,7 @@ export type RootEncoded = typeof Root.Encoded`
 
 type RootType = {readonly l?: LooseType}
 
-type LooseType = { [k: string]: unknown }
+type LooseType = { [key: string]: unknown }
 
 const Loose: Schema.Schema<LooseType> = Schema.Unknown
 
@@ -957,7 +957,7 @@ export type RootEncoded = typeof Root.Encoded`
 
 type RootType = {readonly d?: DictType}
 
-type DictType = { [k: string]: number }
+type DictType = { [key: string]: number }
 
 const Dict: Schema.Schema<DictType> = Schema.Record({key:Schema.String,value:Schema.Number})
 

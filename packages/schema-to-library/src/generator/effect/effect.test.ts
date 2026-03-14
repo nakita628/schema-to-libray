@@ -29,14 +29,8 @@ describe('effect', () => {
 
     describe('isEffect=true', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [
-          { $ref: '#/components/schemas/Test' },
-          'Schema.suspend(() => Test)',
-        ],
-        [
-          { $ref: '#/definitions/Test' },
-          'Schema.suspend(() => Test)',
-        ],
+        [{ $ref: '#/components/schemas/Test' }, 'Schema.suspend(() => Test)'],
+        [{ $ref: '#/definitions/Test' }, 'Schema.suspend(() => Test)'],
       ])('effect(%o, "Schema", true) → %s', (input, expected) => {
         expect(effect(input, 'Schema', true)).toBe(expected)
       })
@@ -44,10 +38,7 @@ describe('effect', () => {
 
     describe('self-referencing', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [
-          { $ref: '#/components/schemas/Tree' },
-          'Schema.suspend(() => Tree)',
-        ],
+        [{ $ref: '#/components/schemas/Tree' }, 'Schema.suspend(() => Tree)'],
       ])('effect(%o, "Tree") → %s', (input, expected) => {
         expect(effect(input, 'Tree')).toBe(expected)
       })
@@ -276,10 +267,7 @@ describe('effect', () => {
         { enum: ['A', 'B'], type: ['string'], nullable: true },
         'Schema.NullOr(Schema.Literal("A","B"))',
       ],
-      [
-        { enum: ['A', 'B'], type: ['string', 'null'] },
-        'Schema.NullOr(Schema.Literal("A","B"))',
-      ],
+      [{ enum: ['A', 'B'], type: ['string', 'null'] }, 'Schema.NullOr(Schema.Literal("A","B"))'],
       [{ enum: [1, 2] }, 'Schema.Union(Schema.Literal(1),Schema.Literal(2))'],
       [
         { enum: [1, 2], type: ['number'], nullable: true },
@@ -301,18 +289,9 @@ describe('effect', () => {
       [{ enum: [null] }, 'Schema.Literal(null)'],
       [{ enum: [null], type: ['null'] }, 'Schema.NullOr(Schema.Literal(null))'],
       [{ enum: ['abc'] }, 'Schema.Literal("abc")'],
-      [
-        { enum: ['abc'], type: ['string'], nullable: true },
-        'Schema.NullOr(Schema.Literal("abc"))',
-      ],
-      [
-        { enum: ['abc'], type: ['string', 'null'] },
-        'Schema.NullOr(Schema.Literal("abc"))',
-      ],
-      [
-        { type: 'array', enum: [[1, 2]] },
-        'Schema.Tuple(Schema.Literal(1),Schema.Literal(2))',
-      ],
+      [{ enum: ['abc'], type: ['string'], nullable: true }, 'Schema.NullOr(Schema.Literal("abc"))'],
+      [{ enum: ['abc'], type: ['string', 'null'] }, 'Schema.NullOr(Schema.Literal("abc"))'],
+      [{ type: 'array', enum: [[1, 2]] }, 'Schema.Tuple(Schema.Literal(1),Schema.Literal(2))'],
       [
         { type: 'array', nullable: true, enum: [[1, 2]] },
         'Schema.NullOr(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)))',
@@ -352,26 +331,14 @@ describe('effect', () => {
       [{ type: 'string' }, 'Schema.String'],
       [{ type: ['string'], nullable: true }, 'Schema.NullOr(Schema.String)'],
       [{ type: ['string', 'null'] }, 'Schema.NullOr(Schema.String)'],
-      [
-        { type: 'string', minLength: 1 },
-        'Schema.String.pipe(Schema.minLength(1))',
-      ],
-      [
-        { type: 'string', maxLength: 10 },
-        'Schema.String.pipe(Schema.maxLength(10))',
-      ],
+      [{ type: 'string', minLength: 1 }, 'Schema.String.pipe(Schema.minLength(1))'],
+      [{ type: 'string', maxLength: 10 }, 'Schema.String.pipe(Schema.maxLength(10))'],
       [
         { type: 'string', minLength: 1, maxLength: 10 },
         'Schema.String.pipe(Schema.minLength(1),Schema.maxLength(10))',
       ],
-      [
-        { type: 'string', minLength: 5, maxLength: 5 },
-        'Schema.String.pipe(Schema.length(5))',
-      ],
-      [
-        { type: 'string', pattern: '^\\w+$' },
-        'Schema.String.pipe(Schema.pattern(/^\\w+$/))',
-      ],
+      [{ type: 'string', minLength: 5, maxLength: 5 }, 'Schema.String.pipe(Schema.length(5))'],
+      [{ type: 'string', pattern: '^\\w+$' }, 'Schema.String.pipe(Schema.pattern(/^\\w+$/))'],
       [
         { type: 'string', default: 'test' },
         'Schema.optionalWith(Schema.String,{default:() => "test"})',
@@ -390,10 +357,7 @@ describe('effect', () => {
       ],
       [{ type: 'string', format: 'uuid' }, 'Schema.UUID'],
       [{ type: 'string', format: 'ulid' }, 'Schema.ULID'],
-      [
-        { type: 'string', format: 'uri' },
-        'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))',
-      ],
+      [{ type: 'string', format: 'uri' }, 'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))'],
       [
         { type: 'string', format: 'ipv4' },
         'Schema.String.pipe(Schema.pattern(/^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$/))',
@@ -414,10 +378,7 @@ describe('effect', () => {
         { type: 'string', format: 'time' },
         'Schema.String.pipe(Schema.pattern(/^\\d{2}:\\d{2}:\\d{2}/))',
       ],
-      [
-        { type: 'string', format: 'uuid', nullable: true },
-        'Schema.NullOr(Schema.UUID)',
-      ],
+      [{ type: 'string', format: 'uuid', nullable: true }, 'Schema.NullOr(Schema.UUID)'],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })
@@ -428,34 +389,16 @@ describe('effect', () => {
       [{ type: 'number' }, 'Schema.Number'],
       [{ type: ['number'], nullable: true }, 'Schema.NullOr(Schema.Number)'],
       [{ type: ['number', 'null'] }, 'Schema.NullOr(Schema.Number)'],
-      [
-        { type: 'number', minimum: 0 },
-        'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0))',
-      ],
-      [
-        { type: 'number', minimum: 100 },
-        'Schema.Number.pipe(Schema.greaterThanOrEqualTo(100))',
-      ],
-      [
-        { type: 'number', maximum: 100 },
-        'Schema.Number.pipe(Schema.lessThanOrEqualTo(100))',
-      ],
-      [
-        { type: 'number', maximum: 0 },
-        'Schema.Number.pipe(Schema.lessThanOrEqualTo(0))',
-      ],
-      [
-        { type: 'number', multipleOf: 2 },
-        'Schema.Number.pipe(Schema.multipleOf(2))',
-      ],
+      [{ type: 'number', minimum: 0 }, 'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0))'],
+      [{ type: 'number', minimum: 100 }, 'Schema.Number.pipe(Schema.greaterThanOrEqualTo(100))'],
+      [{ type: 'number', maximum: 100 }, 'Schema.Number.pipe(Schema.lessThanOrEqualTo(100))'],
+      [{ type: 'number', maximum: 0 }, 'Schema.Number.pipe(Schema.lessThanOrEqualTo(0))'],
+      [{ type: 'number', multipleOf: 2 }, 'Schema.Number.pipe(Schema.multipleOf(2))'],
       [
         { type: 'number', minimum: 0, maximum: 100 },
         'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))',
       ],
-      [
-        { type: 'number', default: 100 },
-        'Schema.optionalWith(Schema.Number,{default:() => 100})',
-      ],
+      [{ type: 'number', default: 100 }, 'Schema.optionalWith(Schema.Number,{default:() => 100})'],
       [
         { type: 'number', default: 100, nullable: true },
         'Schema.NullOr(Schema.optionalWith(Schema.Number,{default:() => 100}))',
@@ -464,14 +407,8 @@ describe('effect', () => {
         { type: ['number', 'null'], default: 100 },
         'Schema.NullOr(Schema.optionalWith(Schema.Number,{default:() => 100}))',
       ],
-      [
-        { type: 'number', exclusiveMinimum: 5 },
-        'Schema.Number.pipe(Schema.greaterThan(5))',
-      ],
-      [
-        { type: 'number', exclusiveMaximum: 10 },
-        'Schema.Number.pipe(Schema.lessThan(10))',
-      ],
+      [{ type: 'number', exclusiveMinimum: 5 }, 'Schema.Number.pipe(Schema.greaterThan(5))'],
+      [{ type: 'number', exclusiveMaximum: 10 }, 'Schema.Number.pipe(Schema.lessThan(10))'],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })
@@ -480,14 +417,8 @@ describe('effect', () => {
   describe('integer', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'integer' }, 'Schema.Number.pipe(Schema.int())'],
-      [
-        { type: ['integer'], nullable: true },
-        'Schema.NullOr(Schema.Number.pipe(Schema.int()))',
-      ],
-      [
-        { type: ['integer', 'null'] },
-        'Schema.NullOr(Schema.Number.pipe(Schema.int()))',
-      ],
+      [{ type: ['integer'], nullable: true }, 'Schema.NullOr(Schema.Number.pipe(Schema.int()))'],
+      [{ type: ['integer', 'null'] }, 'Schema.NullOr(Schema.Number.pipe(Schema.int()))'],
       [
         { type: 'integer', minimum: 0 },
         'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0))',
@@ -504,10 +435,7 @@ describe('effect', () => {
         { type: 'integer', maximum: 0 },
         'Schema.Number.pipe(Schema.int(),Schema.lessThanOrEqualTo(0))',
       ],
-      [
-        { type: 'integer', multipleOf: 2 },
-        'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))',
-      ],
+      [{ type: 'integer', multipleOf: 2 }, 'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))'],
       [
         { type: 'integer', default: 100 },
         'Schema.optionalWith(Schema.Number.pipe(Schema.int()),{default:() => 100})',
@@ -539,10 +467,7 @@ describe('effect', () => {
           { type: 'integer', format: 'bigint', nullable: true },
           'Schema.NullOr(Schema.BigIntFromSelf)',
         ],
-        [
-          { type: ['integer', 'null'], format: 'bigint' },
-          'Schema.NullOr(Schema.BigIntFromSelf)',
-        ],
+        [{ type: ['integer', 'null'], format: 'bigint' }, 'Schema.NullOr(Schema.BigIntFromSelf)'],
         [
           { type: 'integer', format: 'bigint', minimum: 0 },
           'Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(BigInt(0)))',
@@ -627,11 +552,7 @@ describe('effect', () => {
         {
           type: 'array',
           items: {
-            anyOf: [
-              { type: 'string' },
-              { type: 'number' },
-              { type: 'boolean' },
-            ],
+            anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
           },
         },
         'Schema.Array(Schema.Union(Schema.String,Schema.Number,Schema.Boolean))',

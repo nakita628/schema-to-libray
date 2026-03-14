@@ -335,8 +335,8 @@ describe('valibot', () => {
         { enum: [true, false], type: ['boolean', 'null'] },
         'v.nullable(v.union([v.literal(true),v.literal(false)]))',
       ],
-      [{ enum: [null] }, "v.literal(null)"],
-      [{ enum: [null], type: ['null'] }, "v.nullable(v.literal(null))"],
+      [{ enum: [null] }, 'v.literal(null)'],
+      [{ enum: [null], type: ['null'] }, 'v.nullable(v.literal(null))'],
       [{ enum: ['abc'] }, "v.literal('abc')"],
       [{ enum: ['abc'], type: ['string'], nullable: true }, "v.nullable(v.literal('abc'))"],
       [{ enum: ['abc'], type: ['string', 'null'] }, "v.nullable(v.literal('abc'))"],
@@ -400,10 +400,7 @@ describe('valibot', () => {
         { type: 'string', default: 'test', nullable: true },
         'v.nullable(v.optional(v.string(),"test"))',
       ],
-      [
-        { type: ['string', 'null'], default: 'test' },
-        'v.nullable(v.optional(v.string(),"test"))',
-      ],
+      [{ type: ['string', 'null'], default: 'test' }, 'v.nullable(v.optional(v.string(),"test"))'],
       [{ type: 'string', format: 'email' }, 'v.pipe(v.string(),v.email())'],
       [{ type: 'string', format: 'uuid' }, 'v.pipe(v.string(),v.uuid())'],
       [{ type: 'string', format: 'uri' }, 'v.pipe(v.string(),v.url())'],
@@ -429,14 +426,8 @@ describe('valibot', () => {
         [{ type: 'number', minimum: 100 }, 'v.pipe(v.number(),v.minValue(100))'],
         [{ type: 'number', maximum: 100 }, 'v.pipe(v.number(),v.maxValue(100))'],
         [{ type: 'number', maximum: 0 }, 'v.pipe(v.number(),v.maxValue(0))'],
-        [
-          { type: 'number', exclusiveMinimum: 10 },
-          'v.pipe(v.number(),v.minValue(10))',
-        ],
-        [
-          { type: 'number', exclusiveMaximum: 10 },
-          'v.pipe(v.number(),v.maxValue(10))',
-        ],
+        [{ type: 'number', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.minValue(10))'],
+        [{ type: 'number', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.maxValue(10))'],
         [{ type: 'number', multipleOf: 2 }, 'v.pipe(v.number(),v.multipleOf(2))'],
         [{ type: 'number', default: 100 }, 'v.optional(v.number(),100)'],
         [
@@ -456,22 +447,10 @@ describe('valibot', () => {
         [{ type: 'integer' }, 'v.pipe(v.number(),v.integer())'],
         [{ type: ['integer'], nullable: true }, 'v.nullable(v.pipe(v.number(),v.integer()))'],
         [{ type: ['integer', 'null'] }, 'v.nullable(v.pipe(v.number(),v.integer()))'],
-        [
-          { type: 'integer', minimum: 100 },
-          'v.pipe(v.number(),v.integer(),v.minValue(100))',
-        ],
-        [
-          { type: 'integer', minimum: 0 },
-          'v.pipe(v.number(),v.integer(),v.minValue(0))',
-        ],
-        [
-          { type: 'integer', maximum: 100 },
-          'v.pipe(v.number(),v.integer(),v.maxValue(100))',
-        ],
-        [
-          { type: 'integer', maximum: 0 },
-          'v.pipe(v.number(),v.integer(),v.maxValue(0))',
-        ],
+        [{ type: 'integer', minimum: 100 }, 'v.pipe(v.number(),v.integer(),v.minValue(100))'],
+        [{ type: 'integer', minimum: 0 }, 'v.pipe(v.number(),v.integer(),v.minValue(0))'],
+        [{ type: 'integer', maximum: 100 }, 'v.pipe(v.number(),v.integer(),v.maxValue(100))'],
+        [{ type: 'integer', maximum: 0 }, 'v.pipe(v.number(),v.integer(),v.maxValue(0))'],
         [
           { type: 'integer', exclusiveMinimum: 10 },
           'v.pipe(v.number(),v.integer(),v.minValue(10))',
@@ -480,10 +459,7 @@ describe('valibot', () => {
           { type: 'integer', exclusiveMaximum: 10 },
           'v.pipe(v.number(),v.integer(),v.maxValue(10))',
         ],
-        [
-          { type: 'integer', multipleOf: 2 },
-          'v.pipe(v.number(),v.integer(),v.multipleOf(2))',
-        ],
+        [{ type: 'integer', multipleOf: 2 }, 'v.pipe(v.number(),v.integer(),v.multipleOf(2))'],
         [{ type: 'integer', default: 100 }, 'v.optional(v.pipe(v.number(),v.integer()),100)'],
         [
           { type: 'integer', default: 100, nullable: true },
@@ -546,10 +522,7 @@ describe('valibot', () => {
         { type: 'array', items: { type: 'string', nullable: true } },
         'v.array(v.nullable(v.string()))',
       ],
-      [
-        { type: 'array', items: { type: ['string', 'null'] } },
-        'v.array(v.nullable(v.string()))',
-      ],
+      [{ type: 'array', items: { type: ['string', 'null'] } }, 'v.array(v.nullable(v.string()))'],
       [
         { type: 'array', nullable: true, items: { type: ['string', 'null'] } },
         'v.nullable(v.array(v.nullable(v.string())))',
@@ -559,10 +532,7 @@ describe('valibot', () => {
         { type: 'array', items: { type: 'number', nullable: true } },
         'v.array(v.nullable(v.number()))',
       ],
-      [
-        { type: 'array', items: { type: ['number', 'null'] } },
-        'v.array(v.nullable(v.number()))',
-      ],
+      [{ type: 'array', items: { type: ['number', 'null'] } }, 'v.array(v.nullable(v.number()))'],
       [
         { type: 'array', nullable: true, items: { type: ['number', 'null'] } },
         'v.nullable(v.array(v.nullable(v.number())))',
@@ -572,10 +542,7 @@ describe('valibot', () => {
         { type: 'array', items: { type: 'boolean', nullable: true } },
         'v.array(v.nullable(v.boolean()))',
       ],
-      [
-        { type: 'array', items: { type: ['boolean', 'null'] } },
-        'v.array(v.nullable(v.boolean()))',
-      ],
+      [{ type: 'array', items: { type: ['boolean', 'null'] } }, 'v.array(v.nullable(v.boolean()))'],
       [
         { type: 'array', nullable: true, items: { type: ['boolean', 'null'] } },
         'v.nullable(v.array(v.nullable(v.boolean())))',
@@ -585,10 +552,7 @@ describe('valibot', () => {
         { type: 'array', items: { type: 'object', nullable: true } },
         'v.array(v.nullable(v.object({})))',
       ],
-      [
-        { type: 'array', items: { type: ['object', 'null'] } },
-        'v.array(v.nullable(v.object({})))',
-      ],
+      [{ type: 'array', items: { type: ['object', 'null'] } }, 'v.array(v.nullable(v.object({})))'],
       [
         { type: 'array', nullable: true, items: { type: ['object', 'null'] } },
         'v.nullable(v.array(v.nullable(v.object({}))))',

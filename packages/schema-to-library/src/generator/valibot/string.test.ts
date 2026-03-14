@@ -29,10 +29,7 @@ describe('valibot string', () => {
 
   describe('x-error-message', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [
-        { type: 'string', 'x-error-message': 'Name is required' },
-        'v.string("Name is required")',
-      ],
+      [{ type: 'string', 'x-error-message': 'Name is required' }, 'v.string("Name is required")'],
       [
         { type: 'string', format: 'email', 'x-error-message': 'Invalid email' },
         'v.pipe(v.string("Invalid email"),v.email("Invalid email"))',

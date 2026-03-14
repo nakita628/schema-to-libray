@@ -7,10 +7,7 @@ describe('typebox enum', () => {
     [{ enum: ['A', 'B'] }, 'Type.Union([Type.Literal("A"),Type.Literal("B")])'],
     [{ enum: ['active'] }, 'Type.Literal("active")'],
     [{ enum: [1, 2], type: 'number' }, 'Type.Union([Type.Literal(1),Type.Literal(2)])'],
-    [
-      { enum: [true, false] },
-      'Type.Union([Type.Literal(true),Type.Literal(false)])',
-    ],
+    [{ enum: [true, false] }, 'Type.Union([Type.Literal(true),Type.Literal(false)])'],
     [{ enum: [null] }, 'Type.Literal(null)'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)

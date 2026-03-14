@@ -34,5 +34,7 @@ export function number(schema: JSONSchema): string {
     const result = `Schema.Number.pipe(${actions.join(',')})`
     return errorMessage ? `${result}.annotations(${effectMessage(errorMessage)})` : result
   }
-  return errorMessage ? `Schema.Number.annotations(${effectMessage(errorMessage)})` : 'Schema.Number'
+  return errorMessage
+    ? `Schema.Number.annotations(${effectMessage(errorMessage)})`
+    : 'Schema.Number'
 }

@@ -54,11 +54,21 @@
   },
   "typesVersions": {
     "*": {
-      "zod": ["./dist/zod.d.ts"],
-      "valibot": ["./dist/valibot.d.ts"],
-      "effect": ["./dist/effect.d.ts"],
-      "typebox": ["./dist/typebox.d.ts"],
-      "arktype": ["./dist/arktype.d.ts"]
+      "zod": [
+        "./dist/zod.d.ts"
+      ],
+      "valibot": [
+        "./dist/valibot.d.ts"
+      ],
+      "effect": [
+        "./dist/effect.d.ts"
+      ],
+      "typebox": [
+        "./dist/typebox.d.ts"
+      ],
+      "arktype": [
+        "./dist/arktype.d.ts"
+      ]
     }
   },
   "bin": {

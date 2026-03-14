@@ -14,10 +14,7 @@ describe('arktype', () => {
       [{ $ref: '#/$defs/Address' } as JSONSchema, '"Address"'],
       [{ $ref: '#' } as JSONSchema, '"Schema"'],
       [{ $ref: '' } as JSONSchema, '"unknown"'],
-      [
-        { $ref: '#/components/schemas/User', nullable: true } as JSONSchema,
-        '"User | null"',
-      ],
+      [{ $ref: '#/components/schemas/User', nullable: true } as JSONSchema, '"User | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -44,10 +41,7 @@ describe('arktype', () => {
         } as JSONSchema,
         '"string | number | null"',
       ],
-      [
-        { oneOf: [] } as JSONSchema,
-        '"unknown"',
-      ],
+      [{ oneOf: [] } as JSONSchema, '"unknown"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -74,10 +68,7 @@ describe('arktype', () => {
         } as JSONSchema,
         '"string | boolean | null"',
       ],
-      [
-        { anyOf: [] } as JSONSchema,
-        '"unknown"',
-      ],
+      [{ anyOf: [] } as JSONSchema, '"unknown"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -104,10 +95,7 @@ describe('arktype', () => {
         } as JSONSchema,
         '"string & number | null"',
       ],
-      [
-        { allOf: [] } as JSONSchema,
-        '"unknown"',
-      ],
+      [{ allOf: [] } as JSONSchema, '"unknown"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -118,10 +106,7 @@ describe('arktype', () => {
       [{ const: 'fixed' } as JSONSchema, '"\'fixed\'"'],
       [{ const: 42 } as JSONSchema, '"42"'],
       [{ const: true } as JSONSchema, '"true"'],
-      [
-        { const: 'fixed', nullable: true } as JSONSchema,
-        '"\'fixed\' | null"',
-      ],
+      [{ const: 'fixed', nullable: true } as JSONSchema, '"\'fixed\' | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -129,30 +114,12 @@ describe('arktype', () => {
 
   describe('enum', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [
-        { enum: ['A', 'B', 'C'] } as JSONSchema,
-        '"\'A\' | \'B\' | \'C\'"',
-      ],
-      [
-        { enum: ['A', 'B'], nullable: true } as JSONSchema,
-        '"\'A\' | \'B\' | null"',
-      ],
-      [
-        { enum: [1, 2, 3] } as JSONSchema,
-        '"1 | 2 | 3"',
-      ],
-      [
-        { enum: [true, false] } as JSONSchema,
-        '"true | false"',
-      ],
-      [
-        { enum: ['only'] } as JSONSchema,
-        '"\'only\'"',
-      ],
-      [
-        { enum: [null] } as JSONSchema,
-        '"null"',
-      ],
+      [{ enum: ['A', 'B', 'C'] } as JSONSchema, "\"'A' | 'B' | 'C'\""],
+      [{ enum: ['A', 'B'], nullable: true } as JSONSchema, "\"'A' | 'B' | null\""],
+      [{ enum: [1, 2, 3] } as JSONSchema, '"1 | 2 | 3"'],
+      [{ enum: [true, false] } as JSONSchema, '"true | false"'],
+      [{ enum: ['only'] } as JSONSchema, '"\'only\'"'],
+      [{ enum: [null] } as JSONSchema, '"null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -161,62 +128,20 @@ describe('arktype', () => {
   describe('string', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'string' } as JSONSchema, '"string"'],
-      [
-        { type: 'string', nullable: true } as JSONSchema,
-        '"string | null"',
-      ],
-      [
-        { type: ['string', 'null'] } as JSONSchema,
-        '"string | null"',
-      ],
-      [
-        { type: 'string', format: 'email' } as JSONSchema,
-        '"string.email"',
-      ],
-      [
-        { type: 'string', format: 'uuid' } as JSONSchema,
-        '"string.uuid"',
-      ],
-      [
-        { type: 'string', format: 'uri' } as JSONSchema,
-        '"string.url"',
-      ],
-      [
-        { type: 'string', format: 'ipv4' } as JSONSchema,
-        '"string.ip"',
-      ],
-      [
-        { type: 'string', format: 'ipv6' } as JSONSchema,
-        '"string.ip"',
-      ],
-      [
-        { type: 'string', format: 'date-time' } as JSONSchema,
-        '"string.date.iso"',
-      ],
-      [
-        { type: 'string', format: 'date' } as JSONSchema,
-        '"string.date"',
-      ],
-      [
-        { type: 'string', minLength: 1 } as JSONSchema,
-        'type("string >= 1")',
-      ],
-      [
-        { type: 'string', maxLength: 100 } as JSONSchema,
-        'type("string <= 100")',
-      ],
-      [
-        { type: 'string', minLength: 3, maxLength: 20 } as JSONSchema,
-        'type("3 <= string <= 20")',
-      ],
-      [
-        { type: 'string', minLength: 5, maxLength: 5 } as JSONSchema,
-        'type("string == 5")',
-      ],
-      [
-        { type: 'string', pattern: '^\\w+$' } as JSONSchema,
-        'type("string").and(/^\\w+$/)',
-      ],
+      [{ type: 'string', nullable: true } as JSONSchema, '"string | null"'],
+      [{ type: ['string', 'null'] } as JSONSchema, '"string | null"'],
+      [{ type: 'string', format: 'email' } as JSONSchema, '"string.email"'],
+      [{ type: 'string', format: 'uuid' } as JSONSchema, '"string.uuid"'],
+      [{ type: 'string', format: 'uri' } as JSONSchema, '"string.url"'],
+      [{ type: 'string', format: 'ipv4' } as JSONSchema, '"string.ip"'],
+      [{ type: 'string', format: 'ipv6' } as JSONSchema, '"string.ip"'],
+      [{ type: 'string', format: 'date-time' } as JSONSchema, '"string.date.iso"'],
+      [{ type: 'string', format: 'date' } as JSONSchema, '"string.date"'],
+      [{ type: 'string', minLength: 1 } as JSONSchema, 'type("string >= 1")'],
+      [{ type: 'string', maxLength: 100 } as JSONSchema, 'type("string <= 100")'],
+      [{ type: 'string', minLength: 3, maxLength: 20 } as JSONSchema, 'type("3 <= string <= 20")'],
+      [{ type: 'string', minLength: 5, maxLength: 5 } as JSONSchema, 'type("string == 5")'],
+      [{ type: 'string', pattern: '^\\w+$' } as JSONSchema, 'type("string").and(/^\\w+$/)'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -225,38 +150,14 @@ describe('arktype', () => {
   describe('number', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'number' } as JSONSchema, '"number"'],
-      [
-        { type: 'number', nullable: true } as JSONSchema,
-        '"number | null"',
-      ],
-      [
-        { type: ['number', 'null'] } as JSONSchema,
-        '"number | null"',
-      ],
-      [
-        { type: 'number', minimum: 0 } as JSONSchema,
-        '"number >= 0"',
-      ],
-      [
-        { type: 'number', maximum: 100 } as JSONSchema,
-        '"number <= 100"',
-      ],
-      [
-        { type: 'number', minimum: 0, maximum: 100 } as JSONSchema,
-        '"number >= 0 <= 100"',
-      ],
-      [
-        { type: 'number', exclusiveMinimum: 0 } as JSONSchema,
-        '"number > 0"',
-      ],
-      [
-        { type: 'number', exclusiveMaximum: 100 } as JSONSchema,
-        '"number < 100"',
-      ],
-      [
-        { type: 'number', multipleOf: 2 } as JSONSchema,
-        '"number % 2"',
-      ],
+      [{ type: 'number', nullable: true } as JSONSchema, '"number | null"'],
+      [{ type: ['number', 'null'] } as JSONSchema, '"number | null"'],
+      [{ type: 'number', minimum: 0 } as JSONSchema, '"number >= 0"'],
+      [{ type: 'number', maximum: 100 } as JSONSchema, '"number <= 100"'],
+      [{ type: 'number', minimum: 0, maximum: 100 } as JSONSchema, '"number >= 0 <= 100"'],
+      [{ type: 'number', exclusiveMinimum: 0 } as JSONSchema, '"number > 0"'],
+      [{ type: 'number', exclusiveMaximum: 100 } as JSONSchema, '"number < 100"'],
+      [{ type: 'number', multipleOf: 2 } as JSONSchema, '"number % 2"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -265,38 +166,14 @@ describe('arktype', () => {
   describe('integer', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'integer' } as JSONSchema, '"number.integer"'],
-      [
-        { type: 'integer', nullable: true } as JSONSchema,
-        '"number.integer | null"',
-      ],
-      [
-        { type: ['integer', 'null'] } as JSONSchema,
-        '"number.integer | null"',
-      ],
-      [
-        { type: 'integer', minimum: 0 } as JSONSchema,
-        '"number.integer >= 0"',
-      ],
-      [
-        { type: 'integer', maximum: 100 } as JSONSchema,
-        '"number.integer <= 100"',
-      ],
-      [
-        { type: 'integer', exclusiveMinimum: 0 } as JSONSchema,
-        '"number.integer > 0"',
-      ],
-      [
-        { type: 'integer', exclusiveMaximum: 100 } as JSONSchema,
-        '"number.integer < 100"',
-      ],
-      [
-        { type: 'integer', multipleOf: 5 } as JSONSchema,
-        '"number.integer % 5"',
-      ],
-      [
-        { type: 'integer', format: 'bigint' } as JSONSchema,
-        '"bigint"',
-      ],
+      [{ type: 'integer', nullable: true } as JSONSchema, '"number.integer | null"'],
+      [{ type: ['integer', 'null'] } as JSONSchema, '"number.integer | null"'],
+      [{ type: 'integer', minimum: 0 } as JSONSchema, '"number.integer >= 0"'],
+      [{ type: 'integer', maximum: 100 } as JSONSchema, '"number.integer <= 100"'],
+      [{ type: 'integer', exclusiveMinimum: 0 } as JSONSchema, '"number.integer > 0"'],
+      [{ type: 'integer', exclusiveMaximum: 100 } as JSONSchema, '"number.integer < 100"'],
+      [{ type: 'integer', multipleOf: 5 } as JSONSchema, '"number.integer % 5"'],
+      [{ type: 'integer', format: 'bigint' } as JSONSchema, '"bigint"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -305,14 +182,8 @@ describe('arktype', () => {
   describe('boolean', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'boolean' } as JSONSchema, '"boolean"'],
-      [
-        { type: 'boolean', nullable: true } as JSONSchema,
-        '"boolean | null"',
-      ],
-      [
-        { type: ['boolean', 'null'] } as JSONSchema,
-        '"boolean | null"',
-      ],
+      [{ type: 'boolean', nullable: true } as JSONSchema, '"boolean | null"'],
+      [{ type: ['boolean', 'null'] } as JSONSchema, '"boolean | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -320,18 +191,9 @@ describe('arktype', () => {
 
   describe('array', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [
-        { type: 'array', items: { type: 'string' } } as JSONSchema,
-        '"string[]"',
-      ],
-      [
-        { type: 'array', items: { type: 'number' } } as JSONSchema,
-        '"number[]"',
-      ],
-      [
-        { type: 'array', items: { type: 'boolean' } } as JSONSchema,
-        '"boolean[]"',
-      ],
+      [{ type: 'array', items: { type: 'string' } } as JSONSchema, '"string[]"'],
+      [{ type: 'array', items: { type: 'number' } } as JSONSchema, '"number[]"'],
+      [{ type: 'array', items: { type: 'boolean' } } as JSONSchema, '"boolean[]"'],
       [
         {
           type: 'array',
@@ -374,10 +236,7 @@ describe('arktype', () => {
         } as JSONSchema,
         'type("string[]").and(type("unknown[] == 5"))',
       ],
-      [
-        { type: 'array' } as JSONSchema,
-        '"unknown[]"',
-      ],
+      [{ type: 'array' } as JSONSchema, '"unknown[]"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -439,14 +298,8 @@ describe('arktype', () => {
   describe('date', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'date' } as JSONSchema, '"Date"'],
-      [
-        { type: 'date', nullable: true } as JSONSchema,
-        '"Date | null"',
-      ],
-      [
-        { type: ['date', 'null'] } as JSONSchema,
-        '"Date | null"',
-      ],
+      [{ type: 'date', nullable: true } as JSONSchema, '"Date | null"'],
+      [{ type: ['date', 'null'] } as JSONSchema, '"Date | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -455,10 +308,7 @@ describe('arktype', () => {
   describe('null', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'null' } as JSONSchema, '"null | null"'],
-      [
-        { type: 'null', nullable: true } as JSONSchema,
-        '"null | null"',
-      ],
+      [{ type: 'null', nullable: true } as JSONSchema, '"null | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -467,10 +317,7 @@ describe('arktype', () => {
   describe('unknown (fallback)', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{} as JSONSchema, '"unknown"'],
-      [
-        { nullable: true } as JSONSchema,
-        '"unknown | null"',
-      ],
+      [{ nullable: true } as JSONSchema, '"unknown | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })

@@ -66,5 +66,7 @@ export function string(schema: JSONSchema): string {
     const result = `Schema.String.pipe(${actions.join(',')})`
     return errorMessage ? `${result}.annotations(${effectMessage(errorMessage)})` : result
   }
-  return errorMessage ? `Schema.String.annotations(${effectMessage(errorMessage)})` : 'Schema.String'
+  return errorMessage
+    ? `Schema.String.annotations(${effectMessage(errorMessage)})`
+    : 'Schema.String'
 }

@@ -6,10 +6,7 @@ describe('effect enum', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [{ enum: ['A', 'B'] }, 'Schema.Literal("A","B")'],
     [{ enum: ['active'] }, 'Schema.Literal("active")'],
-    [
-      { enum: [1, 2], type: 'number' },
-      'Schema.Union(Schema.Literal(1),Schema.Literal(2))',
-    ],
+    [{ enum: [1, 2], type: 'number' }, 'Schema.Union(Schema.Literal(1),Schema.Literal(2))'],
     [
       { enum: [true, false], type: 'boolean' },
       'Schema.Union(Schema.Literal(true),Schema.Literal(false))',
@@ -62,14 +59,8 @@ describe('effect enum', () => {
 
   describe('additional branches', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [
-        { enum: [42], type: 'number' },
-        'Schema.Literal(42)',
-      ],
-      [
-        { enum: [true], type: 'boolean' },
-        'Schema.Literal(true)',
-      ],
+      [{ enum: [42], type: 'number' }, 'Schema.Literal(42)'],
+      [{ enum: [true], type: 'boolean' }, 'Schema.Literal(true)'],
       [
         {
           enum: [

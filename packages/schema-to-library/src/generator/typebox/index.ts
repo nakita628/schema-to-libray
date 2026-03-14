@@ -1,5 +1,5 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import type { JSONSchema } from '../../helper/index.js'
+import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 

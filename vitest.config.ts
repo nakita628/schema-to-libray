@@ -13,12 +13,7 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: './coverage',
       include: ['packages/*/src/**/*.ts'],
-      exclude: [
-        '**/*.test.ts',
-        '**/*.d.ts',
-        '**/index.ts',
-        '**/types/**',
-      ],
+      exclude: ['**/*.test.ts', '**/*.d.ts', '**/index.ts', '**/types/**'],
       all: true,
       thresholds: {
         statements: 80,

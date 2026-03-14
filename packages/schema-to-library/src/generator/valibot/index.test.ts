@@ -828,7 +828,7 @@ export type EmptyOutput = v.InferOutput<typeof Empty>`
         l: { $ref: '#/definitions/Loose' },
       },
     })
-    const expected = `import * as v from 'valibot'\n\ntype RootType = {l?: LooseType}\n\ntype LooseType = { [k: string]: unknown }\n\nconst Loose: v.GenericSchema<LooseType> = v.any()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({l:v.lazy(() => Loose)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {l?: LooseType}\n\ntype LooseType = { [key: string]: unknown }\n\nconst Loose: v.GenericSchema<LooseType> = v.any()\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({l:v.lazy(() => Loose)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
     expect(result).toBe(expected)
   })
 
@@ -843,7 +843,7 @@ export type EmptyOutput = v.InferOutput<typeof Empty>`
         d: { $ref: '#/definitions/Dict' },
       },
     })
-    const expected = `import * as v from 'valibot'\n\ntype RootType = {d?: DictType}\n\ntype DictType = { [k: string]: number }\n\nconst Dict: v.GenericSchema<DictType> = v.record(v.string(),v.number())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({d:v.lazy(() => Dict)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    const expected = `import * as v from 'valibot'\n\ntype RootType = {d?: DictType}\n\ntype DictType = { [key: string]: number }\n\nconst Dict: v.GenericSchema<DictType> = v.record(v.string(),v.number())\n\nexport const Root: v.GenericSchema<RootType> = v.partial(v.object({d:v.lazy(() => Dict)}))\n\nexport type RootInput = v.InferInput<typeof Root>\n\nexport type RootOutput = v.InferOutput<typeof Root>`
     expect(result).toBe(expected)
   })
 

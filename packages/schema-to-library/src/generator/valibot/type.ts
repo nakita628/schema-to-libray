@@ -97,11 +97,13 @@ function object(schema: JSONSchema, rootName: string): string {
   if (!schema.properties) {
     if (schema.additionalProperties) {
       if (typeof schema.additionalProperties === 'boolean') {
-        return schema.additionalProperties ? '{ [k: string]: unknown }' : '{ [k: string]: never }'
+        return schema.additionalProperties
+          ? '{ [key: string]: unknown }'
+          : '{ [key: string]: never }'
       }
-      return `{ [k: string]: ${type(schema.additionalProperties, rootName)} }`
+      return `{ [key: string]: ${type(schema.additionalProperties, rootName)} }`
     }
-    return '{ [k: string]: unknown }'
+    return '{ [key: string]: unknown }'
   }
 
   const required = Array.isArray(schema.required) ? schema.required : []

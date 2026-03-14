@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { cli } from './index.js'
-import { schemaToZod } from '../generator/zod/index.js'
-import { schemaToValibot } from '../generator/valibot/index.js'
+import { schemaToArktype } from '../generator/arktype/index.js'
 import { schemaToEffect } from '../generator/effect/index.js'
 import { schemaToTypebox } from '../generator/typebox/index.js'
-import { schemaToArktype } from '../generator/arktype/index.js'
+import { schemaToValibot } from '../generator/valibot/index.js'
+import { schemaToZod } from '../generator/zod/index.js'
+import { cli } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/cli/index.test.ts
@@ -155,7 +155,14 @@ export const User = z.object({ name: z.string(), age: z.int().optional() })
 
 describe('schema-to-zod --export-type', () => {
   beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--export-type', 'test-schema.json', '-o', 'test-output-zod-et.ts']
+    process.argv = [
+      'node',
+      'cli.js',
+      '--export-type',
+      'test-schema.json',
+      '-o',
+      'test-output-zod-et.ts',
+    ]
     fs.writeFileSync('test-schema.json', JSON.stringify(schema))
   })
   afterAll(() => {
@@ -205,7 +212,14 @@ export const User = v.object({ name: v.string(), age: v.optional(v.pipe(v.number
 
 describe('schema-to-valibot --export-type', () => {
   beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--export-type', 'test-schema.json', '-o', 'test-output-valibot-et.ts']
+    process.argv = [
+      'node',
+      'cli.js',
+      '--export-type',
+      'test-schema.json',
+      '-o',
+      'test-output-valibot-et.ts',
+    ]
     fs.writeFileSync('test-schema.json', JSON.stringify(schema))
   })
   afterAll(() => {
@@ -260,7 +274,14 @@ export const User = Schema.Struct({
 
 describe('schema-to-effect --export-type', () => {
   beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--export-type', 'test-schema.json', '-o', 'test-output-effect-et.ts']
+    process.argv = [
+      'node',
+      'cli.js',
+      '--export-type',
+      'test-schema.json',
+      '-o',
+      'test-output-effect-et.ts',
+    ]
     fs.writeFileSync('test-schema.json', JSON.stringify(schema))
   })
   afterAll(() => {
@@ -315,7 +336,14 @@ export const User = Type.Object({ name: Type.String(), age: Type.Optional(Type.I
 
 describe('schema-to-typebox --export-type', () => {
   beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--export-type', 'test-schema.json', '-o', 'test-output-typebox-et.ts']
+    process.argv = [
+      'node',
+      'cli.js',
+      '--export-type',
+      'test-schema.json',
+      '-o',
+      'test-output-typebox-et.ts',
+    ]
     fs.writeFileSync('test-schema.json', JSON.stringify(schema))
   })
   afterAll(() => {
@@ -365,7 +393,14 @@ export const User = type({ name: 'string', 'age?': 'number.integer' })
 
 describe('schema-to-arktype --export-type', () => {
   beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--export-type', 'test-schema.json', '-o', 'test-output-arktype-et.ts']
+    process.argv = [
+      'node',
+      'cli.js',
+      '--export-type',
+      'test-schema.json',
+      '-o',
+      'test-output-arktype-et.ts',
+    ]
     fs.writeFileSync('test-schema.json', JSON.stringify(schema))
   })
   afterAll(() => {
@@ -580,13 +615,7 @@ export const Product = z.object({
 
 describe('granular messages: schema-to-valibot', () => {
   beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      'test-granular-schema.json',
-      '-o',
-      'test-granular-valibot.ts',
-    ]
+    process.argv = ['node', 'cli.js', 'test-granular-schema.json', '-o', 'test-granular-valibot.ts']
     fs.writeFileSync('test-granular-schema.json', JSON.stringify(schemaWithGranularMessages))
   })
   afterAll(() => {
@@ -625,13 +654,7 @@ export const Product = v.object({
 
 describe('granular messages: schema-to-effect', () => {
   beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      'test-granular-schema.json',
-      '-o',
-      'test-granular-effect.ts',
-    ]
+    process.argv = ['node', 'cli.js', 'test-granular-schema.json', '-o', 'test-granular-effect.ts']
     fs.writeFileSync('test-granular-schema.json', JSON.stringify(schemaWithGranularMessages))
   })
   afterAll(() => {

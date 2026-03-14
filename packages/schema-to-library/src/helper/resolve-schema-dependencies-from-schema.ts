@@ -23,7 +23,8 @@ export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[
     ...(schema.$defs ?? {}),
   }
 
-  const isRecord = (v: unknown): v is { [k: string]: unknown } => typeof v === 'object' && v !== null
+  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
+    typeof v === 'object' && v !== null
 
   /**
    * Collect all $ref references from a schema recursively

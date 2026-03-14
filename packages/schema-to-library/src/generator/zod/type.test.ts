@@ -164,7 +164,7 @@ describe('type', () => {
     })
 
     it('should handle object without properties', () => {
-      expect(type({ type: 'object' })).toBe('{ [k: string]: unknown }')
+      expect(type({ type: 'object' })).toBe('{ [key: string]: unknown }')
     })
 
     it('should handle object with additionalProperties boolean true', () => {
@@ -173,7 +173,7 @@ describe('type', () => {
           type: 'object',
           additionalProperties: true,
         }),
-      ).toBe('{ [k: string]: unknown }')
+      ).toBe('{ [key: string]: unknown }')
     })
 
     it('should handle object with additionalProperties boolean false', () => {
@@ -182,7 +182,7 @@ describe('type', () => {
           type: 'object',
           additionalProperties: false,
         }),
-      ).toBe('{ [k: string]: unknown }')
+      ).toBe('{ [key: string]: unknown }')
     })
 
     it('should handle object with additionalProperties schema', () => {
@@ -191,7 +191,7 @@ describe('type', () => {
           type: 'object',
           additionalProperties: { type: 'string' },
         }),
-      ).toBe('{ [k: string]: string }')
+      ).toBe('{ [key: string]: string }')
     })
 
     it('should handle property names with special characters', () => {

@@ -26,10 +26,7 @@ describe('effect string', () => {
       'Schema.String.pipe(Schema.minLength(3),Schema.maxLength(20))',
     ],
     [{ type: 'string', minLength: 5, maxLength: 5 }, 'Schema.String.pipe(Schema.length(5))'],
-    [
-      { type: 'string', pattern: '^[a-z]+$' },
-      'Schema.String.pipe(Schema.pattern(/^[a-z]+$/))',
-    ],
+    [{ type: 'string', pattern: '^[a-z]+$' }, 'Schema.String.pipe(Schema.pattern(/^[a-z]+$/))'],
   ])('string(%o) → %s', (input, expected) => {
     expect(string(input)).toBe(expected)
   })

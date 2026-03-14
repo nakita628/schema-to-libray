@@ -13,10 +13,7 @@ describe('valibot integer', () => {
     ],
     [{ type: 'integer', multipleOf: 2 }, 'v.pipe(v.number(),v.integer(),v.multipleOf(2))'],
     [{ type: 'integer', format: 'bigint' }, 'v.bigint()'],
-    [
-      { type: 'integer', format: 'bigint', minimum: 0 },
-      'v.pipe(v.bigint(),v.minValue(BigInt(0)))',
-    ],
+    [{ type: 'integer', format: 'bigint', minimum: 0 }, 'v.pipe(v.bigint(),v.minValue(BigInt(0)))'],
   ])('integer(%o) → %s', (input, expected) => {
     expect(integer(input)).toBe(expected)
   })

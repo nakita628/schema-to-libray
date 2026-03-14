@@ -47,9 +47,7 @@ export function integer(schema: JSONSchema): string {
       ? `Schema.multipleOf(${schema.multipleOf}${multipleOfMessage ? `,${effectMessage(multipleOfMessage)}` : ''})`
       : undefined
 
-  const intAction = errorMessage
-    ? `Schema.int(${effectMessage(errorMessage)})`
-    : 'Schema.int()'
+  const intAction = errorMessage ? `Schema.int(${effectMessage(errorMessage)})` : 'Schema.int()'
 
   const actions = [intAction, minimum, maximum, multipleOf].filter((v) => v !== undefined)
 

@@ -17,10 +17,7 @@ describe('effect integer', () => {
       { type: 'integer', minimum: 0, maximum: 100 },
       'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))',
     ],
-    [
-      { type: 'integer', multipleOf: 2 },
-      'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))',
-    ],
+    [{ type: 'integer', multipleOf: 2 }, 'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))'],
     [{ type: 'integer', format: 'bigint' }, 'Schema.BigIntFromSelf'],
     [
       { type: 'integer', format: 'bigint', minimum: 0 },

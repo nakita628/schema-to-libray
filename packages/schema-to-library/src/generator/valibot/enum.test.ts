@@ -7,10 +7,7 @@ describe('valibot enum', () => {
     [{ enum: ['A', 'B'] }, 'v.picklist(["A","B"])'],
     [{ enum: ['active'] }, "v.literal('active')"],
     [{ enum: [1, 2], type: 'number' }, 'v.union([v.literal(1),v.literal(2)])'],
-    [
-      { enum: [true, false], type: 'boolean' },
-      'v.union([v.literal(true),v.literal(false)])',
-    ],
+    [{ enum: [true, false], type: 'boolean' }, 'v.union([v.literal(true),v.literal(false)])'],
     [{ enum: [null] }, 'v.literal(null)'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)
@@ -30,7 +27,7 @@ describe('valibot enum', () => {
           enum: ['active'],
           'x-error-message': 'Must be active',
         },
-        "v.literal('active',\"Must be active\")",
+        'v.literal(\'active\',"Must be active")',
       ],
       [
         {

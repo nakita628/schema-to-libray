@@ -148,7 +148,9 @@ function object(schema: JSONSchema, rootName: string): string {
   if (!schema.properties) {
     if (schema.additionalProperties) {
       if (typeof schema.additionalProperties === 'boolean') {
-        return schema.additionalProperties ? '{ [key: string]: unknown }' : '{ [key: string]: never }'
+        return schema.additionalProperties
+          ? '{ [key: string]: unknown }'
+          : '{ [key: string]: never }'
       }
       const valueType = type(schema.additionalProperties, rootName)
       return `{ [key: string]: ${valueType} }`
