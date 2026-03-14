@@ -61,12 +61,12 @@ export function schemaToValibot(schema: JSONSchema, options?: { exportType?: boo
   // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
-        const rootTypeDef = `type ${rootName}Type = ${type(rootDefinition ?? schema, rootName)}`
+        const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
         const otherTypeDefs = nonRootDefs.map((name) => {
           const def = definitions[name]
           if (!def) return `// ⚠️ missing definition for ${name}`
           const pc = toPascalCase(name)
-          return `type ${pc}Type = ${type(def, pc)}`
+          return `type _${pc} = ${type(def, pc)}`
         })
         return [rootTypeDef, ...otherTypeDefs].join('\n\n')
       })()
@@ -78,7 +78,7 @@ export function schemaToValibot(schema: JSONSchema, options?: { exportType?: boo
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toPascalCase(name)
-      return `const ${pc}: v.GenericSchema<${pc}Type> = ${valibot(def, pc, true)}`
+      return `const ${pc}: v.GenericSchema<_${pc}> = ${valibot(def, pc, true)}`
     })
     .join('\n\n')
 
@@ -88,7 +88,7 @@ export function schemaToValibot(schema: JSONSchema, options?: { exportType?: boo
     : valibot(schema, rootName, true)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: v.GenericSchema<${rootName}Type> = ${rootSchema}`
+    ? `export const ${rootName}: v.GenericSchema<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
   // Assemble output

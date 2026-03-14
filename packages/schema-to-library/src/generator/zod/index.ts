@@ -69,12 +69,12 @@ export function schemaToZod(schema: JSONSchema, options?: { exportType?: boolean
   // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
-        const rootTypeDef = `type ${rootName}Type = ${type(rootDefinition ?? schema, rootName)}`
+        const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
         const otherTypeDefs = nonRootDefs.map((name) => {
           const def = definitions[name]
           if (!def) return `// ⚠️ missing definition for ${name}`
           const pc = toPascalCase(name)
-          return `type ${pc}Type = ${type(def, pc)}`
+          return `type _${pc} = ${type(def, pc)}`
         })
         return [rootTypeDef, ...otherTypeDefs].join('\n\n')
       })()
@@ -86,7 +86,7 @@ export function schemaToZod(schema: JSONSchema, options?: { exportType?: boolean
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toPascalCase(name)
-      return `const ${pc}: z.ZodType<${pc}Type> = ${zod(def, pc, true)}`
+      return `const ${pc}: z.ZodType<_${pc}> = ${zod(def, pc, true)}`
     })
     .join('\n\n')
 
@@ -94,7 +94,7 @@ export function schemaToZod(schema: JSONSchema, options?: { exportType?: boolean
   const rootSchema = rootInDefs ? zod(rootDefinition, rootName, true) : zod(schema, rootName, true)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: z.ZodType<${rootName}Type> = ${rootSchema}`
+    ? `export const ${rootName}: z.ZodType<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
   // Assemble output

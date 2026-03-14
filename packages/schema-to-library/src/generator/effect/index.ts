@@ -63,12 +63,12 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
   // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
-        const rootTypeDef = `type ${rootName}Type = ${type(rootDefinition ?? schema, rootName)}`
+        const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
         const otherTypeDefs = nonRootDefs.map((name) => {
           const def = definitions[name]
           if (!def) return `// ⚠️ missing definition for ${name}`
           const pc = toPascalCase(name)
-          return `type ${pc}Type = ${type(def, pc)}`
+          return `type _${pc} = ${type(def, pc)}`
         })
         return [rootTypeDef, ...otherTypeDefs].join('\n\n')
       })()
@@ -80,7 +80,7 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toPascalCase(name)
-      return `const ${pc}: Schema.Schema<${pc}Type> = ${effect(def, pc, true)}`
+      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true)}`
     })
     .join('\n\n')
 
@@ -90,7 +90,7 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
     : effect(schema, rootName, true)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: Schema.Schema<${rootName}Type> = ${rootSchema}`
+    ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
   // Assemble output
@@ -101,7 +101,7 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
     rootExport,
     ...(exportType
       ? [
-          `export type ${rootName}Type_ = typeof ${rootName}.Type`,
+          `export type ${rootName} = typeof ${rootName}.Type`,
           `export type ${rootName}Encoded = typeof ${rootName}.Encoded`,
         ]
       : []),

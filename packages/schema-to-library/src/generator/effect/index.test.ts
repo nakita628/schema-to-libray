@@ -18,7 +18,7 @@ describe('schemaToEffect', () => {
 
 export const Schema_ = Schema.Struct({name:Schema.String,age:Schema.optional(Schema.Number)})
 
-export type Schema_Type_ = typeof Schema_.Type
+export type Schema_ = typeof Schema_.Type
 
 export type Schema_Encoded = typeof Schema_.Encoded`
     expect(result).toBe(expected)
@@ -36,7 +36,7 @@ export type Schema_Encoded = typeof Schema_.Encoded`
 
 export const User = Schema.partial(Schema.Struct({name:Schema.String}))
 
-export type UserType_ = typeof User.Type
+export type User = typeof User.Type
 
 export type UserEncoded = typeof User.Encoded`
     expect(result).toBe(expected)
@@ -60,11 +60,11 @@ export type UserEncoded = typeof User.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type NodeType = {readonly children?: readonly NodeType[]}
+type _Node = {readonly children?: readonly _Node[]}
 
-export const Node: Schema.Schema<NodeType> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Node))}))
+export const Node: Schema.Schema<_Node> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Node))}))
 
-export type NodeType_ = typeof Node.Type
+export type Node = typeof Node.Type
 
 export type NodeEncoded = typeof Node.Encoded`
     expect(result).toBe(expected)
@@ -89,19 +89,19 @@ export type NodeEncoded = typeof Node.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type AType = {readonly b?: BType}
+type _A = {readonly b?: _B}
 
-type CType = string
+type _C = string
 
-type BType = {readonly c?: CType}
+type _B = {readonly c?: _C}
 
-const C: Schema.Schema<CType> = Schema.String
+const C: Schema.Schema<_C> = Schema.String
 
-const B: Schema.Schema<BType> = Schema.partial(Schema.Struct({c:Schema.suspend(() => C)}))
+const B: Schema.Schema<_B> = Schema.partial(Schema.Struct({c:Schema.suspend(() => C)}))
 
-export const A: Schema.Schema<AType> = Schema.partial(Schema.Struct({b:Schema.suspend(() => B)}))
+export const A: Schema.Schema<_A> = Schema.partial(Schema.Struct({b:Schema.suspend(() => B)}))
 
-export type AType_ = typeof A.Type
+export type A = typeof A.Type
 
 export type AEncoded = typeof A.Encoded`
     expect(result).toBe(expected)
@@ -125,15 +125,15 @@ export type AEncoded = typeof A.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type UserType = {readonly address?: AddressType}
+type _User = {readonly address?: _Address}
 
-type AddressType = {readonly street?: string}
+type _Address = {readonly street?: string}
 
-const Address: Schema.Schema<AddressType> = Schema.partial(Schema.Struct({street:Schema.String}))
+const Address: Schema.Schema<_Address> = Schema.partial(Schema.Struct({street:Schema.String}))
 
-export const User: Schema.Schema<UserType> = Schema.partial(Schema.Struct({address:Schema.suspend(() => Address)}))
+export const User: Schema.Schema<_User> = Schema.partial(Schema.Struct({address:Schema.suspend(() => Address)}))
 
-export type UserType_ = typeof User.Type
+export type User = typeof User.Type
 
 export type UserEncoded = typeof User.Encoded`
     expect(result).toBe(expected)
@@ -152,11 +152,11 @@ export type UserEncoded = typeof User.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type Schema_Type = {readonly children?: readonly typeof Schema_.Type[]}
+type _Schema_ = {readonly children?: readonly typeof Schema_.Type[]}
 
-export const Schema_: Schema.Schema<Schema_Type> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Schema_))}))
+export const Schema_: Schema.Schema<_Schema_> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Schema_))}))
 
-export type Schema_Type_ = typeof Schema_.Type
+export type Schema_ = typeof Schema_.Type
 
 export type Schema_Encoded = typeof Schema_.Encoded`
     expect(result).toBe(expected)
@@ -176,7 +176,7 @@ export type Schema_Encoded = typeof Schema_.Encoded`
 
 export const Union = Schema.partial(Schema.Struct({value:Schema.Union(Schema.String,Schema.Number)}))
 
-export type UnionType_ = typeof Union.Type
+export type Union = typeof Union.Type
 
 export type UnionEncoded = typeof Union.Encoded`
     expect(result).toBe(expected)
@@ -199,7 +199,7 @@ export type UnionEncoded = typeof Union.Encoded`
 
 export const AllOf = Schema.partial(Schema.Struct({value:Schema.extend(Schema.partial(Schema.Struct({name:Schema.String})),Schema.partial(Schema.Struct({age:Schema.Number})))}))
 
-export type AllOfType_ = typeof AllOf.Type
+export type AllOf = typeof AllOf.Type
 
 export type AllOfEncoded = typeof AllOf.Encoded`
     expect(result).toBe(expected)
@@ -220,7 +220,7 @@ export type AllOfEncoded = typeof AllOf.Encoded`
 
 export const Enum = Schema.partial(Schema.Struct({status:Schema.Literal("active","inactive")}))
 
-export type EnumType_ = typeof Enum.Type
+export type Enum = typeof Enum.Type
 
 export type EnumEncoded = typeof Enum.Encoded`
     expect(result).toBe(expected)
@@ -240,7 +240,7 @@ export type EnumEncoded = typeof Enum.Encoded`
 
 export const Const = Schema.partial(Schema.Struct({type:Schema.Literal("user")}))
 
-export type ConstType_ = typeof Const.Type
+export type Const = typeof Const.Type
 
 export type ConstEncoded = typeof Const.Encoded`
     expect(result).toBe(expected)
@@ -265,7 +265,7 @@ export type ConstEncoded = typeof Const.Encoded`
 
 export const Format = Schema.partial(Schema.Struct({email:Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)),uuid:Schema.UUID}))
 
-export type FormatType_ = typeof Format.Type
+export type Format = typeof Format.Type
 
 export type FormatEncoded = typeof Format.Encoded`
     expect(result).toBe(expected)
@@ -286,7 +286,7 @@ export type FormatEncoded = typeof Format.Encoded`
 
 export const Pattern = Schema.partial(Schema.Struct({phone:Schema.String.pipe(Schema.pattern(/^d+$/))}))
 
-export type PatternType_ = typeof Pattern.Type
+export type Pattern = typeof Pattern.Type
 
 export type PatternEncoded = typeof Pattern.Encoded`
     expect(result).toBe(expected)
@@ -308,7 +308,7 @@ export type PatternEncoded = typeof Pattern.Encoded`
 
 export const MinMax = Schema.partial(Schema.Struct({age:Schema.Number.pipe(Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(120))}))
 
-export type MinMaxType_ = typeof MinMax.Type
+export type MinMax = typeof MinMax.Type
 
 export type MinMaxEncoded = typeof MinMax.Encoded`
     expect(result).toBe(expected)
@@ -330,7 +330,7 @@ export type MinMaxEncoded = typeof MinMax.Encoded`
 
 export const Length = Schema.partial(Schema.Struct({name:Schema.String.pipe(Schema.minLength(1),Schema.maxLength(100))}))
 
-export type LengthType_ = typeof Length.Type
+export type Length = typeof Length.Type
 
 export type LengthEncoded = typeof Length.Encoded`
     expect(result).toBe(expected)
@@ -350,7 +350,7 @@ export type LengthEncoded = typeof Length.Encoded`
 
 export const Required = Schema.Struct({name:Schema.String,age:Schema.Number})
 
-export type RequiredType_ = typeof Required.Type
+export type Required = typeof Required.Type
 
 export type RequiredEncoded = typeof Required.Encoded`
     expect(result).toBe(expected)
@@ -366,7 +366,7 @@ export type RequiredEncoded = typeof Required.Encoded`
 
 export const Additional = Schema.Record({key:Schema.String,value:Schema.String})
 
-export type AdditionalType_ = typeof Additional.Type
+export type Additional = typeof Additional.Type
 
 export type AdditionalEncoded = typeof Additional.Encoded`
     expect(result).toBe(expected)
@@ -386,7 +386,7 @@ export type AdditionalEncoded = typeof Additional.Encoded`
 
 export const Int = Schema.Struct({count:Schema.Number.pipe(Schema.int()),score:Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))})
 
-export type IntType_ = typeof Int.Type
+export type Int = typeof Int.Type
 
 export type IntEncoded = typeof Int.Encoded`
     expect(result).toBe(expected)
@@ -407,7 +407,7 @@ export type IntEncoded = typeof Int.Encoded`
 
 export const Arr = Schema.partial(Schema.Struct({items:Schema.Array(Schema.String)}))
 
-export type ArrType_ = typeof Arr.Type
+export type Arr = typeof Arr.Type
 
 export type ArrEncoded = typeof Arr.Encoded`
     expect(result).toBe(expected)
@@ -443,7 +443,7 @@ export const Schema_ = Schema.partial(Schema.Struct({name:Schema.String}))`
 
 export const WithDefault = Schema.partial(Schema.Struct({status:Schema.optional(Schema.String,{default:() => "active"})}))
 
-export type WithDefaultType_ = typeof WithDefault.Type
+export type WithDefault = typeof WithDefault.Type
 
 export type WithDefaultEncoded = typeof WithDefault.Encoded`
     expect(result).toBe(expected)
@@ -463,7 +463,7 @@ export type WithDefaultEncoded = typeof WithDefault.Encoded`
 
 export const NullDefault = Schema.partial(Schema.Struct({value:Schema.NullOr(Schema.optional(Schema.String,{default:() => "x"}))}))
 
-export type NullDefaultType_ = typeof NullDefault.Type
+export type NullDefault = typeof NullDefault.Type
 
 export type NullDefaultEncoded = typeof NullDefault.Encoded`
     expect(result).toBe(expected)
@@ -483,7 +483,7 @@ export type NullDefaultEncoded = typeof NullDefault.Encoded`
 
 export const AnyOf = Schema.partial(Schema.Struct({value:Schema.Union(Schema.String,Schema.Number)}))
 
-export type AnyOfType_ = typeof AnyOf.Type
+export type AnyOf = typeof AnyOf.Type
 
 export type AnyOfEncoded = typeof AnyOf.Encoded`
     expect(result).toBe(expected)
@@ -502,7 +502,7 @@ export type AnyOfEncoded = typeof AnyOf.Encoded`
 
 export const Arr = Schema.Struct({tags:Schema.Array(Schema.String).pipe(Schema.minItems(1),Schema.maxItems(10))})
 
-export type ArrType_ = typeof Arr.Type
+export type Arr = typeof Arr.Type
 
 export type ArrEncoded = typeof Arr.Encoded`
     expect(result).toBe(expected)
@@ -521,7 +521,7 @@ export type ArrEncoded = typeof Arr.Encoded`
 
 export const Fixed = Schema.Struct({pair:Schema.Array(Schema.Number).pipe(Schema.itemsCount(3))})
 
-export type FixedType_ = typeof Fixed.Type
+export type Fixed = typeof Fixed.Type
 
 export type FixedEncoded = typeof Fixed.Encoded`
     expect(result).toBe(expected)
@@ -540,7 +540,7 @@ export type FixedEncoded = typeof Fixed.Encoded`
 
 export const Null = Schema.Struct({value:Schema.NullOr(Schema.String)})
 
-export type NullType_ = typeof Null.Type
+export type Null = typeof Null.Type
 
 export type NullEncoded = typeof Null.Encoded`
     expect(result).toBe(expected)
@@ -558,7 +558,7 @@ export type NullEncoded = typeof Null.Encoded`
 
 export const Def = Schema.partial(Schema.Struct({enabled:Schema.optionalWith(Schema.Boolean,{default:() => true})}))
 
-export type DefType_ = typeof Def.Type
+export type Def = typeof Def.Type
 
 export type DefEncoded = typeof Def.Encoded`
     expect(result).toBe(expected)
@@ -573,7 +573,7 @@ export type DefEncoded = typeof Def.Encoded`
 
 export const D = Schema.Date
 
-export type DType_ = typeof D.Type
+export type D = typeof D.Type
 
 export type DEncoded = typeof D.Encoded`
     expect(result).toBe(expected)
@@ -588,7 +588,7 @@ export type DEncoded = typeof D.Encoded`
 
 export const N = Schema.NullOr(Schema.Null)
 
-export type NType_ = typeof N.Type
+export type N = typeof N.Type
 
 export type NEncoded = typeof N.Encoded`
     expect(result).toBe(expected)
@@ -603,7 +603,7 @@ export type NEncoded = typeof N.Encoded`
 
 export const Empty = Schema.Struct({})
 
-export type EmptyType_ = typeof Empty.Type
+export type Empty = typeof Empty.Type
 
 export type EmptyEncoded = typeof Empty.Encoded`
     expect(result).toBe(expected)
@@ -624,15 +624,15 @@ export type EmptyEncoded = typeof Empty.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly status?: StatusType}
+type _Root = {readonly status?: _Status}
 
-type StatusType = (string | number)
+type _Status = (string | number)
 
-const Status: Schema.Schema<StatusType> = Schema.Union(Schema.String,Schema.Number)
+const Status: Schema.Schema<_Status> = Schema.Union(Schema.String,Schema.Number)
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({status:Schema.suspend(() => Status)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({status:Schema.suspend(() => Status)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -653,15 +653,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly value?: ValueType}
+type _Root = {readonly value?: _Value}
 
-type ValueType = (boolean | string)
+type _Value = (boolean | string)
 
-const Value: Schema.Schema<ValueType> = Schema.Union(Schema.Boolean,Schema.String)
+const Value: Schema.Schema<_Value> = Schema.Union(Schema.Boolean,Schema.String)
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({value:Schema.suspend(() => Value)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({value:Schema.suspend(() => Value)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -685,15 +685,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly data?: CombinedType}
+type _Root = {readonly data?: _Combined}
 
-type CombinedType = ({readonly a?: string} & {readonly b?: number})
+type _Combined = ({readonly a?: string} & {readonly b?: number})
 
-const Combined: Schema.Schema<CombinedType> = Schema.extend(Schema.partial(Schema.Struct({a:Schema.String})),Schema.partial(Schema.Struct({b:Schema.Number})))
+const Combined: Schema.Schema<_Combined> = Schema.extend(Schema.partial(Schema.Struct({a:Schema.String})),Schema.partial(Schema.Struct({b:Schema.Number})))
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Combined)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Combined)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -712,15 +712,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly version?: VersionType}
+type _Root = {readonly version?: _Version}
 
-type VersionType = "v1"
+type _Version = "v1"
 
-const Version: Schema.Schema<VersionType> = Schema.Literal("v1")
+const Version: Schema.Schema<_Version> = Schema.Literal("v1")
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({version:Schema.suspend(() => Version)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({version:Schema.suspend(() => Version)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -739,15 +739,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly color?: ColorType}
+type _Root = {readonly color?: _Color}
 
-type ColorType = ("red" | "green" | "blue")
+type _Color = ("red" | "green" | "blue")
 
-const Color: Schema.Schema<ColorType> = Schema.Literal("red","green","blue")
+const Color: Schema.Schema<_Color> = Schema.Literal("red","green","blue")
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({color:Schema.suspend(() => Color)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({color:Schema.suspend(() => Color)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -766,15 +766,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly val?: SingleValType}
+type _Root = {readonly val?: _SingleVal}
 
-type SingleValType = "only"
+type _SingleVal = "only"
 
-const SingleVal: Schema.Schema<SingleValType> = Schema.Literal("only")
+const SingleVal: Schema.Schema<_SingleVal> = Schema.Literal("only")
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({val:Schema.suspend(() => SingleVal)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({val:Schema.suspend(() => SingleVal)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -793,15 +793,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly tags?: TagsType}
+type _Root = {readonly tags?: _Tags}
 
-type TagsType = readonly string[]
+type _Tags = readonly string[]
 
-const Tags: Schema.Schema<TagsType> = Schema.Array(Schema.String)
+const Tags: Schema.Schema<_Tags> = Schema.Array(Schema.String)
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({tags:Schema.suspend(() => Tags)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({tags:Schema.suspend(() => Tags)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -820,15 +820,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly ts?: TimestampType}
+type _Root = {readonly ts?: _Timestamp}
 
-type TimestampType = Date
+type _Timestamp = Date
 
-const Timestamp: Schema.Schema<TimestampType> = Schema.Date
+const Timestamp: Schema.Schema<_Timestamp> = Schema.Date
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({ts:Schema.suspend(() => Timestamp)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({ts:Schema.suspend(() => Timestamp)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -847,15 +847,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly n?: NothingType}
+type _Root = {readonly n?: _Nothing}
 
-type NothingType = null
+type _Nothing = null
 
-const Nothing: Schema.Schema<NothingType> = Schema.NullOr(Schema.Null)
+const Nothing: Schema.Schema<_Nothing> = Schema.NullOr(Schema.Null)
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({n:Schema.suspend(() => Nothing)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({n:Schema.suspend(() => Nothing)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -874,15 +874,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly flag?: FlagType}
+type _Root = {readonly flag?: _Flag}
 
-type FlagType = boolean
+type _Flag = boolean
 
-const Flag: Schema.Schema<FlagType> = Schema.Boolean
+const Flag: Schema.Schema<_Flag> = Schema.Boolean
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({flag:Schema.suspend(() => Flag)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({flag:Schema.suspend(() => Flag)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -901,15 +901,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly count?: CountType}
+type _Root = {readonly count?: _Count}
 
-type CountType = number
+type _Count = number
 
-const Count: Schema.Schema<CountType> = Schema.Number.pipe(Schema.int())
+const Count: Schema.Schema<_Count> = Schema.Number.pipe(Schema.int())
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({count:Schema.suspend(() => Count)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({count:Schema.suspend(() => Count)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -928,15 +928,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly l?: LooseType}
+type _Root = {readonly l?: _Loose}
 
-type LooseType = { [key: string]: unknown }
+type _Loose = { [key: string]: unknown }
 
-const Loose: Schema.Schema<LooseType> = Schema.Unknown
+const Loose: Schema.Schema<_Loose> = Schema.Unknown
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({l:Schema.suspend(() => Loose)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({l:Schema.suspend(() => Loose)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -955,15 +955,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly d?: DictType}
+type _Root = {readonly d?: _Dict}
 
-type DictType = { [key: string]: number }
+type _Dict = { [key: string]: number }
 
-const Dict: Schema.Schema<DictType> = Schema.Record({key:Schema.String,value:Schema.Number})
+const Dict: Schema.Schema<_Dict> = Schema.Record({key:Schema.String,value:Schema.Number})
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({d:Schema.suspend(() => Dict)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({d:Schema.suspend(() => Dict)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -982,15 +982,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly neg?: NegType}
+type _Root = {readonly neg?: _Neg}
 
-type NegType = unknown
+type _Neg = unknown
 
-const Neg: Schema.Schema<NegType> = Schema.Unknown
+const Neg: Schema.Schema<_Neg> = Schema.Unknown
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({neg:Schema.suspend(() => Neg)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({neg:Schema.suspend(() => Neg)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -1016,15 +1016,15 @@ export type RootEncoded = typeof Root.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly data?: SpecialType}
+type _Root = {readonly data?: _Special}
 
-type SpecialType = {readonly "x-value": string; readonly normal?: number}
+type _Special = {readonly "x-value": string; readonly normal?: number}
 
-const Special: Schema.Schema<SpecialType> = Schema.Struct({"x-value":Schema.String,normal:Schema.optional(Schema.Number)})
+const Special: Schema.Schema<_Special> = Schema.Struct({"x-value":Schema.String,normal:Schema.optional(Schema.Number)})
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Special)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Special)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
@@ -1044,7 +1044,7 @@ export type RootEncoded = typeof Root.Encoded`
 
 export const Loose = Schema.Struct({name:Schema.String})
 
-export type LooseType_ = typeof Loose.Type
+export type Loose = typeof Loose.Type
 
 export type LooseEncoded = typeof Loose.Encoded`
     expect(result).toBe(expected)
@@ -1060,7 +1060,7 @@ export type LooseEncoded = typeof Loose.Encoded`
 
 export const AnyObj = Schema.Unknown
 
-export type AnyObjType_ = typeof AnyObj.Type
+export type AnyObj = typeof AnyObj.Type
 
 export type AnyObjEncoded = typeof AnyObj.Encoded`
     expect(result).toBe(expected)
@@ -1079,7 +1079,7 @@ export type AnyObjEncoded = typeof AnyObj.Encoded`
 
 export const Special = Schema.Struct({"x-value":Schema.String})
 
-export type SpecialType_ = typeof Special.Type
+export type Special = typeof Special.Type
 
 export type SpecialEncoded = typeof Special.Encoded`
     expect(result).toBe(expected)
@@ -1104,19 +1104,19 @@ export type SpecialEncoded = typeof Special.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-type RootType = {readonly wrap?: WrapperType}
+type _Root = {readonly wrap?: _Wrapper}
 
-type InnerType = string
+type _Inner = string
 
-type WrapperType = {readonly inner?: InnerType}
+type _Wrapper = {readonly inner?: _Inner}
 
-const Inner: Schema.Schema<InnerType> = Schema.String
+const Inner: Schema.Schema<_Inner> = Schema.String
 
-const Wrapper: Schema.Schema<WrapperType> = Schema.partial(Schema.Struct({inner:Schema.suspend(() => Inner)}))
+const Wrapper: Schema.Schema<_Wrapper> = Schema.partial(Schema.Struct({inner:Schema.suspend(() => Inner)}))
 
-export const Root: Schema.Schema<RootType> = Schema.partial(Schema.Struct({wrap:Schema.suspend(() => Wrapper)}))
+export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({wrap:Schema.suspend(() => Wrapper)}))
 
-export type RootType_ = typeof Root.Type
+export type Root = typeof Root.Type
 
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)

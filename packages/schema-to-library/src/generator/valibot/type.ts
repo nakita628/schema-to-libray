@@ -19,14 +19,14 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
     for (const [prefix] of TABLE) {
       if (schema.$ref?.startsWith(prefix)) {
         const name = schema.$ref.slice(prefix.length)
-        return `${toPascalCase(name)}Type`
+        return `_${toPascalCase(name)}`
       }
     }
 
     if (schema.$ref?.startsWith('#')) {
       const refName = schema.$ref.slice(1)
       if (refName === '') return `v.InferOutput<typeof ${rootName}>`
-      if (!refName.includes('/')) return `${toPascalCase(refName)}Type`
+      if (!refName.includes('/')) return `_${toPascalCase(refName)}`
     }
 
     return 'unknown'

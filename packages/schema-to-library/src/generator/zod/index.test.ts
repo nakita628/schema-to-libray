@@ -56,9 +56,9 @@ export type User = z.infer<typeof User>`
     })
     const expected = `import * as z from 'zod'
 
-type NodeType = {children?: NodeType[]}
+type _Node = {children?: _Node[]}
 
-export const Node: z.ZodType<NodeType> = z.object({children:z.array(z.lazy(() => Node))}).partial()
+export const Node: z.ZodType<_Node> = z.object({children:z.array(z.lazy(() => Node))}).partial()
 
 export type Node = z.infer<typeof Node>`
     expect(result).toBe(expected)
@@ -83,17 +83,17 @@ export type Node = z.infer<typeof Node>`
     })
     const expected = `import * as z from 'zod'
 
-type AType = {b?: BType}
+type _A = {b?: _B}
 
-type CType = string
+type _C = string
 
-type BType = {c?: CType}
+type _B = {c?: _C}
 
-const C: z.ZodType<CType> = z.string()
+const C: z.ZodType<_C> = z.string()
 
-const B: z.ZodType<BType> = z.object({c:z.lazy(() => C)}).partial()
+const B: z.ZodType<_B> = z.object({c:z.lazy(() => C)}).partial()
 
-export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()
 
 export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
@@ -117,13 +117,13 @@ export type A = z.infer<typeof A>`
     })
     const expected = `import * as z from 'zod'
 
-type UserType = {address?: AddressType}
+type _User = {address?: _Address}
 
-type AddressType = {street?: string}
+type _Address = {street?: string}
 
-const Address: z.ZodType<AddressType> = z.object({street:z.string()}).partial()
+const Address: z.ZodType<_Address> = z.object({street:z.string()}).partial()
 
-export const User: z.ZodType<UserType> = z.object({address:z.lazy(() => Address)}).partial()
+export const User: z.ZodType<_User> = z.object({address:z.lazy(() => Address)}).partial()
 
 export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
@@ -151,13 +151,13 @@ export type User = z.infer<typeof User>`
     console.log(result)
     const expected = `import * as z from 'zod'
 
-type AType = {b?: BType}
+type _A = {b?: _B}
 
-type BType = {a?: AType}
+type _B = {a?: _A}
 
-const B: z.ZodType<BType> = z.object({a:z.lazy(() => A)}).partial()
+const B: z.ZodType<_B> = z.object({a:z.lazy(() => A)}).partial()
 
-export const A: z.ZodType<AType> = z.object({b:z.lazy(() => B)}).partial()
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()
 
 export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
@@ -176,9 +176,9 @@ export type A = z.infer<typeof A>`
     })
     const expected = `import * as z from 'zod'
 
-type SchemaType = {children?: z.infer<typeof Schema>[]}
+type _Schema = {children?: z.infer<typeof Schema>[]}
 
-export const Schema: z.ZodType<SchemaType> = z.object({children:z.array(z.lazy(() => Schema))}).partial()
+export const Schema: z.ZodType<_Schema> = z.object({children:z.array(z.lazy(() => Schema))}).partial()
 
 export type Schema = z.infer<typeof Schema>`
     expect(result).toBe(expected)

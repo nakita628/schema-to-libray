@@ -19,19 +19,19 @@ describe('type', () => {
     })
 
     it('should handle self reference with custom name', () => {
-      expect(type({ $ref: '#/definitions/Node' }, 'Node')).toBe('NodeType')
+      expect(type({ $ref: '#/definitions/Node' }, 'Node')).toBe('_Node')
     })
 
     it('should handle other references', () => {
-      expect(type({ $ref: '#/definitions/User' }, 'Schema')).toBe('UserType')
+      expect(type({ $ref: '#/definitions/User' }, 'Schema')).toBe('_User')
     })
 
     it('should handle components/schemas reference', () => {
-      expect(type({ $ref: '#/components/schemas/User' }, 'Schema')).toBe('UserType')
+      expect(type({ $ref: '#/components/schemas/User' }, 'Schema')).toBe('_User')
     })
 
     it('should handle $defs reference', () => {
-      expect(type({ $ref: '#/$defs/User' }, 'Schema')).toBe('UserType')
+      expect(type({ $ref: '#/$defs/User' }, 'Schema')).toBe('_User')
     })
 
     it('should return unknown for invalid reference', () => {
@@ -292,7 +292,7 @@ describe('type', () => {
           },
           'Schema',
         ),
-      ).toBe('(UserType | AdminType)')
+      ).toBe('(_User | _Admin)')
     })
   })
 })

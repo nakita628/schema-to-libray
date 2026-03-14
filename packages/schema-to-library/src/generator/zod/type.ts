@@ -31,7 +31,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
       if (schema.$ref?.startsWith(prefix)) {
         const name = schema.$ref.slice(prefix.length)
         const pascalCaseName = toPascalCase(name)
-        return `${pascalCaseName}Type`
+        return `_${pascalCaseName}`
       }
     }
 
@@ -43,7 +43,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
       }
       if (!refName.includes('/')) {
         const pascalCaseName = toPascalCase(refName)
-        return `${pascalCaseName}Type`
+        return `_${pascalCaseName}`
       }
     }
 
