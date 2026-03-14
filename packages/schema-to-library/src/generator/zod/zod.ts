@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { normalizeTypes, toPascalCase } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'

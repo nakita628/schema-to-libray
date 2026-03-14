@@ -1,13 +1,13 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { valibotMessage } from '../../utils/index.js'
 
 export function integer(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const baseMsgPart = errorMessage ? valibotMessage(errorMessage) : ''
 
   if (schema.format === 'bigint') {
-    const minimumMessage = schema['x-minimum-message'] as string | undefined
-    const maximumMessage = schema['x-maximum-message'] as string | undefined
+    const minimumMessage = schema['x-minimum-message']
+    const maximumMessage = schema['x-maximum-message']
 
     const actions = [
       schema.minimum !== undefined
@@ -22,9 +22,9 @@ export function integer(schema: JSONSchema): string {
     return errorMessage ? `v.bigint(${baseMsgPart})` : 'v.bigint()'
   }
 
-  const minimumMessage = schema['x-minimum-message'] as string | undefined
-  const maximumMessage = schema['x-maximum-message'] as string | undefined
-  const multipleOfMessage = schema['x-multipleOf-message'] as string | undefined
+  const minimumMessage = schema['x-minimum-message']
+  const maximumMessage = schema['x-maximum-message']
+  const multipleOfMessage = schema['x-multipleOf-message']
 
   const minimum = (() => {
     if (schema.minimum !== undefined)

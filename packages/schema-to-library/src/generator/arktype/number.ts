@@ -1,7 +1,7 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 
 export function number(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
 
   const minimum = (() => {

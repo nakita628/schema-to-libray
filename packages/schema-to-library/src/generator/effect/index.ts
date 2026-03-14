@@ -1,5 +1,5 @@
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
@@ -8,7 +8,7 @@ import { type } from './type.js'
  * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
  */
 function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+  const isRecord = (v: unknown): v is { [k: string]: unknown } => typeof v === 'object' && v !== null
 
   const stack: unknown[] = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
@@ -42,7 +42,7 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
   // Avoid conflict with `import { Schema } from "effect"`
   const rootName = pascalTitle === 'Schema' ? 'Schema_' : pascalTitle
 
-  const definitions: Record<string, JSONSchema> = {
+  const definitions: { [k: string]: JSONSchema } = {
     ...(schema.definitions ?? {}),
     ...(schema.$defs ?? {}),
   }

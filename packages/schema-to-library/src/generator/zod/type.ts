@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { normalizeTypes, toPascalCase } from '../../utils/index.js'
 
 /**
@@ -105,7 +105,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
 /**
  * Generate union type from multiple schemas
  */
-function union(schemas: JSONSchema[], rootName: string): string {
+function union(schemas: readonly JSONSchema[], rootName: string): string {
   const types = schemas.map((s) => type(s, rootName))
   return `(${types.join(' | ')})`
 }
@@ -113,7 +113,7 @@ function union(schemas: JSONSchema[], rootName: string): string {
 /**
  * Generate intersection type from multiple schemas
  */
-function intersection(schemas: JSONSchema[], rootName: string): string {
+function intersection(schemas: readonly JSONSchema[], rootName: string): string {
   const types = schemas
     .filter((s) => {
       if (s.type === 'null') return false
@@ -148,12 +148,12 @@ function object(schema: JSONSchema, rootName: string): string {
   if (!schema.properties) {
     if (schema.additionalProperties) {
       if (typeof schema.additionalProperties === 'boolean') {
-        return schema.additionalProperties ? 'Record<string, unknown>' : 'Record<string, never>'
+        return schema.additionalProperties ? '{ [key: string]: unknown }' : '{ [key: string]: never }'
       }
       const valueType = type(schema.additionalProperties, rootName)
-      return `Record<string, ${valueType}>`
+      return `{ [key: string]: ${valueType} }`
     }
-    return 'Record<string, unknown>'
+    return '{ [key: string]: unknown }'
   }
 
   const required = Array.isArray(schema.required) ? schema.required : []

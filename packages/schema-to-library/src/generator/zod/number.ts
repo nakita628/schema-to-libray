@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { error } from '../../utils/index.js'
 
 /**
@@ -12,7 +12,7 @@ import { error } from '../../utils/index.js'
  * ```
  */
 export function number(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const baseErrorArg = errorMessage ? error(errorMessage) : ''
 
   const base =
@@ -22,7 +22,7 @@ export function number(schema: JSONSchema): string {
         ? `z.float64(${baseErrorArg})`
         : `z.number(${baseErrorArg})`
 
-  const minimumMessage = schema['x-minimum-message'] as string | undefined
+  const minimumMessage = schema['x-minimum-message']
   const minErrArg = minimumMessage ? error(minimumMessage) : ''
   const minErrPart = minErrArg ? `,${minErrArg}` : ''
 
@@ -45,7 +45,7 @@ export function number(schema: JSONSchema): string {
     return undefined
   })()
 
-  const maximumMessage = schema['x-maximum-message'] as string | undefined
+  const maximumMessage = schema['x-maximum-message']
   const maxErrArg = maximumMessage ? error(maximumMessage) : ''
   const maxErrPart = maxErrArg ? `,${maxErrArg}` : ''
 
@@ -68,7 +68,7 @@ export function number(schema: JSONSchema): string {
     return undefined
   })()
 
-  const multipleOfMsg = schema['x-multipleOf-message'] as string | undefined
+  const multipleOfMsg = schema['x-multipleOf-message']
   const multipleOfErrArg = multipleOfMsg
     ? `,${error(multipleOfMsg)}`
     : baseErrorArg

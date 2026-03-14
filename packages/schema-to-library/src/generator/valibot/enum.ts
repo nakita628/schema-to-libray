@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { valibotMessage } from '../../utils/index.js'
 
 export function _enum(schema: JSONSchema): string {
@@ -8,9 +8,9 @@ export function _enum(schema: JSONSchema): string {
   const lit = (v: unknown): string =>
     v === null ? 'null' : typeof v === 'string' ? `'${v}'` : String(v)
 
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const errArg = errorMessage ? `,${valibotMessage(errorMessage)}` : ''
-  const enumMessages = schema['x-enum-error-messages'] as Record<string, string> | undefined
+  const enumMessages = schema['x-enum-error-messages']
   const litErrArg = (v: unknown): string => {
     if (enumMessages) {
       const key = String(v)

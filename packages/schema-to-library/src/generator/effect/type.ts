@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { normalizeTypes, toPascalCase } from '../../utils/index.js'
 
 export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'): string {
@@ -68,11 +68,11 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
   return 'unknown'
 }
 
-function union(schemas: JSONSchema[], rootName: string): string {
+function union(schemas: readonly JSONSchema[], rootName: string): string {
   return `(${schemas.map((s) => type(s, rootName)).join(' | ')})`
 }
 
-function intersection(schemas: JSONSchema[], rootName: string): string {
+function intersection(schemas: readonly JSONSchema[], rootName: string): string {
   const types = schemas
     .filter((s) => {
       if (s.type === 'null') return false
@@ -97,11 +97,11 @@ function objectType(schema: JSONSchema, rootName: string): string {
   if (!schema.properties) {
     if (schema.additionalProperties) {
       if (typeof schema.additionalProperties === 'boolean') {
-        return schema.additionalProperties ? 'Record<string, unknown>' : 'Record<string, never>'
+        return schema.additionalProperties ? '{ [k: string]: unknown }' : '{ [k: string]: never }'
       }
-      return `Record<string, ${type(schema.additionalProperties, rootName)}>`
+      return `{ [k: string]: ${type(schema.additionalProperties, rootName)} }`
     }
-    return 'Record<string, unknown>'
+    return '{ [k: string]: unknown }'
   }
 
   const required = Array.isArray(schema.required) ? schema.required : []

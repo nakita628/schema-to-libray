@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { zod } from './zod.js'
 
 /**
@@ -63,7 +63,7 @@ export function object(
  * Generate Zod object properties schema from JSON Schema properties
  */
 function propertiesSchema(
-  properties: Record<string, JSONSchema>,
+  properties: { [k: string]: JSONSchema },
   required: readonly string[],
   rootName: string,
   isZod: boolean,

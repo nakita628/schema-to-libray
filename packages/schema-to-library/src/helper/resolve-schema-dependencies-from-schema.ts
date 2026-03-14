@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../types/index.js'
+import type { JSONSchema } from './json-schema.js'
 
 /**
  * Resolve schema dependencies and return them in topological order
@@ -18,12 +18,12 @@ import type { JSONSchema } from '../types/index.js'
  */
 export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[] {
   // Merge both definitions and $defs
-  const definitions: Record<string, JSONSchema> = {
+  const definitions: { [k: string]: JSONSchema } = {
     ...(schema.definitions ?? {}),
     ...(schema.$defs ?? {}),
   }
 
-  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+  const isRecord = (v: unknown): v is { [k: string]: unknown } => typeof v === 'object' && v !== null
 
   /**
    * Collect all $ref references from a schema recursively

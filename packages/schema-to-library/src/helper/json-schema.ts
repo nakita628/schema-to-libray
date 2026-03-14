@@ -82,165 +82,181 @@ export type JSONSchemaFormat =
 export type JSONSchema = {
   // ── Core (Draft 2020-12) ──────────────────────────────────────────
   /** JSON Schema dialect identifier */
-  $schema?: string
+  readonly $schema?: string
   /** Schema identifier */
-  $id?: string
+  readonly $id?: string
   /** Schema reference */
-  $ref?: string
+  readonly $ref?: string
   /** Schema comment */
-  $comment?: string
+  readonly $comment?: string
   /** Vocabulary definitions */
-  $vocabulary?: Record<string, boolean>
+  readonly $vocabulary?: { readonly [k: string]: boolean }
   /** Anchor for referencing */
-  $anchor?: string
+  readonly $anchor?: string
   /** Dynamic anchor (Draft 2020-12) */
-  $dynamicAnchor?: string
+  readonly $dynamicAnchor?: string
   /** Dynamic reference (Draft 2020-12) */
-  $dynamicRef?: string
+  readonly $dynamicRef?: string
   /** Schema definitions (Draft 2020-12 / Draft 2019-09) */
-  $defs?: Record<string, JSONSchema>
+  readonly $defs?: { readonly [k: string]: JSONSchema }
   /** Schema definitions (Draft-07 and earlier) */
-  definitions?: Record<string, JSONSchema>
+  readonly definitions?: { readonly [k: string]: JSONSchema }
 
   // ── Metadata ──────────────────────────────────────────────────────
   /** Schema title */
-  title?: string
+  readonly title?: string
   /** Schema description */
-  description?: string
+  readonly description?: string
   /** Default value */
-  default?: unknown
+  readonly default?: unknown
   /** Example values (Draft 2019-09+) */
-  examples?: unknown[]
+  readonly examples?: readonly unknown[]
   /** Single example value (OpenAPI) */
-  example?: unknown
+  readonly example?: unknown
   /** Whether the schema is deprecated */
-  deprecated?: boolean
+  readonly deprecated?: boolean
   /** Whether the value is read-only */
-  readOnly?: boolean
+  readonly readOnly?: boolean
   /** Whether the value is write-only */
-  writeOnly?: boolean
+  readonly writeOnly?: boolean
 
   // ── Type ──────────────────────────────────────────────────────────
   /** Type constraint */
-  type?: JSONSchemaType | JSONSchemaType[]
+  readonly type?: JSONSchemaType | readonly JSONSchemaType[]
   /** Format hint */
-  format?: JSONSchemaFormat | (string & {})
+  readonly format?: JSONSchemaFormat | (string & {})
   /** Constant value */
-  const?: unknown
+  readonly const?: unknown
   /** Enumerated values */
-  enum?: unknown[]
+  readonly enum?: readonly unknown[]
 
   // ── String ────────────────────────────────────────────────────────
   /** Minimum string length */
-  minLength?: number
+  readonly minLength?: number
   /** Maximum string length */
-  maxLength?: number
+  readonly maxLength?: number
   /** Regular expression pattern */
-  pattern?: string
+  readonly pattern?: string
   /** Content media type */
-  contentMediaType?: string
+  readonly contentMediaType?: string
   /** Content encoding */
-  contentEncoding?: string
+  readonly contentEncoding?: string
   /** Content schema */
-  contentSchema?: JSONSchema
+  readonly contentSchema?: JSONSchema
 
   // ── Number / Integer ──────────────────────────────────────────────
   /** Minimum value (inclusive) */
-  minimum?: number
+  readonly minimum?: number
   /** Maximum value (inclusive) */
-  maximum?: number
+  readonly maximum?: number
   /** Exclusive minimum (Draft 2020-12: number, Draft-04: boolean) */
-  exclusiveMinimum?: number | boolean
+  readonly exclusiveMinimum?: number | boolean
   /** Exclusive maximum (Draft 2020-12: number, Draft-04: boolean) */
-  exclusiveMaximum?: number | boolean
+  readonly exclusiveMaximum?: number | boolean
   /** Value must be a multiple of this number */
-  multipleOf?: number
+  readonly multipleOf?: number
 
   // ── Object ────────────────────────────────────────────────────────
   /** Object properties */
-  properties?: Record<string, JSONSchema>
+  readonly properties?: { readonly [k: string]: JSONSchema }
   /** Required property names */
-  required?: string[]
+  readonly required?: readonly string[]
   /** Additional properties constraint */
-  additionalProperties?: boolean | JSONSchema
+  readonly additionalProperties?: boolean | JSONSchema
   /** Pattern-based properties */
-  patternProperties?: Record<string, JSONSchema>
+  readonly patternProperties?: { readonly [k: string]: JSONSchema }
   /** Property name constraint */
-  propertyNames?: JSONSchema
+  readonly propertyNames?: JSONSchema
   /** Minimum number of properties */
-  minProperties?: number
+  readonly minProperties?: number
   /** Maximum number of properties */
-  maxProperties?: number
+  readonly maxProperties?: number
   /** Dependent required properties (Draft 2019-09+) */
-  dependentRequired?: Record<string, string[]>
+  readonly dependentRequired?: { readonly [k: string]: readonly string[] }
   /** Dependent schemas (Draft 2019-09+) */
-  dependentSchemas?: Record<string, JSONSchema>
+  readonly dependentSchemas?: { readonly [k: string]: JSONSchema }
   /** Unevaluated properties (Draft 2019-09+) */
-  unevaluatedProperties?: boolean | JSONSchema
+  readonly unevaluatedProperties?: boolean | JSONSchema
 
   // ── Array ─────────────────────────────────────────────────────────
   /** Array item schema */
-  items?: JSONSchema
+  readonly items?: JSONSchema
   /** Positional item schemas (Draft 2020-12) */
-  prefixItems?: JSONSchema[]
+  readonly prefixItems?: readonly JSONSchema[]
   /** Contains constraint */
-  contains?: JSONSchema
+  readonly contains?: JSONSchema
   /** Minimum number of items */
-  minItems?: number
+  readonly minItems?: number
   /** Maximum number of items */
-  maxItems?: number
+  readonly maxItems?: number
   /** Whether items must be unique */
-  uniqueItems?: boolean
+  readonly uniqueItems?: boolean
   /** Minimum number of contains matches (Draft 2019-09+) */
-  minContains?: number
+  readonly minContains?: number
   /** Maximum number of contains matches (Draft 2019-09+) */
-  maxContains?: number
+  readonly maxContains?: number
   /** Unevaluated items (Draft 2019-09+) */
-  unevaluatedItems?: boolean | JSONSchema
+  readonly unevaluatedItems?: boolean | JSONSchema
 
   // ── Composition ───────────────────────────────────────────────────
   /** Must match all schemas */
-  allOf?: JSONSchema[]
+  readonly allOf?: readonly JSONSchema[]
   /** Must match at least one schema */
-  anyOf?: JSONSchema[]
+  readonly anyOf?: readonly JSONSchema[]
   /** Must match exactly one schema */
-  oneOf?: JSONSchema[]
+  readonly oneOf?: readonly JSONSchema[]
   /** Must not match the schema */
-  not?: JSONSchema
+  readonly not?: JSONSchema
 
   // ── Conditional (Draft-07+) ───────────────────────────────────────
   /** Conditional schema */
-  if?: JSONSchema
+  readonly if?: JSONSchema
   /** Schema to apply when if matches */
-  then?: JSONSchema
+  readonly then?: JSONSchema
   /** Schema to apply when if does not match */
-  else?: JSONSchema
+  readonly else?: JSONSchema
 
   // ── OpenAPI Extensions ────────────────────────────────────────────
   /** Whether the value can be null (OpenAPI 3.0) */
-  nullable?: boolean
+  readonly nullable?: boolean
   /** Discriminator for polymorphic schemas (OpenAPI) */
-  discriminator?: {
-    propertyName?: string
-    mapping?: Record<string, string>
+  readonly discriminator?: {
+    readonly propertyName?: string
+    readonly mapping?: { readonly [k: string]: string }
   }
   /** XML representation metadata (OpenAPI) */
-  xml?: {
-    name?: string
-    namespace?: string
-    prefix?: string
-    attribute?: boolean
-    wrapped?: boolean
+  readonly xml?: {
+    readonly name?: string
+    readonly namespace?: string
+    readonly prefix?: string
+    readonly attribute?: boolean
+    readonly wrapped?: boolean
   }
   /** External documentation (OpenAPI) */
-  externalDocs?: {
-    url?: string
-    description?: string
+  readonly externalDocs?: {
+    readonly url?: string
+    readonly description?: string
   }
+
+  // ── Vendor Extensions (x-*) ──────────────────────────────────────
+  /** General error message */
+  readonly 'x-error-message'?: string
+  /** Pattern validation error message */
+  readonly 'x-pattern-message'?: string
+  /** Minimum constraint error message */
+  readonly 'x-minimum-message'?: string
+  /** Maximum constraint error message */
+  readonly 'x-maximum-message'?: string
+  /** Size constraint error message */
+  readonly 'x-size-message'?: string
+  /** MultipleOf constraint error message */
+  readonly 'x-multipleOf-message'?: string
+  /** Per-value enum error messages */
+  readonly 'x-enum-error-messages'?: { readonly [k: string]: string }
 
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */
-  name?: string
+  readonly name?: string
   /** Allow additional properties via index signature */
-  [key: string]: unknown
+  readonly [k: string]: unknown
 }

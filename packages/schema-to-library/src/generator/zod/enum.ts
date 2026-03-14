@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { error } from '../../utils/index.js'
 
 /**
@@ -24,9 +24,9 @@ export function _enum(schema: JSONSchema): string {
     `z.tuple([${arr.map((i: unknown) => `z.literal(${lit(i)})`).join(',')}])`
 
   /* ---------------------- error messages ----------------------- */
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const errArg = errorMessage ? `,${error(errorMessage)}` : ''
-  const enumMessages = schema['x-enum-error-messages'] as Record<string, string> | undefined
+  const enumMessages = schema['x-enum-error-messages']
   const litErrArg = (v: unknown): string => {
     if (enumMessages) {
       const key = String(v)

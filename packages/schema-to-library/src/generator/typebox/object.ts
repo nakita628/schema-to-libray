@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { typebox } from './typebox.js'
 
 export function object(
@@ -40,7 +40,7 @@ export function object(
 }
 
 function propertiesSchema(
-  properties: Record<string, JSONSchema>,
+  properties: { [k: string]: JSONSchema },
   required: readonly string[],
   rootName: string,
   isTypebox: boolean,

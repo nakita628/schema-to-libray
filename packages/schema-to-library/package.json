@@ -30,14 +30,43 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./zod": {
+      "types": "./dist/zod.d.ts",
+      "import": "./dist/zod.js"
+    },
+    "./valibot": {
+      "types": "./dist/valibot.d.ts",
+      "import": "./dist/valibot.js"
+    },
+    "./effect": {
+      "types": "./dist/effect.d.ts",
+      "import": "./dist/effect.js"
+    },
+    "./typebox": {
+      "types": "./dist/typebox.d.ts",
+      "import": "./dist/typebox.js"
+    },
+    "./arktype": {
+      "types": "./dist/arktype.d.ts",
+      "import": "./dist/arktype.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "zod": ["./dist/zod.d.ts"],
+      "valibot": ["./dist/valibot.d.ts"],
+      "effect": ["./dist/effect.d.ts"],
+      "typebox": ["./dist/typebox.d.ts"],
+      "arktype": ["./dist/arktype.d.ts"]
     }
   },
   "bin": {
-    "schema-to-zod": "dist/zod.js",
-    "schema-to-valibot": "dist/valibot.js",
-    "schema-to-effect": "dist/effect.js",
-    "schema-to-typebox": "dist/typebox.js",
-    "schema-to-arktype": "dist/arktype.js"
+    "schema-to-zod": "dist/cli/zod.js",
+    "schema-to-valibot": "dist/cli/valibot.js",
+    "schema-to-effect": "dist/cli/effect.js",
+    "schema-to-typebox": "dist/cli/typebox.js",
+    "schema-to-arktype": "dist/cli/arktype.js"
   },
   "scripts": {
     "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",

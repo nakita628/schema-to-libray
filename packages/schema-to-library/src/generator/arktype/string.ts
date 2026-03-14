@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
   email: 'string.email',
@@ -12,7 +12,7 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
 
   const format = schema.format && FORMAT_MAP[schema.format]

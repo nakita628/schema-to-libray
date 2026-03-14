@@ -25,8 +25,9 @@ export function toPascalCase(name: string): string {
  * normalizeTypes(undefined) // []
  * ```
  */
-export function normalizeTypes(t?: string | string[]): string[] {
-  return t === undefined ? [] : Array.isArray(t) ? t : [t]
+export function normalizeTypes(t?: string | readonly string[]): string[] {
+  if (t === undefined) return []
+  return Array.isArray(t) ? [...t] : [t as string]
 }
 
 /**

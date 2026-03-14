@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { error } from '../../utils/index.js'
 
 const FORMAT_STRING: { readonly [k: string]: string } = {
@@ -41,7 +41,7 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
  * ```
  */
 export function string(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const format = schema.format && FORMAT_STRING[schema.format]
 
   const base = (() => {
@@ -49,17 +49,17 @@ export function string(schema: JSONSchema): string {
     return errorMessage ? `z.${format.replace(/\(\)$/, `(${error(errorMessage)})`)}` : `z.${format}`
   })()
 
-  const patternMessage = schema['x-pattern-message'] as string | undefined
+  const patternMessage = schema['x-pattern-message']
   const patternMsgPart = patternMessage ? `,${error(patternMessage)}` : ''
   const pattern = schema.pattern
     ? `.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternMsgPart})`
     : undefined
 
-  const sizeMessage = schema['x-size-message'] as string | undefined
+  const sizeMessage = schema['x-size-message']
   const sizeMsgPart = sizeMessage ? `,${error(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message'] as string | undefined
+  const minimumMessage = schema['x-minimum-message']
   const minMsgPart = minimumMessage ? `,${error(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message'] as string | undefined
+  const maximumMessage = schema['x-maximum-message']
   const maxMsgPart = maximumMessage ? `,${error(maximumMessage)}` : ''
 
   const isFixedLength =

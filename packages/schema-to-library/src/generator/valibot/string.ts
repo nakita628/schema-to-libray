@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { valibotMessage } from '../../utils/index.js'
 
 const FORMAT_PIPE: { readonly [k: string]: string } = {
@@ -15,7 +15,7 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const format = schema.format && FORMAT_PIPE[schema.format]
 
   const baseMsgPart = errorMessage ? valibotMessage(errorMessage) : ''
@@ -31,10 +31,10 @@ export function string(schema: JSONSchema): string {
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
 
-  const patternMessage = schema['x-pattern-message'] as string | undefined
-  const sizeMessage = schema['x-size-message'] as string | undefined
-  const minimumMessage = schema['x-minimum-message'] as string | undefined
-  const maximumMessage = schema['x-maximum-message'] as string | undefined
+  const patternMessage = schema['x-pattern-message']
+  const sizeMessage = schema['x-size-message']
+  const minimumMessage = schema['x-minimum-message']
+  const maximumMessage = schema['x-maximum-message']
 
   const actions = [
     formatWithMsg ?? format,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { _enum } from './enum.js'
 
 // Test run

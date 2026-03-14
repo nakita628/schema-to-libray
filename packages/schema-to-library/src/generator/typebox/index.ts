@@ -1,5 +1,5 @@
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
@@ -7,7 +7,7 @@ export function schemaToTypebox(schema: JSONSchema, options?: { exportType?: boo
   const { exportType = true } = options ?? {}
   const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
 
-  const definitions: Record<string, JSONSchema> = {
+  const definitions: { [k: string]: JSONSchema } = {
     ...(schema.definitions ?? {}),
     ...(schema.$defs ?? {}),
   }

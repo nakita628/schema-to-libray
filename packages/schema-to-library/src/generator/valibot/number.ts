@@ -1,12 +1,12 @@
-import type { JSONSchema } from '../../types/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { valibotMessage } from '../../utils/index.js'
 
 export function number(schema: JSONSchema): string {
-  const errorMessage = schema['x-error-message'] as string | undefined
+  const errorMessage = schema['x-error-message']
   const baseMsgPart = errorMessage ? valibotMessage(errorMessage) : ''
-  const minimumMessage = schema['x-minimum-message'] as string | undefined
-  const maximumMessage = schema['x-maximum-message'] as string | undefined
-  const multipleOfMessage = schema['x-multipleOf-message'] as string | undefined
+  const minimumMessage = schema['x-minimum-message']
+  const maximumMessage = schema['x-maximum-message']
+  const multipleOfMessage = schema['x-multipleOf-message']
 
   const minimum = (() => {
     if (schema.minimum !== undefined)
