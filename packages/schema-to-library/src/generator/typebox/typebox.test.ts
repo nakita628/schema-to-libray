@@ -517,5 +517,53 @@ describe('typebox', () => {
         )
       })
     })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [
+          { $ref: '#/components/schemas/User' },
+          'UserSchema',
+          'Type.Recursive((_Self) => UserSchema)',
+        ],
+        // Nullable ref with openapi
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'Type.Union([PetSchema,Type.Null()])',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'Type.Union([ASchema,Type.String()])',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('typebox(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(typebox(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRef'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'Type.Unknown()'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to any (no # and no http)
+      [{ $ref: 'relative/path' }, 'Type.Any()'],
+      // Self reference #
+      [{ $ref: '#' }, 'Type.Recursive((_Self) => Schema)'],
+    ])('typebox(%o) → %s', (input, expected) => {
+      expect(typebox(input)).toBe(expected)
+    })
   })
 })
