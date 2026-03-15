@@ -728,5 +728,53 @@ describe('effect', () => {
         )
       })
     })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [
+          { $ref: '#/components/schemas/User' },
+          'UserSchema',
+          'Schema.suspend(() => UserSchema)',
+        ],
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then effect() wraps again)
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'Schema.NullOr(Schema.NullOr(PetSchema))',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'Schema.Union(ASchema,Schema.String)',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('effect(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(effect(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRefSchema'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'Schema.Unknown'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to unknown (no # and no http)
+      [{ $ref: 'relative/path' }, 'Schema.Unknown'],
+      // Self reference #
+      [{ $ref: '#' }, 'Schema.suspend(() => Schema)'],
+    ])('effect(%o) → %s', (input, expected) => {
+      expect(effect(input)).toBe(expected)
+    })
   })
 })

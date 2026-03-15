@@ -368,5 +368,45 @@ describe('arktype', () => {
         )
       })
     })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName (arktype wraps in quotes)
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema', '"UserSchema"'],
+        // Nullable ref with openapi
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          '"PetSchema | null"',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', '"BaseSchema"'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          '"ASchema | string"',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', '"MySchemaSchema"'],
+      ])('arktype(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(arktype(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, '"SomeRef"'],
+      // External file or URL without fragment → unknown
+      [{ $ref: 'other.json#/definitions/Foo' }, '"unknown"'],
+      [{ $ref: 'https://example.com/schemas/User.json' }, '"unknown"'],
+      [{ $ref: 'relative/path' }, '"unknown"'],
+      // Self reference #
+      [{ $ref: '#' }, '"Schema"'],
+    ])('arktype(%o) → %s', (input, expected) => {
+      expect(arktype(input)).toBe(expected)
+    })
   })
 })

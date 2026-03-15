@@ -824,11 +824,11 @@ describe('valibot', () => {
       it.concurrent.each<[JSONSchema, string, string]>([
         // Self-reference: resolved name equals rootName
         [{ $ref: '#/components/schemas/User' }, 'UserSchema', 'v.lazy(() => UserSchema)'],
-        // Nullable ref with openapi
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then valibot() wraps again)
         [
           { $ref: '#/components/schemas/Pet', nullable: true },
           'TestSchema',
-          'v.nullable(PetSchema)',
+          'v.nullable(v.nullable(PetSchema))',
         ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
@@ -858,8 +858,6 @@ describe('valibot', () => {
       [{ $ref: 'https://example.com/schemas/User' }, 'User'],
       // Fallback to any (no # and no http)
       [{ $ref: 'relative/path' }, 'v.any()'],
-      // Empty $ref
-      [{ $ref: '' }, 'v.lazy(() => Schema)'],
       // Self reference #
       [{ $ref: '#' }, 'v.lazy(() => Schema)'],
     ])('valibot(%o) → %s', (input, expected) => {

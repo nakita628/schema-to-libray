@@ -688,8 +688,18 @@ export type Order = z.infer<typeof Order>`
         },
         { openapi: true },
       )
-      expect(result).toContain('const StreetAddress')
-      expect(result).toContain('export const RootSchema')
+      const expected = `import * as z from 'zod'
+
+type _RootSchema = {address: _Street-address}
+
+type _StreetAddress = {city: string}
+
+const StreetAddress: z.ZodType<_StreetAddress> = z.object({city:z.string()})
+
+export const RootSchema: z.ZodType<_RootSchema> = z.object({address:z.lazy(() => StreetAddress)})
+
+export type RootSchema = z.infer<typeof RootSchema>`
+      expect(result).toBe(expected)
     })
 
     it('should not affect output when openapi is false', () => {

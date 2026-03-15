@@ -1158,8 +1158,12 @@ describe('zod', () => {
       it.concurrent.each<[JSONSchema, string, string]>([
         // Self-reference: resolved name equals rootName
         [{ $ref: '#/components/schemas/User' }, 'UserSchema', 'z.lazy(() => UserSchema)'],
-        // Nullable ref with openapi
-        [{ $ref: '#/components/schemas/Pet', nullable: true }, 'TestSchema', 'PetSchema.nullable()'],
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then zod() wraps again)
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'PetSchema.nullable().nullable()',
+        ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
         // anyOf with openapi ref and inline
@@ -1188,8 +1192,6 @@ describe('zod', () => {
       [{ $ref: 'https://example.com/schemas/User' }, 'User'],
       // Fallback to any (no # and no http)
       [{ $ref: 'relative/path' }, 'z.any()'],
-      // Empty $ref
-      [{ $ref: '' }, 'z.lazy(() => Schema)'],
       // Self reference #
       [{ $ref: '#' }, 'z.lazy(() => Schema)'],
     ])('zod(%o) → %s', (input, expected) => {

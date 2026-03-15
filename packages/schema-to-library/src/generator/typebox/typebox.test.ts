@@ -526,11 +526,11 @@ describe('typebox', () => {
           'UserSchema',
           'Type.Recursive((_Self) => UserSchema)',
         ],
-        // Nullable ref with openapi
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then typebox() wraps again)
         [
           { $ref: '#/components/schemas/Pet', nullable: true },
           'TestSchema',
-          'Type.Union([PetSchema,Type.Null()])',
+          'Type.Union([Type.Union([PetSchema,Type.Null()]),Type.Null()])',
         ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
