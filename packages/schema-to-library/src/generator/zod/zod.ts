@@ -1,5 +1,10 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { normalizeTypes, toPascalCase } from '../../utils/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import {
+  normalizeTypes,
+  resolveOpenAPIRef,
+  toIdentifierPascalCase,
+  toPascalCase,
+} from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -12,6 +17,7 @@ import { string } from './string.js'
  * @param schema - JSON Schema object to convert
  * @param rootName - Root schema name for reference resolution
  * @param isZod - Whether this is called from zod function
+ * @param options - Generator options
  * @returns Generated Zod schema code string
  * @example
  * ```ts
@@ -22,15 +28,16 @@ export function zod(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isZod: boolean = false,
+  options?: GeneratorOptions,
 ): string {
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName, isZod), schema)
+      return wrap(ref(schema, rootName, isZod, options), schema)
     }
     if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
       if (schema.items?.$ref) {
-        return `z.array(${wrap(ref(schema.items, rootName, isZod), schema.items)})`
+        return `z.array(${wrap(ref(schema.items, rootName, isZod, options), schema.items)})`
       }
       return wrap('z.array(z.any())', schema)
     }
@@ -39,16 +46,16 @@ export function zod(
   // combinators
   if (schema.oneOf) {
     if (!schema.oneOf?.length) return wrap('z.any()', schema)
-    const schemas = schema.oneOf.map((s: JSONSchema) => zod(s, rootName, isZod))
+    const schemas = schema.oneOf.map((s: JSONSchema) => zod(s, rootName, isZod, options))
     return wrap(`z.union([${schemas.join(',')}])`, schema)
   }
   if (schema.anyOf) {
     if (!schema.anyOf?.length) return wrap('z.any()', schema)
-    const schemas = schema.anyOf.map((s: JSONSchema) => zod(s, rootName, isZod))
+    const schemas = schema.anyOf.map((s: JSONSchema) => zod(s, rootName, isZod, options))
     return wrap(`z.union([${schemas.join(',')}])`, schema)
   }
   if (schema.allOf) {
-    return allOf(schema, rootName, isZod)
+    return allOf(schema, rootName, isZod, options)
   }
   // const
   if (schema.const) {
@@ -57,15 +64,15 @@ export function zod(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isZod, zod), schema)
+  if (schema.properties) return wrap(object(schema, rootName, isZod, zod, options), schema)
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('z.boolean()', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isZod), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isZod, zod), schema)
+  if (types.includes('array')) return wrap(array(schema, rootName, isZod, options), schema)
+  if (types.includes('object')) return wrap(object(schema, rootName, isZod, zod, options), schema)
   if (types.includes('date')) return wrap('z.date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('z.null()', schema)
 
@@ -76,7 +83,12 @@ export function zod(
 /**
  * Handle allOf combinator
  */
-function allOf(schema: JSONSchema, rootName: string, isZod: boolean): string {
+function allOf(
+  schema: JSONSchema,
+  rootName: string,
+  isZod: boolean,
+  options?: GeneratorOptions,
+): string {
   if (!schema.allOf?.length) return wrap('z.any()', schema)
 
   const isNullType = (s: JSONSchema) =>
@@ -95,7 +107,7 @@ function allOf(schema: JSONSchema, rootName: string, isZod: boolean): string {
 
   const schemas = schema.allOf
     .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
-    .map((s) => zod(s, rootName, isZod))
+    .map((s) => zod(s, rootName, isZod, options))
 
   if (!schemas.length) return wrap('z.any()', { ...schema, nullable })
 
@@ -113,8 +125,13 @@ function allOf(schema: JSONSchema, rootName: string, isZod: boolean): string {
 /**
  * Generate Zod array schema from JSON Schema
  */
-function array(schema: JSONSchema, rootName: string, isZod: boolean = false): string {
-  const base = `z.array(${schema.items ? zod(schema.items, rootName, isZod) : 'z.any()'})`
+function array(
+  schema: JSONSchema,
+  rootName: string,
+  isZod: boolean = false,
+  options?: GeneratorOptions,
+): string {
+  const base = `z.array(${schema.items ? zod(schema.items, rootName, isZod, options) : 'z.any()'})`
 
   if (typeof schema.minItems === 'number' && typeof schema.maxItems === 'number') {
     if (schema.minItems === schema.maxItems) return `${base}.length(${schema.minItems})`
@@ -154,10 +171,26 @@ export function wrap(zodStr: string, schema: JSONSchema): string {
 /**
  * Generate Zod reference schema from JSON Schema $ref
  */
-function ref(schema: JSONSchema, rootName: string, isZod: boolean = false): string {
+function ref(
+  schema: JSONSchema,
+  rootName: string,
+  isZod: boolean = false,
+  options?: GeneratorOptions,
+): string {
   // self reference (#)
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`z.lazy(() => ${rootName})`, schema)
+  }
+
+  // OpenAPI component-aware resolution
+  if (options?.openapi && schema.$ref) {
+    const resolved = resolveOpenAPIRef(schema.$ref)
+    if (resolved) {
+      if (resolved === rootName) {
+        return wrap(`z.lazy(() => ${resolved})`, schema)
+      }
+      return wrap(isZod ? `z.lazy(() => ${resolved})` : resolved, schema)
+    }
   }
 
   // components / definitions / $defs
@@ -167,9 +200,11 @@ function ref(schema: JSONSchema, rootName: string, isZod: boolean = false): stri
     ['#/$defs/', 'Schema'],
   ] as const
 
+  const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
+
   for (const [prefix] of TABLE) {
     if (schema.$ref?.startsWith(prefix)) {
-      const pascalCaseName = toPascalCase(schema.$ref.slice(prefix.length))
+      const pascalCaseName = toName(schema.$ref.slice(prefix.length))
       if (pascalCaseName === rootName) {
         return wrap(`z.lazy(() => ${pascalCaseName})`, schema)
       }
@@ -186,7 +221,7 @@ function ref(schema: JSONSchema, rootName: string, isZod: boolean = false): stri
   if (schema.$ref?.startsWith('#')) {
     const refName = schema.$ref.slice(1)
     if (refName === '') return `z.lazy(() => ${rootName})`
-    const pascalCaseName = toPascalCase(refName)
+    const pascalCaseName = toName(refName)
     return isZod
       ? `z.lazy(() => ${pascalCaseName})`
       : rootName === 'Schema'

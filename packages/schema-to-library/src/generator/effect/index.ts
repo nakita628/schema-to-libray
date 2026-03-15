@@ -1,6 +1,6 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import { toPascalCase } from '../../utils/index.js'
+import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
 
@@ -37,9 +37,11 @@ function hasSelfReference(schema: JSONSchema): boolean {
 /**
  * Convert JSON Schema to Effect Schema code
  */
-export function schemaToEffect(schema: JSONSchema, options?: { exportType?: boolean }): string {
-  const { exportType = true } = options ?? {}
-  const pascalTitle = schema.title ? toPascalCase(schema.title) : 'Schema_'
+export function schemaToEffect(schema: JSONSchema, options?: { exportType?: boolean; openapi?: boolean }): string {
+  const { exportType = true, openapi = false } = options ?? {}
+  const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
+  const toName = openapi ? toIdentifierPascalCase : toPascalCase
+  const pascalTitle = schema.title ? toName(schema.title) : 'Schema_'
   // Avoid conflict with `import { Schema } from "effect"`
   const rootName = pascalTitle === 'Schema' ? 'Schema_' : pascalTitle
 
@@ -67,7 +69,7 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
         const otherTypeDefs = nonRootDefs.map((name) => {
           const def = definitions[name]
           if (!def) return `// ⚠️ missing definition for ${name}`
-          const pc = toPascalCase(name)
+          const pc = toName(name)
           return `type _${pc} = ${type(def, pc)}`
         })
         return [rootTypeDef, ...otherTypeDefs].join('\n\n')
@@ -79,15 +81,15 @@ export function schemaToEffect(schema: JSONSchema, options?: { exportType?: bool
     .map((name) => {
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
-      const pc = toPascalCase(name)
-      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true)}`
+      const pc = toName(name)
+      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true, genOptions)}`
     })
     .join('\n\n')
 
   // Generate root schema
   const rootSchema = rootInDefs
-    ? effect(rootDefinition, rootName, true)
-    : effect(schema, rootName, true)
+    ? effect(rootDefinition, rootName, true, genOptions)
+    : effect(schema, rootName, true, genOptions)
 
   const rootExport = needsTypeDef
     ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`

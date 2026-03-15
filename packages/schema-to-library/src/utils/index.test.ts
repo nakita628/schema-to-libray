@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { effectMessage, error, normalizeTypes, toPascalCase, valibotMessage } from './index.js'
+import {
+  effectMessage,
+  error,
+  normalizeTypes,
+  resolveOpenAPIRef,
+  toIdentifierPascalCase,
+  toPascalCase,
+  valibotMessage,
+} from './index.js'
 
 // Test run
 // pnpm vitest run ./src/utils/index.test.ts
@@ -85,6 +93,59 @@ describe('helper', () => {
         // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
         '{message:(issue) => `Error: ${issue}`}',
       )
+    })
+  })
+
+  describe('toIdentifierPascalCase', () => {
+    it.concurrent.each<[string, string]>([
+      ['user', 'User'],
+      ['userProfile', 'UserProfile'],
+      ['user-name', 'UserName'],
+      ['hello_world', 'HelloWorld'],
+      ['user.name', 'UserName'],
+      ['user name', 'UserName'],
+      ['123value', '_123Value'],
+      ['a-b-c', 'ABC'],
+      ['already-PascalCase', 'AlreadyPascalCase'],
+      ['', 'Schema'],
+      ['---', 'Schema'],
+      ['foo--bar', 'FooBar'],
+      ['user_name_test', 'UserNameTest'],
+      // Additional edge cases
+      ['a', 'A'],
+      ['ABC', 'ABC'],
+      ['123', '_123'],
+      ['v2-api-user', 'V2ApiUser'],
+      ['com.example.User', 'ComExampleUser'],
+      ['foo---bar___baz', 'FooBarBaz'],
+    ])('toIdentifierPascalCase(%s) → %s', (input, expected) => {
+      expect(toIdentifierPascalCase(input)).toBe(expected)
+    })
+  })
+
+  describe('resolveOpenAPIRef', () => {
+    it.concurrent.each<[string, string | null]>([
+      ['#/components/schemas/User', 'UserSchema'],
+      ['#/components/schemas/user-profile', 'UserProfileSchema'],
+      ['#/components/parameters/UserId', 'UserIdParamsSchema'],
+      ['#/components/headers/X-Request-Id', 'XRequestIdHeaderSchema'],
+      ['#/components/securitySchemes/Bearer', 'BearerSecurityScheme'],
+      ['#/components/requestBodies/CreateUser', 'CreateUserRequestBody'],
+      ['#/components/responses/NotFound', 'NotFoundResponse'],
+      ['#/components/examples/UserExample', 'UserExampleExample'],
+      ['#/components/links/GetUser', 'GetUserLink'],
+      ['#/components/callbacks/OnEvent', 'OnEventCallback'],
+      ['#/components/pathItems/UserPath', 'UserPathPathItem'],
+      ['#/components/mediaTypes/JsonMedia', 'JsonMediaMediaTypeSchema'],
+      ['#/definitions/Address', null],
+      ['#/$defs/Address', null],
+      ['#', null],
+      // URL-encoded $ref
+      ['#/components/schemas/My%20Schema', 'MySchemaSchema'],
+      // Empty component name
+      ['#/components/schemas/', 'SchemaSchema'],
+    ])('resolveOpenAPIRef(%s) → %s', (input, expected) => {
+      expect(resolveOpenAPIRef(input)).toBe(expected)
     })
   })
 })

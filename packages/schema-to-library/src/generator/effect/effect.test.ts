@@ -667,4 +667,114 @@ describe('effect', () => {
       expect(effect(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'Schema.Array(PetSchema)',
+        ],
+        [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
+        [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
+      ])('effect(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(effect(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('ref with openapi and isEffect', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'Schema.suspend(() => UserSchema)'],
+        [{ $ref: '#/components/parameters/UserId' }, 'Schema.suspend(() => UserIdParamsSchema)'],
+        [{ $ref: '#/components/schemas/Tree' }, 'Schema.suspend(() => TreeSchema)'],
+      ])('effect(%o, "TreeSchema", true, { openapi: true }) → %s', (input, expected) => {
+        expect(effect(input, 'TreeSchema', true, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
+          'Schema.Struct({pet:PetSchema,owner:Schema.optional(UserProfileSchema)})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
+          'Schema.Union(CatSchema,DogSchema)',
+        )
+      })
+    })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [
+          { $ref: '#/components/schemas/User' },
+          'UserSchema',
+          'Schema.suspend(() => UserSchema)',
+        ],
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then effect() wraps again)
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'Schema.NullOr(Schema.NullOr(PetSchema))',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'Schema.Union(ASchema,Schema.String)',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('effect(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(effect(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRefSchema'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'Schema.Unknown'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to unknown (no # and no http)
+      [{ $ref: 'relative/path' }, 'Schema.Unknown'],
+      // Self reference #
+      [{ $ref: '#' }, 'Schema.suspend(() => Schema)'],
+    ])('effect(%o) → %s', (input, expected) => {
+      expect(effect(input)).toBe(expected)
+    })
+  })
 })

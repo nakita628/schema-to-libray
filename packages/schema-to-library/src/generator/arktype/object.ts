@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import type { arktype } from './arktype.js'
 
 export function object(
@@ -6,6 +6,7 @@ export function object(
   rootName: string,
   isArktype: boolean,
   arktypeFn: typeof arktype,
+  options?: GeneratorOptions,
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -17,11 +18,12 @@ export function object(
           isArktype,
           arktypeFn,
           schema.additionalProperties === true ? 'delete' : undefined,
+          options,
         )
       }
       return '"unknown"'
     }
-    const inner = `{"[string]":${arktypeFn(schema.additionalProperties, rootName, isArktype)}}`
+    const inner = `{"[string]":${arktypeFn(schema.additionalProperties, rootName, isArktype, options)}}`
     return isArktype ? inner : `type(${inner})`
   }
   if (schema.properties) {
@@ -32,12 +34,13 @@ export function object(
       isArktype,
       arktypeFn,
       schema.additionalProperties === false ? 'reject' : undefined,
+      options,
     )
   }
-  if (schema.oneOf) return arktypeFn(schema, rootName, isArktype)
-  if (schema.anyOf) return arktypeFn(schema, rootName, isArktype)
-  if (schema.allOf) return arktypeFn(schema, rootName, isArktype)
-  if (schema.not) return arktypeFn(schema, rootName, isArktype)
+  if (schema.oneOf) return arktypeFn(schema, rootName, isArktype, options)
+  if (schema.anyOf) return arktypeFn(schema, rootName, isArktype, options)
+  if (schema.allOf) return arktypeFn(schema, rootName, isArktype, options)
+  if (schema.not) return arktypeFn(schema, rootName, isArktype, options)
   return isArktype ? '{}' : 'type({})'
 }
 
@@ -48,10 +51,11 @@ function propertiesSchema(
   isArktype: boolean,
   arktypeFn: typeof arktype,
   additionalMode?: 'delete' | 'reject',
+  options?: GeneratorOptions,
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
-      const parsed = arktypeFn(schema, rootName, isArktype)
+      const parsed = arktypeFn(schema, rootName, isArktype, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)

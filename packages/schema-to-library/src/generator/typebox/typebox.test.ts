@@ -466,4 +466,104 @@ describe('typebox', () => {
       expect(typebox(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'Type.Array(PetSchema)',
+        ],
+        [{ $ref: '#/definitions/Address' }, 'Address'],
+        [{ $ref: '#/$defs/Address' }, 'Address'],
+      ])('typebox(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(typebox(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(typebox(schema, 'Schema', false, { openapi: true })).toBe(
+          'Type.Object({pet:PetSchema,owner:Type.Optional(UserProfileSchema)})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(typebox(schema, 'Schema', false, { openapi: true })).toBe(
+          'Type.Union([CatSchema,DogSchema])',
+        )
+      })
+    })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [
+          { $ref: '#/components/schemas/User' },
+          'UserSchema',
+          'Type.Recursive((_Self) => UserSchema)',
+        ],
+        // Nullable ref with openapi (double-wrapped: ref() wraps, then typebox() wraps again)
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'Type.Union([Type.Union([PetSchema,Type.Null()]),Type.Null()])',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'Type.Union([ASchema,Type.String()])',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('typebox(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(typebox(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRef'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'Type.Unknown()'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to any (no # and no http)
+      [{ $ref: 'relative/path' }, 'Type.Any()'],
+      // Self reference #
+      [{ $ref: '#' }, 'Type.Recursive((_Self) => Schema)'],
+    ])('typebox(%o) → %s', (input, expected) => {
+      expect(typebox(input)).toBe(expected)
+    })
+  })
 })
