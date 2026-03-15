@@ -1,5 +1,10 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { normalizeTypes, toPascalCase } from '../../utils/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import {
+  normalizeTypes,
+  resolveOpenAPIRef,
+  toIdentifierPascalCase,
+  toPascalCase,
+} from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -10,15 +15,16 @@ export function typebox(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isTypebox: boolean = false,
+  options?: GeneratorOptions,
 ): string {
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName), schema)
+      return wrap(ref(schema, rootName, options), schema)
     }
     if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
       if (schema.items?.$ref) {
-        return `Type.Array(${wrap(ref(schema.items, rootName), schema.items)})`
+        return `Type.Array(${wrap(ref(schema.items, rootName, options), schema.items)})`
       }
       return wrap('Type.Array(Type.Any())', schema)
     }
@@ -27,16 +33,16 @@ export function typebox(
   // combinators
   if (schema.oneOf) {
     if (!schema.oneOf?.length) return wrap('Type.Any()', schema)
-    const schemas = schema.oneOf.map((s: JSONSchema) => typebox(s, rootName, isTypebox))
+    const schemas = schema.oneOf.map((s: JSONSchema) => typebox(s, rootName, isTypebox, options))
     return wrap(`Type.Union([${schemas.join(',')}])`, schema)
   }
   if (schema.anyOf) {
     if (!schema.anyOf?.length) return wrap('Type.Any()', schema)
-    const schemas = schema.anyOf.map((s: JSONSchema) => typebox(s, rootName, isTypebox))
+    const schemas = schema.anyOf.map((s: JSONSchema) => typebox(s, rootName, isTypebox, options))
     return wrap(`Type.Union([${schemas.join(',')}])`, schema)
   }
   if (schema.allOf) {
-    return allOf(schema, rootName, isTypebox)
+    return allOf(schema, rootName, isTypebox, options)
   }
   // const
   if (schema.const) {
@@ -45,22 +51,27 @@ export function typebox(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isTypebox, typebox), schema)
+  if (schema.properties) return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('Type.Boolean()', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isTypebox), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isTypebox, typebox), schema)
+  if (types.includes('array')) return wrap(array(schema, rootName, isTypebox, options), schema)
+  if (types.includes('object')) return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
   if (types.includes('date')) return wrap('Type.Date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Type.Null()', schema)
 
   return wrap('Type.Any()', schema)
 }
 
-function allOf(schema: JSONSchema, rootName: string, isTypebox: boolean): string {
+function allOf(
+  schema: JSONSchema,
+  rootName: string,
+  isTypebox: boolean,
+  options?: GeneratorOptions,
+): string {
   if (!schema.allOf?.length) return wrap('Type.Any()', schema)
 
   const isNullType = (s: JSONSchema) =>
@@ -79,7 +90,7 @@ function allOf(schema: JSONSchema, rootName: string, isTypebox: boolean): string
 
   const schemas = schema.allOf
     .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
-    .map((s) => typebox(s, rootName, isTypebox))
+    .map((s) => typebox(s, rootName, isTypebox, options))
 
   if (!schemas.length) return wrap('Type.Any()', { ...schema, nullable })
 
@@ -95,8 +106,13 @@ function allOf(schema: JSONSchema, rootName: string, isTypebox: boolean): string
   return wrap(baseResult, { ...schema, nullable })
 }
 
-function array(schema: JSONSchema, rootName: string, isTypebox: boolean = false): string {
-  const items = schema.items ? typebox(schema.items, rootName, isTypebox) : 'Type.Any()'
+function array(
+  schema: JSONSchema,
+  rootName: string,
+  isTypebox: boolean = false,
+  options?: GeneratorOptions,
+): string {
+  const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
 
   const isFixedLength =
     typeof schema.minItems === 'number' &&
@@ -140,9 +156,20 @@ export function wrap(typeboxStr: string, schema: JSONSchema): string {
   return isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
 }
 
-function ref(schema: JSONSchema, rootName: string): string {
+function ref(schema: JSONSchema, rootName: string, options?: GeneratorOptions): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`Type.Recursive((_Self) => ${rootName})`, schema)
+  }
+
+  // OpenAPI component-aware resolution
+  if (options?.openapi && schema.$ref) {
+    const resolved = resolveOpenAPIRef(schema.$ref)
+    if (resolved) {
+      if (resolved === rootName) {
+        return wrap(`Type.Recursive((_Self) => ${resolved})`, schema)
+      }
+      return wrap(resolved, schema)
+    }
   }
 
   const TABLE = [
@@ -151,9 +178,11 @@ function ref(schema: JSONSchema, rootName: string): string {
     ['#/$defs/', 'Schema'],
   ] as const
 
+  const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
+
   for (const [prefix] of TABLE) {
     if (schema.$ref?.startsWith(prefix)) {
-      const pascalCaseName = toPascalCase(schema.$ref.slice(prefix.length))
+      const pascalCaseName = toName(schema.$ref.slice(prefix.length))
       return wrap(pascalCaseName, schema)
     }
   }
@@ -161,7 +190,7 @@ function ref(schema: JSONSchema, rootName: string): string {
   if (schema.$ref?.startsWith('#')) {
     const refName = schema.$ref.slice(1)
     if (refName === '') return rootName
-    return toPascalCase(refName)
+    return toName(refName)
   }
 
   if (schema.$ref?.includes('#')) return 'Type.Unknown()'

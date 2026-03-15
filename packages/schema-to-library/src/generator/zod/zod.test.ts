@@ -1082,4 +1082,118 @@ describe('zod', () => {
       })
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        // schemas → Schema suffix
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        // parameters → ParamsSchema suffix
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        // headers → HeaderSchema suffix
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        // responses → Response suffix
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        // securitySchemes → SecurityScheme suffix
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        // requestBodies → RequestBody suffix
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        // array of refs
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'z.array(PetSchema)',
+        ],
+        // definitions/$defs are NOT affected (no OpenAPI suffix)
+        [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
+        [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
+      ])('zod(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(zod(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('ref with openapi and isZod', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        // With isZod=true, OpenAPI refs use z.lazy()
+        [{ $ref: '#/components/schemas/User' }, 'z.lazy(() => UserSchema)'],
+        [{ $ref: '#/components/parameters/UserId' }, 'z.lazy(() => UserIdParamsSchema)'],
+        // Self-reference uses z.lazy()
+        [{ $ref: '#/components/schemas/Tree' }, 'z.lazy(() => TreeSchema)'],
+      ])('zod(%o, "TreeSchema", true, { openapi: true }) → %s', (input, expected) => {
+        expect(zod(input, 'TreeSchema', true, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
+          'z.object({pet:PetSchema,owner:UserProfileSchema.optional()})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
+          'z.union([CatSchema,DogSchema])',
+        )
+      })
+    })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema', 'z.lazy(() => UserSchema)'],
+        // Nullable ref with openapi
+        [{ $ref: '#/components/schemas/Pet', nullable: true }, 'TestSchema', 'PetSchema.nullable()'],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'z.union([ASchema,z.string()])',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('zod(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(zod(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRefSchema'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'z.unknown()'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to any (no # and no http)
+      [{ $ref: 'relative/path' }, 'z.any()'],
+      // Empty $ref
+      [{ $ref: '' }, 'z.lazy(() => Schema)'],
+      // Self reference #
+      [{ $ref: '#' }, 'z.lazy(() => Schema)'],
+    ])('zod(%o) → %s', (input, expected) => {
+      expect(zod(input)).toBe(expected)
+    })
+  })
 })

@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import type { valibot } from './valibot.js'
 
 export function object(
@@ -6,6 +6,7 @@ export function object(
   rootName: string,
   isValibot: boolean,
   valibotFn: typeof valibot,
+  options?: GeneratorOptions,
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -16,6 +17,7 @@ export function object(
           rootName,
           isValibot,
           valibotFn,
+          options,
         )
         if (schema.additionalProperties === true) {
           return s.replace('v.object', 'v.looseObject')
@@ -32,6 +34,7 @@ export function object(
       rootName,
       isValibot,
       valibotFn,
+      options,
     )
     if (schema.additionalProperties === false) {
       return result.replace('v.object', 'v.strictObject')
@@ -39,10 +42,10 @@ export function object(
     return result
   }
   // allOf, oneOf, anyOf, not
-  if (schema.oneOf) return valibotFn(schema, rootName, isValibot)
-  if (schema.anyOf) return valibotFn(schema, rootName, isValibot)
-  if (schema.allOf) return valibotFn(schema, rootName, isValibot)
-  if (schema.not) return valibotFn(schema, rootName, isValibot)
+  if (schema.oneOf) return valibotFn(schema, rootName, isValibot, options)
+  if (schema.anyOf) return valibotFn(schema, rootName, isValibot, options)
+  if (schema.allOf) return valibotFn(schema, rootName, isValibot, options)
+  if (schema.not) return valibotFn(schema, rootName, isValibot, options)
   return 'v.object({})'
 }
 
@@ -52,10 +55,11 @@ function propertiesSchema(
   rootName: string,
   isValibot: boolean,
   valibotFn: typeof valibot,
+  options?: GeneratorOptions,
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
-      const parsed = valibotFn(schema, rootName, isValibot)
+      const parsed = valibotFn(schema, rootName, isValibot, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)

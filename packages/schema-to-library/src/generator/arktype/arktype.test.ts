@@ -322,4 +322,51 @@ describe('arktype', () => {
       expect(arktype(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, '"UserSchema"'],
+        [{ $ref: '#/components/schemas/user-profile' }, '"UserProfileSchema"'],
+        [{ $ref: '#/components/parameters/UserId' }, '"UserIdParamsSchema"'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, '"XRequestIdHeaderSchema"'],
+        [{ $ref: '#/components/responses/NotFound' }, '"NotFoundResponse"'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, '"BearerSecurityScheme"'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, '"CreateUserRequestBody"'],
+        [{ $ref: '#/definitions/Address' }, '"Address"'],
+        [{ $ref: '#/$defs/Address' }, '"Address"'],
+      ])('arktype(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(arktype(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+          },
+          required: ['pet'],
+        }
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe(
+          'type({pet:"PetSchema"})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe(
+          '"CatSchema | DogSchema"',
+        )
+      })
+    })
+  })
 })

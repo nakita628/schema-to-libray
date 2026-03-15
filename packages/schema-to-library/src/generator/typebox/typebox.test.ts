@@ -466,4 +466,56 @@ describe('typebox', () => {
       expect(typebox(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'Type.Array(PetSchema)',
+        ],
+        [{ $ref: '#/definitions/Address' }, 'Address'],
+        [{ $ref: '#/$defs/Address' }, 'Address'],
+      ])('typebox(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(typebox(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(typebox(schema, 'Schema', false, { openapi: true })).toBe(
+          'Type.Object({pet:PetSchema,owner:Type.Optional(UserProfileSchema)})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(typebox(schema, 'Schema', false, { openapi: true })).toBe(
+          'Type.Union([CatSchema,DogSchema])',
+        )
+      })
+    })
+  })
 })

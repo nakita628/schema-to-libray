@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import type { effect } from './effect.js'
 
 export function object(
@@ -6,6 +6,7 @@ export function object(
   rootName: string,
   isEffect: boolean,
   effectFn: typeof effect,
+  options?: GeneratorOptions,
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -16,6 +17,7 @@ export function object(
           rootName,
           isEffect,
           effectFn,
+          options,
         )
       }
       return 'Schema.Unknown'
@@ -29,14 +31,15 @@ export function object(
       rootName,
       isEffect,
       effectFn,
+      options,
     )
     return result
   }
   // allOf, oneOf, anyOf, not
-  if (schema.oneOf) return effectFn(schema, rootName, isEffect)
-  if (schema.anyOf) return effectFn(schema, rootName, isEffect)
-  if (schema.allOf) return effectFn(schema, rootName, isEffect)
-  if (schema.not) return effectFn(schema, rootName, isEffect)
+  if (schema.oneOf) return effectFn(schema, rootName, isEffect, options)
+  if (schema.anyOf) return effectFn(schema, rootName, isEffect, options)
+  if (schema.allOf) return effectFn(schema, rootName, isEffect, options)
+  if (schema.not) return effectFn(schema, rootName, isEffect, options)
   return 'Schema.Struct({})'
 }
 
@@ -46,10 +49,11 @@ function propertiesSchema(
   rootName: string,
   isEffect: boolean,
   effectFn: typeof effect,
+  options?: GeneratorOptions,
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
-      const parsed = effectFn(schema, rootName, isEffect)
+      const parsed = effectFn(schema, rootName, isEffect, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)

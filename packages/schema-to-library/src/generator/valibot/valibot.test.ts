@@ -750,4 +750,120 @@ describe('valibot', () => {
       expect(valibot(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        // schemas → Schema suffix
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        // parameters → ParamsSchema suffix
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        // headers → HeaderSchema suffix
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        // responses → Response suffix
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        // securitySchemes → SecurityScheme suffix
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        // requestBodies → RequestBody suffix
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        // array of refs
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'v.array(PetSchema)',
+        ],
+        // definitions/$defs fallback (not OpenAPI component path)
+        [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
+        [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
+      ])('valibot(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(valibot(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('ref with openapi and isValibot', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'v.lazy(() => UserSchema)'],
+        [{ $ref: '#/components/parameters/UserId' }, 'v.lazy(() => UserIdParamsSchema)'],
+        [{ $ref: '#/components/schemas/Tree' }, 'v.lazy(() => TreeSchema)'],
+      ])('valibot(%o, "TreeSchema", true, { openapi: true }) → %s', (input, expected) => {
+        expect(valibot(input, 'TreeSchema', true, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(valibot(schema, 'Schema', false, { openapi: true })).toBe(
+          'v.object({pet:PetSchema,owner:v.optional(UserProfileSchema)})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(valibot(schema, 'Schema', false, { openapi: true })).toBe(
+          'v.union([CatSchema,DogSchema])',
+        )
+      })
+    })
+
+    describe('openapi edge cases', () => {
+      it.concurrent.each<[JSONSchema, string, string]>([
+        // Self-reference: resolved name equals rootName
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema', 'v.lazy(() => UserSchema)'],
+        // Nullable ref with openapi
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'v.nullable(PetSchema)',
+        ],
+        // allOf with openapi ref
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline
+        [
+          { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
+          'TestSchema',
+          'v.union([ASchema,v.string()])',
+        ],
+        // URL-encoded $ref with openapi
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
+      ])('valibot(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
+        expect(valibot(input, rootName, false, { openapi: true })).toBe(expected)
+      })
+    })
+  })
+
+  describe('ref edge cases (non-openapi)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      // Relative reference (#SomeRef)
+      [{ $ref: '#SomeRef' }, 'SomeRefSchema'],
+      // External file with fragment
+      [{ $ref: 'other.json#/definitions/Foo' }, 'v.unknown()'],
+      // HTTP URL reference with .json
+      [{ $ref: 'https://example.com/schemas/User.json' }, 'User'],
+      // HTTP URL without .json
+      [{ $ref: 'https://example.com/schemas/User' }, 'User'],
+      // Fallback to any (no # and no http)
+      [{ $ref: 'relative/path' }, 'v.any()'],
+      // Empty $ref
+      [{ $ref: '' }, 'v.lazy(() => Schema)'],
+      // Self reference #
+      [{ $ref: '#' }, 'v.lazy(() => Schema)'],
+    ])('valibot(%o) → %s', (input, expected) => {
+      expect(valibot(input)).toBe(expected)
+    })
+  })
 })

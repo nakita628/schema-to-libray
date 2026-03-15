@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import type { zod } from './zod.js'
 
 /**
@@ -8,6 +8,7 @@ import type { zod } from './zod.js'
  * @param rootName - Root schema name for reference resolution
  * @param isZod - Whether this is called from zod function
  * @param zodFn - Reference to the main zod function for recursive calls
+ * @param options - Generator options
  * @returns Generated Zod object schema code
  * @example
  * ```ts
@@ -19,6 +20,7 @@ export function object(
   rootName: string,
   isZod: boolean,
   zodFn: typeof zod,
+  options?: GeneratorOptions,
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -29,6 +31,7 @@ export function object(
           rootName,
           isZod,
           zodFn,
+          options,
         )
         if (schema.additionalProperties === true) {
           return s.replace('object', 'looseObject')
@@ -45,6 +48,7 @@ export function object(
       rootName,
       isZod,
       zodFn,
+      options,
     )
     if (schema.additionalProperties === false) {
       return result.replace('object', 'strictObject')
@@ -52,10 +56,10 @@ export function object(
     return result
   }
   // allOf, oneOf, anyOf, not
-  if (schema.oneOf) return zodFn(schema, rootName, isZod)
-  if (schema.anyOf) return zodFn(schema, rootName, isZod)
-  if (schema.allOf) return zodFn(schema, rootName, isZod)
-  if (schema.not) return zodFn(schema, rootName, isZod)
+  if (schema.oneOf) return zodFn(schema, rootName, isZod, options)
+  if (schema.anyOf) return zodFn(schema, rootName, isZod, options)
+  if (schema.allOf) return zodFn(schema, rootName, isZod, options)
+  if (schema.not) return zodFn(schema, rootName, isZod, options)
   return 'z.object({})'
 }
 
@@ -68,10 +72,11 @@ function propertiesSchema(
   rootName: string,
   isZod: boolean,
   zodFn: typeof zod,
+  options?: GeneratorOptions,
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
-      const parsed = zodFn(schema, rootName, isZod)
+      const parsed = zodFn(schema, rootName, isZod, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)

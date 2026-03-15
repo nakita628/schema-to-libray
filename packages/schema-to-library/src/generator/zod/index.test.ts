@@ -624,4 +624,86 @@ export const Empty = z.object({})
 export type Empty = z.infer<typeof Empty>`
     expect(result).toBe(expected)
   })
+
+  describe('openapi option', () => {
+    it('should use toIdentifierPascalCase for title with hyphens', () => {
+      const result = schemaToZod(
+        {
+          title: 'user-profile',
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+          },
+          required: ['name'],
+        },
+        { openapi: true },
+      )
+      const expected = `import * as z from 'zod'
+
+export const UserProfile = z.object({name:z.string()})
+
+export type UserProfile = z.infer<typeof UserProfile>`
+      expect(result).toBe(expected)
+    })
+
+    it('should resolve $ref with OpenAPI component suffixes', () => {
+      const result = schemaToZod(
+        {
+          title: 'Order',
+          type: 'object',
+          properties: {
+            user: { $ref: '#/components/schemas/User' },
+            status: { type: 'string' },
+          },
+          required: ['user', 'status'],
+        },
+        { openapi: true },
+      )
+      const expected = `import * as z from 'zod'
+
+export const Order = z.object({user:z.lazy(() => UserSchema),status:z.string()})
+
+export type Order = z.infer<typeof Order>`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle definitions with openapi naming', () => {
+      const result = schemaToZod(
+        {
+          title: 'root-schema',
+          type: 'object',
+          properties: {
+            address: { $ref: '#/$defs/street-address' },
+          },
+          required: ['address'],
+          $defs: {
+            'street-address': {
+              type: 'object',
+              properties: {
+                city: { type: 'string' },
+              },
+              required: ['city'],
+            },
+          },
+        },
+        { openapi: true },
+      )
+      expect(result).toContain('const StreetAddress')
+      expect(result).toContain('export const RootSchema')
+    })
+
+    it('should not affect output when openapi is false', () => {
+      const schema = {
+        title: 'user-profile',
+        type: 'object' as const,
+        properties: {
+          name: { type: 'string' as const },
+        },
+        required: ['name'] as const,
+      }
+      const withoutOpenapi = schemaToZod(schema)
+      const withOpenapiOff = schemaToZod(schema, { openapi: false })
+      expect(withoutOpenapi).toBe(withOpenapiOff)
+    })
+  })
 })

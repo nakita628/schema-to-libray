@@ -667,4 +667,66 @@ describe('effect', () => {
       expect(effect(input)).toBe(expected)
     })
   })
+
+  describe('openapi', () => {
+    describe('ref with openapi option', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        [
+          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
+          'Schema.Array(PetSchema)',
+        ],
+        [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
+        [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
+      ])('effect(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
+        expect(effect(input, 'Schema', false, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('ref with openapi and isEffect', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ $ref: '#/components/schemas/User' }, 'Schema.suspend(() => UserSchema)'],
+        [{ $ref: '#/components/parameters/UserId' }, 'Schema.suspend(() => UserIdParamsSchema)'],
+        [{ $ref: '#/components/schemas/Tree' }, 'Schema.suspend(() => TreeSchema)'],
+      ])('effect(%o, "TreeSchema", true, { openapi: true }) → %s', (input, expected) => {
+        expect(effect(input, 'TreeSchema', true, { openapi: true })).toBe(expected)
+      })
+    })
+
+    describe('object with openapi refs', () => {
+      it('should resolve $ref in object properties with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          type: 'object',
+          properties: {
+            pet: { $ref: '#/components/schemas/Pet' },
+            owner: { $ref: '#/components/schemas/user-profile' },
+          },
+          required: ['pet'],
+        }
+        expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
+          'Schema.Struct({pet:PetSchema,owner:Schema.optional(UserProfileSchema)})',
+        )
+      })
+    })
+
+    describe('combinators with openapi refs', () => {
+      it('should resolve oneOf $refs with OpenAPI suffixes', () => {
+        const schema: JSONSchema = {
+          oneOf: [
+            { $ref: '#/components/schemas/Cat' },
+            { $ref: '#/components/schemas/Dog' },
+          ],
+        }
+        expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
+          'Schema.Union(CatSchema,DogSchema)',
+        )
+      })
+    })
+  })
 })

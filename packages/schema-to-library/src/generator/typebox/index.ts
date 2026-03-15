@@ -1,11 +1,16 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import { toPascalCase } from '../../utils/index.js'
+import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
-export function schemaToTypebox(schema: JSONSchema, options?: { exportType?: boolean }): string {
-  const { exportType = true } = options ?? {}
-  const rootName = schema.title ? toPascalCase(schema.title) : 'Schema'
+export function schemaToTypebox(
+  schema: JSONSchema,
+  options?: { exportType?: boolean; openapi?: boolean },
+): string {
+  const { exportType = true, openapi = false } = options ?? {}
+  const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
+  const toName = openapi ? toIdentifierPascalCase : toPascalCase
+  const rootName = schema.title ? toName(schema.title) : 'Schema'
 
   const definitions: { [k: string]: JSONSchema } = {
     ...(schema.definitions ?? {}),
@@ -28,15 +33,15 @@ export function schemaToTypebox(schema: JSONSchema, options?: { exportType?: boo
     .map((name) => {
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
-      const pc = toPascalCase(name)
-      return `const ${pc} = ${typebox(def, pc, true)}`
+      const pc = toName(name)
+      return `const ${pc} = ${typebox(def, pc, true, genOptions)}`
     })
     .join('\n\n')
 
   // Generate root schema
   const rootSchema = rootInDefs
-    ? typebox(rootDefinition, rootName, true)
-    : typebox(schema, rootName, true)
+    ? typebox(rootDefinition, rootName, true, genOptions)
+    : typebox(schema, rootName, true, genOptions)
 
   const rootExport = `export const ${rootName} = ${rootSchema}`
 

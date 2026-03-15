@@ -1,5 +1,10 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { normalizeTypes, toPascalCase } from '../../utils/index.js'
+import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import {
+  normalizeTypes,
+  resolveOpenAPIRef,
+  toIdentifierPascalCase,
+  toPascalCase,
+} from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -10,15 +15,16 @@ export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isEffect: boolean = false,
+  options?: GeneratorOptions,
 ): string {
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName, isEffect), schema)
+      return wrap(ref(schema, rootName, isEffect, options), schema)
     }
     if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
       if (schema.items?.$ref) {
-        return `Schema.Array(${wrap(ref(schema.items, rootName, isEffect), schema.items)})`
+        return `Schema.Array(${wrap(ref(schema.items, rootName, isEffect, options), schema.items)})`
       }
       return wrap('Schema.Array(Schema.Unknown)', schema)
     }
@@ -27,16 +33,16 @@ export function effect(
   // combinators
   if (schema.oneOf) {
     if (!schema.oneOf?.length) return wrap('Schema.Unknown', schema)
-    const schemas = schema.oneOf.map((s: JSONSchema) => effect(s, rootName, isEffect))
+    const schemas = schema.oneOf.map((s: JSONSchema) => effect(s, rootName, isEffect, options))
     return wrap(`Schema.Union(${schemas.join(',')})`, schema)
   }
   if (schema.anyOf) {
     if (!schema.anyOf?.length) return wrap('Schema.Unknown', schema)
-    const schemas = schema.anyOf.map((s: JSONSchema) => effect(s, rootName, isEffect))
+    const schemas = schema.anyOf.map((s: JSONSchema) => effect(s, rootName, isEffect, options))
     return wrap(`Schema.Union(${schemas.join(',')})`, schema)
   }
   if (schema.allOf) {
-    return allOf(schema, rootName, isEffect)
+    return allOf(schema, rootName, isEffect, options)
   }
   // const
   if (schema.const) {
@@ -45,15 +51,15 @@ export function effect(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isEffect, effect), schema)
+  if (schema.properties) return wrap(object(schema, rootName, isEffect, effect, options), schema)
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('Schema.Boolean', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isEffect), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isEffect, effect), schema)
+  if (types.includes('array')) return wrap(array(schema, rootName, isEffect, options), schema)
+  if (types.includes('object')) return wrap(object(schema, rootName, isEffect, effect, options), schema)
   if (types.includes('date')) return wrap('Schema.Date', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Schema.Null', schema)
 
@@ -61,7 +67,12 @@ export function effect(
   return wrap('Schema.Unknown', schema)
 }
 
-function allOf(schema: JSONSchema, rootName: string, isEffect: boolean): string {
+function allOf(
+  schema: JSONSchema,
+  rootName: string,
+  isEffect: boolean,
+  options?: GeneratorOptions,
+): string {
   if (!schema.allOf?.length) return wrap('Schema.Unknown', schema)
 
   const isNullType = (s: JSONSchema) =>
@@ -80,7 +91,7 @@ function allOf(schema: JSONSchema, rootName: string, isEffect: boolean): string 
 
   const schemas = schema.allOf
     .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
-    .map((s) => effect(s, rootName, isEffect))
+    .map((s) => effect(s, rootName, isEffect, options))
 
   if (!schemas.length) return wrap('Schema.Unknown', { ...schema, nullable })
 
@@ -97,8 +108,13 @@ function allOf(schema: JSONSchema, rootName: string, isEffect: boolean): string 
   return wrap(baseResult, { ...schema, nullable })
 }
 
-function array(schema: JSONSchema, rootName: string, isEffect: boolean = false): string {
-  const items = schema.items ? effect(schema.items, rootName, isEffect) : 'Schema.Unknown'
+function array(
+  schema: JSONSchema,
+  rootName: string,
+  isEffect: boolean = false,
+  options?: GeneratorOptions,
+): string {
+  const items = schema.items ? effect(schema.items, rootName, isEffect, options) : 'Schema.Unknown'
   const base = `Schema.Array(${items})`
 
   const isFixedLength =
@@ -140,9 +156,20 @@ export function wrap(effectStr: string, schema: JSONSchema): string {
   return isNullable ? `Schema.NullOr(${withDefault})` : withDefault
 }
 
-function ref(schema: JSONSchema, rootName: string, isEffect: boolean = false): string {
+function ref(schema: JSONSchema, rootName: string, isEffect: boolean = false, options?: GeneratorOptions): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`Schema.suspend(() => ${rootName})`, schema)
+  }
+
+  // OpenAPI component-aware resolution
+  if (options?.openapi && schema.$ref) {
+    const resolved = resolveOpenAPIRef(schema.$ref)
+    if (resolved) {
+      if (resolved === rootName) {
+        return wrap(`Schema.suspend(() => ${resolved})`, schema)
+      }
+      return wrap(isEffect ? `Schema.suspend(() => ${resolved})` : resolved, schema)
+    }
   }
 
   const TABLE = [
@@ -151,9 +178,11 @@ function ref(schema: JSONSchema, rootName: string, isEffect: boolean = false): s
     ['#/$defs/', 'Schema'],
   ] as const
 
+  const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
+
   for (const [prefix] of TABLE) {
     if (schema.$ref?.startsWith(prefix)) {
-      const pascalCaseName = toPascalCase(schema.$ref.slice(prefix.length))
+      const pascalCaseName = toName(schema.$ref.slice(prefix.length))
       if (pascalCaseName === rootName) {
         return wrap(`Schema.suspend(() => ${pascalCaseName})`, schema)
       }
@@ -169,7 +198,7 @@ function ref(schema: JSONSchema, rootName: string, isEffect: boolean = false): s
   if (schema.$ref?.startsWith('#')) {
     const refName = schema.$ref.slice(1)
     if (refName === '') return `Schema.suspend(() => ${rootName})`
-    const pascalCaseName = toPascalCase(refName)
+    const pascalCaseName = toName(refName)
     return isEffect
       ? `Schema.suspend(() => ${pascalCaseName})`
       : rootName === 'Schema'
