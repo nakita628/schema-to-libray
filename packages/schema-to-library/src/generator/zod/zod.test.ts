@@ -1100,10 +1100,7 @@ describe('zod', () => {
         // requestBodies → RequestBody suffix
         [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
         // array of refs
-        [
-          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
-          'z.array(PetSchema)',
-        ],
+        [{ type: 'array', items: { $ref: '#/components/schemas/Pet' } }, 'z.array(PetSchema)'],
         // definitions/$defs are NOT affected (no OpenAPI suffix)
         [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
         [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
@@ -1143,10 +1140,7 @@ describe('zod', () => {
     describe('combinators with openapi refs', () => {
       it('should resolve oneOf $refs with OpenAPI suffixes', () => {
         const schema: JSONSchema = {
-          oneOf: [
-            { $ref: '#/components/schemas/Cat' },
-            { $ref: '#/components/schemas/Dog' },
-          ],
+          oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
         expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
           'z.union([CatSchema,DogSchema])',

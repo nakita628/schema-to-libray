@@ -59,7 +59,8 @@ export function valibot(
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('v.boolean()', schema)
   if (types.includes('array')) return wrap(array(schema, rootName, isValibot, options), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isValibot, valibot, options), schema)
+  if (types.includes('object'))
+    return wrap(object(schema, rootName, isValibot, valibot, options), schema)
   if (types.includes('date')) return wrap('v.date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('v.null()', schema)
 

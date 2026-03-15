@@ -678,10 +678,7 @@ describe('effect', () => {
         [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
         [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
         [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
-        [
-          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
-          'Schema.Array(PetSchema)',
-        ],
+        [{ type: 'array', items: { $ref: '#/components/schemas/Pet' } }, 'Schema.Array(PetSchema)'],
         [{ $ref: '#/definitions/Address' }, 'AddressSchema'],
         [{ $ref: '#/$defs/Address' }, 'AddressSchema'],
       ])('effect(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
@@ -718,10 +715,7 @@ describe('effect', () => {
     describe('combinators with openapi refs', () => {
       it('should resolve oneOf $refs with OpenAPI suffixes', () => {
         const schema: JSONSchema = {
-          oneOf: [
-            { $ref: '#/components/schemas/Cat' },
-            { $ref: '#/components/schemas/Dog' },
-          ],
+          oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
         expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
           'Schema.Union(CatSchema,DogSchema)',
@@ -732,11 +726,7 @@ describe('effect', () => {
     describe('openapi edge cases', () => {
       it.concurrent.each<[JSONSchema, string, string]>([
         // Self-reference: resolved name equals rootName
-        [
-          { $ref: '#/components/schemas/User' },
-          'UserSchema',
-          'Schema.suspend(() => UserSchema)',
-        ],
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema', 'Schema.suspend(() => UserSchema)'],
         // Nullable ref with openapi (double-wrapped: ref() wraps, then effect() wraps again)
         [
           { $ref: '#/components/schemas/Pet', nullable: true },

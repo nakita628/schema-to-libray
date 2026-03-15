@@ -1,5 +1,10 @@
 import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
-import { normalizeTypes, resolveOpenAPIRef, toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import {
+  normalizeTypes,
+  resolveOpenAPIRef,
+  toIdentifierPascalCase,
+  toPascalCase,
+} from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -55,7 +60,8 @@ export function arktype(
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('"boolean"', schema)
   if (types.includes('array')) return wrap(array(schema, rootName, isArktype, options), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isArktype, arktype, options), schema)
+  if (types.includes('object'))
+    return wrap(object(schema, rootName, isArktype, arktype, options), schema)
   if (types.includes('date')) return wrap('"Date"', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('"null"', schema)
 

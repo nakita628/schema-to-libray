@@ -477,10 +477,7 @@ describe('typebox', () => {
         [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
         [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
         [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
-        [
-          { type: 'array', items: { $ref: '#/components/schemas/Pet' } },
-          'Type.Array(PetSchema)',
-        ],
+        [{ type: 'array', items: { $ref: '#/components/schemas/Pet' } }, 'Type.Array(PetSchema)'],
         [{ $ref: '#/definitions/Address' }, 'Address'],
         [{ $ref: '#/$defs/Address' }, 'Address'],
       ])('typebox(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
@@ -507,10 +504,7 @@ describe('typebox', () => {
     describe('combinators with openapi refs', () => {
       it('should resolve oneOf $refs with OpenAPI suffixes', () => {
         const schema: JSONSchema = {
-          oneOf: [
-            { $ref: '#/components/schemas/Cat' },
-            { $ref: '#/components/schemas/Dog' },
-          ],
+          oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
         expect(typebox(schema, 'Schema', false, { openapi: true })).toBe(
           'Type.Union([CatSchema,DogSchema])',

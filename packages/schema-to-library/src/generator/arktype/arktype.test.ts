@@ -349,23 +349,16 @@ describe('arktype', () => {
           },
           required: ['pet'],
         }
-        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe(
-          'type({pet:"PetSchema"})',
-        )
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe('type({pet:"PetSchema"})')
       })
     })
 
     describe('combinators with openapi refs', () => {
       it('should resolve oneOf $refs with OpenAPI suffixes', () => {
         const schema: JSONSchema = {
-          oneOf: [
-            { $ref: '#/components/schemas/Cat' },
-            { $ref: '#/components/schemas/Dog' },
-          ],
+          oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
-        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe(
-          '"CatSchema | DogSchema"',
-        )
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe('"CatSchema | DogSchema"')
       })
     })
 
@@ -374,11 +367,7 @@ describe('arktype', () => {
         // Self-reference: resolved name equals rootName (arktype wraps in quotes)
         [{ $ref: '#/components/schemas/User' }, 'UserSchema', '"UserSchema"'],
         // Nullable ref with openapi
-        [
-          { $ref: '#/components/schemas/Pet', nullable: true },
-          'TestSchema',
-          '"PetSchema | null"',
-        ],
+        [{ $ref: '#/components/schemas/Pet', nullable: true }, 'TestSchema', '"PetSchema | null"'],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', '"BaseSchema"'],
         // anyOf with openapi ref and inline

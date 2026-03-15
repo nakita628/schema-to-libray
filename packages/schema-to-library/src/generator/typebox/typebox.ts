@@ -59,7 +59,8 @@ export function typebox(
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('Type.Boolean()', schema)
   if (types.includes('array')) return wrap(array(schema, rootName, isTypebox, options), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
+  if (types.includes('object'))
+    return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
   if (types.includes('date')) return wrap('Type.Date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Type.Null()', schema)
 

@@ -32,9 +32,7 @@ export function toPascalCase(name: string): string {
 export function toIdentifierPascalCase(name: string): string {
   const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean)
   if (parts.length === 0) return 'Schema'
-  const result = parts
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('')
+  const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
   if (/^[0-9]/.test(result)) {
     // Find where digits end and letters begin, capitalize the first letter
     const prefixed = `_${result}`

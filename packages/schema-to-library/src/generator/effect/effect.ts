@@ -59,7 +59,8 @@ export function effect(
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('Schema.Boolean', schema)
   if (types.includes('array')) return wrap(array(schema, rootName, isEffect, options), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isEffect, effect, options), schema)
+  if (types.includes('object'))
+    return wrap(object(schema, rootName, isEffect, effect, options), schema)
   if (types.includes('date')) return wrap('Schema.Date', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Schema.Null', schema)
 
@@ -156,7 +157,12 @@ export function wrap(effectStr: string, schema: JSONSchema): string {
   return isNullable ? `Schema.NullOr(${withDefault})` : withDefault
 }
 
-function ref(schema: JSONSchema, rootName: string, isEffect: boolean = false, options?: GeneratorOptions): string {
+function ref(
+  schema: JSONSchema,
+  rootName: string,
+  isEffect: boolean = false,
+  options?: GeneratorOptions,
+): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`Schema.suspend(() => ${rootName})`, schema)
   }

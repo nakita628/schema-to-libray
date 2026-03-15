@@ -37,7 +37,10 @@ function hasSelfReference(schema: JSONSchema): boolean {
 /**
  * Convert JSON Schema to Effect Schema code
  */
-export function schemaToEffect(schema: JSONSchema, options?: { exportType?: boolean; openapi?: boolean }): string {
+export function schemaToEffect(
+  schema: JSONSchema,
+  options?: { exportType?: boolean; openapi?: boolean },
+): string {
   const { exportType = true, openapi = false } = options ?? {}
   const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
