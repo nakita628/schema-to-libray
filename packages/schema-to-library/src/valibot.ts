@@ -8,7 +8,7 @@ Options:
   --export-type        include type export in output
   -h, --help           display help for command`
 
-cli(schemaToValibot, HELP_TEXT).then((result) => {
+void cli(schemaToValibot, HELP_TEXT).then((result) => {
   if (result?.ok) {
     console.log(result.value)
   } else {

@@ -1,11 +1,9 @@
 import * as v from 'valibot'
 
-type SchemaType = { children?: v.InferOutput<typeof Schema>[] }
+type _Schema = { children?: v.InferOutput<typeof Schema>[] }
 
-export const Schema: v.GenericSchema<SchemaType> = v.partial(
+export const Schema: v.GenericSchema<_Schema> = v.partial(
   v.object({ children: v.array(v.lazy(() => Schema)) }),
 )
-
-export type SchemaInput = v.InferInput<typeof Schema>
 
 export type SchemaOutput = v.InferOutput<typeof Schema>

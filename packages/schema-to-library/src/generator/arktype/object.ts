@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { arktype } from './arktype.js'
 
 export function object(
@@ -6,7 +6,7 @@ export function object(
   rootName: string,
   isArktype: boolean,
   arktypeFn: typeof arktype,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -51,7 +51,7 @@ function propertiesSchema(
   isArktype: boolean,
   arktypeFn: typeof arktype,
   additionalMode?: 'delete' | 'reject',
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
@@ -72,5 +72,5 @@ function propertiesSchema(
   const additionalProp = additionalMode ? `"+":"${additionalMode}"` : undefined
   const allProps = [...objectProperties, additionalProp].filter((v): v is string => v !== undefined)
 
-  return isArktype ? `{${allProps}}` : `type({${allProps}})`
+  return isArktype ? `{${allProps.join(',')}}` : `type({${allProps.join(',')}})`
 }

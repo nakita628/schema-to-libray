@@ -101,7 +101,8 @@ export function resolveOpenAPIRef($ref: string): string | null {
  */
 export function normalizeTypes(t?: string | readonly string[]): string[] {
   if (t === undefined) return []
-  return Array.isArray(t) ? [...t] : [t as string]
+  if (typeof t === 'string') return [t]
+  return [...t]
 }
 
 /**

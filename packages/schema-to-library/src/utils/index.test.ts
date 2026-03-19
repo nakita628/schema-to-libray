@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import {
   effectMessage,
   error,
@@ -55,7 +56,6 @@ describe('helper', () => {
     })
 
     it('should handle arrow function expression as-is', () => {
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
       expect(error('(v) => `Expected ${v}`')).toBe('{error:(v) => `Expected ${v}`}')
     })
 
@@ -88,9 +88,7 @@ describe('helper', () => {
     })
 
     it('should pass through arrow function in message annotation', () => {
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
       expect(effectMessage('(issue) => `Error: ${issue}`')).toBe(
-        // biome-ignore lint/suspicious/noTemplateCurlyInString: testing template literal strings as values
         '{message:(issue) => `Error: ${issue}`}',
       )
     })

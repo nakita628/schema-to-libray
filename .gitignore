@@ -1,7 +1,5 @@
-.pnpm-store
 node_modules
-pnpm-lock.yaml
-dist
-coverage
 .DS_Store
-.cursor
+coverage
+dist
+.claude

@@ -1,13 +1,11 @@
 import * as v from 'valibot'
 
-type AType = { b?: BType }
+type _A = { b?: _B }
 
-type BType = { a?: AType }
+type _B = { a?: _A }
 
-const B: v.GenericSchema<BType> = v.partial(v.object({ a: v.lazy(() => A) }))
+const B: v.GenericSchema<_B> = v.partial(v.object({ a: v.lazy(() => A) }))
 
-export const A: v.GenericSchema<AType> = v.partial(v.object({ b: v.lazy(() => B) }))
-
-export type AInput = v.InferInput<typeof A>
+export const A: v.GenericSchema<_A> = v.partial(v.object({ b: v.lazy(() => B) }))
 
 export type AOutput = v.InferOutput<typeof A>

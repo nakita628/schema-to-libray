@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { arktype } from './arktype.js'
 
@@ -96,6 +97,18 @@ describe('arktype', () => {
         '"string & number | null"',
       ],
       [{ allOf: [] } as JSONSchema, '"unknown"'],
+    ])('arktype(%o) → %s', (input, expected) => {
+      expect(arktype(input)).toBe(expected)
+    })
+  })
+
+  describe('not', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ not: { type: 'string' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'integer' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'boolean' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'string' }, nullable: true } as JSONSchema, '"unknown | null"'],
+      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, '"unknown | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -396,6 +409,39 @@ describe('arktype', () => {
       [{ $ref: '#' }, '"Schema"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
+    })
+  })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(arktype({ oneOf: [] })).toBe('"unknown"')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(arktype({ anyOf: [] })).toBe('"unknown"')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(arktype({ type: ['string', 'null'] })).toBe('"string | null"')
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should add .readonly() to object', () => {
+      expect(
+        arktype(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('type({name:"string"}).readonly()')
+    })
+
+    it('should not add .readonly() to string', () => {
+      expect(arktype({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('"string"')
     })
   })
 })

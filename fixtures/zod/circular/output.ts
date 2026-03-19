@@ -1,11 +1,11 @@
 import * as z from 'zod'
 
-type AType = { b?: BType }
+type _A = { b?: _B }
 
-type BType = { a?: AType }
+type _B = { a?: _A }
 
-const B: z.ZodType<BType> = z.object({ a: z.lazy(() => A) }).partial()
+const B: z.ZodType<_B> = z.object({ a: z.lazy(() => A) }).partial()
 
-export const A: z.ZodType<AType> = z.object({ b: z.lazy(() => B) }).partial()
+export const A: z.ZodType<_A> = z.object({ b: z.lazy(() => B) }).partial()
 
 export type A = z.infer<typeof A>

@@ -7,6 +7,4 @@ export const User = v.object({
   ),
 })
 
-export type UserInput = v.InferInput<typeof User>
-
 export type UserOutput = v.InferOutput<typeof User>

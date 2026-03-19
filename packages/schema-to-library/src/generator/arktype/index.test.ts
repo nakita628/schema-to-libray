@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import { schemaToArktype } from './index.js'
 
 // Test run
@@ -501,5 +502,59 @@ export const AnyObj = type("unknown")
 
 export type AnyObj = typeof AnyObj.infer`
     expect(result).toBe(expected)
+  })
+
+  describe('readonly option', () => {
+    it('should generate readonly object schema', () => {
+      const result = schemaToArktype(
+        {
+          title: 'User',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import { type } from "arktype"\n\nexport const User = type({name:"string"}).readonly()`,
+      )
+    })
+
+    it('should not affect primitive types', () => {
+      const result = schemaToArktype(
+        { title: 'Name', type: 'string' },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(`import { type } from "arktype"\n\nexport const Name = type("string")`)
+    })
+  })
+
+  describe('self-reference and complex schemas', () => {
+    it('should handle empty schema', () => {
+      const result = schemaToArktype({}, { exportType: false })
+      expect(result).toBe(`import { type } from "arktype"\n\nexport const Schema = type("unknown")`)
+    })
+
+    it('should handle definitions with scope', () => {
+      const result = schemaToArktype(
+        {
+          title: 'Root',
+          type: 'object',
+          definitions: {
+            Tag: { type: 'string' },
+          },
+          properties: {
+            tag: { $ref: '#/definitions/Tag' },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import { scope } from "arktype"
+
+const types = scope({Tag:"string",Root:{"tag?":"Tag"}}).export()
+
+export const Root = types.Root`
+      expect(result).toBe(expected)
+    })
   })
 })

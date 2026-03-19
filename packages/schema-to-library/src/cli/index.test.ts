@@ -1,5 +1,7 @@
 import fs from 'node:fs'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+
 import { schemaToArktype } from '../generator/arktype/index.js'
 import { schemaToEffect } from '../generator/effect/index.js'
 import { schemaToTypebox } from '../generator/typebox/index.js'
@@ -236,8 +238,6 @@ describe('schema-to-valibot --export-type', () => {
 
 export const User = v.object({ name: v.string(), age: v.optional(v.pipe(v.number(), v.integer())) })
 
-export type UserInput = v.InferInput<typeof User>
-
 export type UserOutput = v.InferOutput<typeof User>
 `
     expect(generatedCode).toBe(expectedCode)
@@ -300,8 +300,6 @@ export const User = Schema.Struct({
   name: Schema.String,
   age: Schema.optional(Schema.Number.pipe(Schema.int())),
 })
-
-export type User = typeof User.Type
 
 export type UserEncoded = typeof User.Encoded
 `
@@ -1002,8 +1000,8 @@ describe('syntax validation', () => {
 
           const code = fs.readFileSync(outFile, 'utf-8')
           expect(code.length).toBeGreaterThan(0)
-          expect(code).toContain('export const')
-          expect(code).toContain('import')
+          expect(code.includes('export const')).toBe(true)
+          expect(code.startsWith('import')).toBe(true)
 
           // Verify no unclosed brackets/parens
           const opens = (code.match(/[({[]/g) || []).length

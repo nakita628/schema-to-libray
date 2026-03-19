@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { effect } from './effect.js'
 
 export function object(
@@ -6,7 +6,7 @@ export function object(
   rootName: string,
   isEffect: boolean,
   effectFn: typeof effect,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -49,7 +49,7 @@ function propertiesSchema(
   rootName: string,
   isEffect: boolean,
   effectFn: typeof effect,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
@@ -66,7 +66,7 @@ function propertiesSchema(
     const cleanProperties = objectProperties.map((prop) =>
       prop.replace(/^(.+?):Schema\.optional\((.+)\)$/, '$1:$2'),
     )
-    return `Schema.partial(Schema.Struct({${cleanProperties}}))`
+    return `Schema.partial(Schema.Struct({${cleanProperties.join(',')}}))`
   }
-  return `Schema.Struct({${objectProperties}})`
+  return `Schema.Struct({${objectProperties.join(',')}})`
 }

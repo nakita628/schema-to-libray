@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { typebox } from './typebox.js'
 
@@ -140,6 +141,35 @@ describe('typebox', () => {
           allOf: [{ $ref: '#/components/schemas/A' }],
         } as JSONSchema,
         'A',
+      ],
+    ])('typebox(%o) → %s', (input, expected) => {
+      expect(typebox(input)).toBe(expected)
+    })
+  })
+
+  describe('not', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ not: { type: 'string' } } as JSONSchema, 'Type.Not(Type.String())'],
+      [{ not: { type: 'integer' } } as JSONSchema, 'Type.Not(Type.Integer())'],
+      [{ not: { type: 'boolean' } } as JSONSchema, 'Type.Not(Type.Boolean())'],
+      [{ not: { type: 'number' } } as JSONSchema, 'Type.Not(Type.Number())'],
+      [
+        { not: { type: 'string' }, nullable: true } as JSONSchema,
+        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+      ],
+      [
+        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+      ],
+      [
+        {
+          not: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+        } as JSONSchema,
+        'Type.Not(Type.Object({a:Type.String()}))',
+      ],
+      [
+        { not: { enum: ['admin', 'root'] } } as JSONSchema,
+        'Type.Not(Type.Union([Type.Literal("admin"),Type.Literal("root")]))',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -558,6 +588,47 @@ describe('typebox', () => {
       [{ $ref: '#' }, 'Type.Recursive((_Self) => Schema)'],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
+    })
+  })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(typebox({ oneOf: [] })).toBe('Type.Any()')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(typebox({ anyOf: [] })).toBe('Type.Any()')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(typebox({ type: ['string', 'null'] })).toBe('Type.Union([Type.String(),Type.Null()])')
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should wrap object with Type.Readonly()', () => {
+      expect(
+        typebox(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('Type.Readonly(Type.Object({name:Type.String()}))')
+    })
+
+    it('should wrap array with Type.Readonly()', () => {
+      expect(
+        typebox({ type: 'array', items: { type: 'string' } }, 'Schema', false, {
+          readonly: true,
+        }),
+      ).toBe('Type.Readonly(Type.Array(Type.String()))')
+    })
+
+    it('should not wrap string', () => {
+      expect(typebox({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('Type.String()')
     })
   })
 })

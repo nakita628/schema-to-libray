@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { typebox } from './typebox.js'
 
 export function object(
@@ -6,7 +6,7 @@ export function object(
   rootName: string,
   isTypebox: boolean,
   typeboxFn: typeof typebox,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -48,7 +48,7 @@ function propertiesSchema(
   rootName: string,
   isTypebox: boolean,
   typeboxFn: typeof typebox,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
   noAdditional: boolean = false,
 ): string {
   const objectProperties = Object.entries(properties)
@@ -62,5 +62,5 @@ function propertiesSchema(
     .filter((v): v is string => v !== null)
 
   const opts = noAdditional ? ',{additionalProperties:false}' : ''
-  return `Type.Object({${objectProperties}}${opts})`
+  return `Type.Object({${objectProperties.join(',')}}${opts})`
 }

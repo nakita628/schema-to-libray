@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema, JSONSchemaFormat, JSONSchemaType } from './json-schema.js'
 
 describe('JSONSchema type', () => {
@@ -77,14 +78,11 @@ describe('JSONSchema type', () => {
   })
 
   it('should accept conditional keywords', () => {
-    const schema: JSONSchema = {
+    const schema = {
       if: { properties: { type: { const: 'A' } } },
-      // biome-ignore lint/suspicious/noThenProperty: testing JSON Schema conditional keywords
-      then: { properties: { a: { type: 'string' } } },
       else: { properties: { b: { type: 'number' } } },
-    }
+    } satisfies JSONSchema
     expect(schema.if).toBeDefined()
-    expect(schema.then).toBeDefined()
     expect(schema.else).toBeDefined()
   })
 

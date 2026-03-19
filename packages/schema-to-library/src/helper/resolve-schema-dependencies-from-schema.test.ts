@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import { resolveSchemaDependenciesFromSchema } from './resolve-schema-dependencies-from-schema.js'
 
 // Test run
@@ -82,9 +83,7 @@ describe('resolveSchemaDependenciesFromSchema', () => {
         },
       },
     })
-    expect(result).toContain('A')
-    expect(result).toContain('B')
-    expect(result.length).toBe(2)
+    expect(result).toStrictEqual(['B', 'A'])
   })
 
   it('should handle self-references', () => {
@@ -132,14 +131,7 @@ describe('resolveSchemaDependenciesFromSchema', () => {
         D: { type: 'string' },
       },
     })
-    expect(result).toContain('D')
-    expect(result).toContain('B')
-    expect(result).toContain('C')
-    expect(result).toContain('A')
-    expect(result.indexOf('D')).toBeLessThan(result.indexOf('B'))
-    expect(result.indexOf('D')).toBeLessThan(result.indexOf('C'))
-    expect(result.indexOf('B')).toBeLessThan(result.indexOf('A'))
-    expect(result.indexOf('C')).toBeLessThan(result.indexOf('A'))
+    expect(result).toStrictEqual(['D', 'B', 'C', 'A'])
   })
 
   it('should ignore invalid references', () => {

@@ -5,8 +5,12 @@ export function _enum(schema: JSONSchema): string {
   const hasType = (t: string): boolean =>
     schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
 
-  const lit = (v: unknown): string =>
-    v === null ? 'null' : typeof v === 'string' ? `'${v}'` : String(v)
+  const lit = (v: unknown): string => {
+    if (v === null) return 'null'
+    if (typeof v === 'string') return `'${v}'`
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+    return JSON.stringify(v) ?? 'null'
+  }
 
   const errorMessage = schema['x-error-message']
   const errArg = errorMessage ? `,${valibotMessage(errorMessage)}` : ''

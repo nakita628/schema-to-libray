@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -15,8 +15,10 @@ export function arktype(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isArktype: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
+  const ro = (s: string): string => (options?.readonly ? `${s}.readonly()` : s)
+
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
@@ -44,15 +46,25 @@ export function arktype(
   if (schema.allOf) {
     return allOf(schema, rootName, isArktype, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('"unknown"', schema)
+  }
   // const
   if (schema.const) {
-    const v = typeof schema.const === 'string' ? `"'${schema.const}'"` : `"${schema.const}"`
+    const v =
+      typeof schema.const === 'string'
+        ? `"'${schema.const}'"`
+        : typeof schema.const === 'number' || typeof schema.const === 'boolean'
+          ? `"${String(schema.const)}"`
+          : `"${JSON.stringify(schema.const) ?? 'null'}"`
     return wrap(v, schema)
   }
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isArktype, arktype, options), schema)
+  if (schema.properties)
+    return ro(wrap(object(schema, rootName, isArktype, arktype, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
@@ -61,7 +73,7 @@ export function arktype(
   if (types.includes('boolean')) return wrap('"boolean"', schema)
   if (types.includes('array')) return wrap(array(schema, rootName, isArktype, options), schema)
   if (types.includes('object'))
-    return wrap(object(schema, rootName, isArktype, arktype, options), schema)
+    return ro(wrap(object(schema, rootName, isArktype, arktype, options), schema))
   if (types.includes('date')) return wrap('"Date"', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('"null"', schema)
 
@@ -72,7 +84,7 @@ function allOf(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (!schema.allOf?.length) return wrap('"unknown"', schema)
 
@@ -103,7 +115,7 @@ function array(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
 
@@ -169,7 +181,11 @@ function intersectionStr(schemas: string[]): string {
   return schemas.reduce((acc, s) => `type(${acc}).and(${s})`)
 }
 
-function ref(schema: JSONSchema, rootName: string, options?: GeneratorOptions): string {
+function ref(
+  schema: JSONSchema,
+  rootName: string,
+  options?: { openapi?: boolean; readonly?: boolean },
+): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return `"${rootName}"`
   }

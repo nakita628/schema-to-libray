@@ -1,11 +1,12 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fmt, parseSchemaFile, schemaToEffect } from 'schema-to-library'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 const fixturesDir = join(import.meta.dirname, '..')
 
 const SPLIT_FIXTURES = ['split-refs', 'split-nested']
+const READONLY_FIXTURES = ['readonly']
 
 const fixtures = readdirSync(fixturesDir, { withFileTypes: true })
   .filter(
@@ -13,7 +14,8 @@ const fixtures = readdirSync(fixturesDir, { withFileTypes: true })
       d.isDirectory() &&
       d.name !== 'src' &&
       d.name !== 'node_modules' &&
-      !SPLIT_FIXTURES.includes(d.name),
+      !SPLIT_FIXTURES.includes(d.name) &&
+      !READONLY_FIXTURES.includes(d.name),
   )
   .map((d) => d.name)
 
@@ -23,6 +25,20 @@ describe('schemaToEffect fixtures', () => {
     const input = JSON.parse(readFileSync(join(dir, 'input.json'), 'utf-8'))
     const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
     const raw = schemaToEffect(input)
+    const fmtResult = await fmt(raw)
+    expect(fmtResult.ok).toBe(true)
+    if (fmtResult.ok) {
+      expect(fmtResult.value).toBe(expected)
+    }
+  })
+})
+
+describe('schemaToEffect readonly fixtures', () => {
+  it.each(READONLY_FIXTURES)('%s', async (name) => {
+    const dir = join(fixturesDir, name)
+    const input = JSON.parse(readFileSync(join(dir, 'input.json'), 'utf-8'))
+    const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
+    const raw = schemaToEffect(input, { readonly: true })
     const fmtResult = await fmt(raw)
     expect(fmtResult.ok).toBe(true)
     if (fmtResult.ok) {

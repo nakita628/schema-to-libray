@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
@@ -45,16 +45,16 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToZod(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean },
+  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
 ): string {
-  const { exportType = true, openapi = false } = options ?? {}
-  const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
+  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
+  const genOptions = { openapi, readonly: readonlyMode }
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const hasDefinitions = Object.keys(definitions).length > 0

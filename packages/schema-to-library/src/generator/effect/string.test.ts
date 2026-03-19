@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { string } from './string.js'
 
@@ -79,6 +80,48 @@ describe('effect string', () => {
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('FORMAT_MAP with length constraints', () => {
+    it('should handle uuid with minLength', () => {
+      expect(string({ type: 'string', format: 'uuid', minLength: 1 })).toBe(
+        'Schema.UUID.pipe(Schema.minLength(1))',
+      )
+    })
+
+    it('should handle ulid with minLength and maxLength', () => {
+      expect(string({ type: 'string', format: 'ulid', minLength: 1, maxLength: 50 })).toBe(
+        'Schema.ULID.pipe(Schema.minLength(1),Schema.maxLength(50))',
+      )
+    })
+
+    it('should handle uuid with length and error message', () => {
+      expect(
+        string({ type: 'string', format: 'uuid', minLength: 1, 'x-error-message': 'Bad' }),
+      ).toBe('Schema.UUID.pipe(Schema.minLength(1)).annotations({message:()=>"Bad"})')
+    })
+  })
+
+  describe('FORMAT_PIPE with pattern message', () => {
+    it('should handle email with x-pattern-message', () => {
+      expect(
+        string({ type: 'string', format: 'email', 'x-pattern-message': 'Invalid email' }),
+      ).toBe(
+        'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/,{message:()=>"Invalid email"}))',
+      )
+    })
+
+    it('should handle format without pattern message', () => {
+      expect(string({ type: 'string', format: 'uri' })).toBe(
+        'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))',
+      )
+    })
+
+    it('should handle email with length constraints', () => {
+      expect(string({ type: 'string', format: 'email', minLength: 5, maxLength: 100 })).toBe(
+        'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),Schema.minLength(5),Schema.maxLength(100))',
+      )
     })
   })
 })

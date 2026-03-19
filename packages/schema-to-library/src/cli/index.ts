@@ -1,5 +1,6 @@
 import fsp from 'node:fs/promises'
 import path from 'node:path'
+
 import { fmt } from '../format/index.js'
 import type { JSONSchema } from '../helper/index.js'
 import { parseSchemaFile } from '../parser/index.js'
@@ -7,7 +8,9 @@ import { parseSchemaFile } from '../parser/index.js'
 function validateIO(
   input: string | undefined,
   output: string | undefined,
-): { ok: true; input: string; output: string } | { ok: false; error: string } {
+):
+  | { readonly ok: true; readonly input: string; readonly output: string }
+  | { readonly ok: false; readonly error: string } {
   if (typeof input !== 'string' || !(input.endsWith('.yaml') || input.endsWith('.json'))) {
     return { ok: false, error: 'Input must be a .json, or .yaml file' }
   }
@@ -17,7 +20,10 @@ function validateIO(
   return { ok: true, input, output }
 }
 
-type SchemaGenerator = (schema: JSONSchema, options?: { exportType?: boolean }) => string
+type SchemaGenerator = (
+  schema: JSONSchema,
+  options?: { exportType?: boolean; readonly?: boolean },
+) => string
 
 /**
  * Main CLI function that processes schema files and generates output
@@ -33,7 +39,8 @@ export async function cli(
   }
 
   const exportType = args.includes('--export-type')
-  const filteredArgs = args.filter((arg) => arg !== '--export-type')
+  const readonlyMode = args.includes('--readonly')
+  const filteredArgs = args.filter((arg) => arg !== '--export-type' && arg !== '--readonly')
 
   const i = filteredArgs[0]
   const oIdx = filteredArgs.indexOf('-o')
@@ -51,7 +58,7 @@ export async function cli(
     return { ok: false, error: schemaResult.error }
   }
 
-  const result = fn(schemaResult.value, { exportType })
+  const result = fn(schemaResult.value, { exportType, readonly: readonlyMode })
   const fmtResult = await fmt(result)
   if (!fmtResult.ok) {
     return { ok: false, error: fmtResult.error }

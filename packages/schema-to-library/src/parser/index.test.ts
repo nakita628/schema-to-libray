@@ -1,6 +1,8 @@
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+
 import { parseSchemaFile } from './index.js'
 
 const tmpDir = path.join(import.meta.dirname, '__test_tmp__')
@@ -62,7 +64,7 @@ describe('parseSchemaFile', () => {
     const result = await parseSchemaFile('/non/existent/file.json')
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error).toContain('Failed to parse schema')
+      expect(result.error.startsWith('Failed to parse schema:')).toBe(true)
     }
   })
 
@@ -72,5 +74,24 @@ describe('parseSchemaFile', () => {
 
     const result = await parseSchemaFile(schemaPath)
     expect(result.ok).toBe(true)
+  })
+
+  it('should return error for invalid JSON content', async () => {
+    const schemaPath = path.join(tmpDir, 'invalid.json')
+    await fsp.writeFile(schemaPath, '{invalid json!!!')
+
+    const result = await parseSchemaFile(schemaPath)
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.startsWith('Failed to parse schema:')).toBe(true)
+    }
+  })
+
+  it('should return error result with message for non-Error throw', async () => {
+    const result = await parseSchemaFile('/non/existent/path/deep/file.json')
+    expect(result).toStrictEqual({
+      ok: false,
+      error: expect.stringContaining('Failed to parse schema:'),
+    })
   })
 })

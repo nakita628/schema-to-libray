@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { zod } from './zod.js'
 
 /**
@@ -20,7 +20,7 @@ export function object(
   rootName: string,
   isZod: boolean,
   zodFn: typeof zod,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -72,7 +72,7 @@ function propertiesSchema(
   rootName: string,
   isZod: boolean,
   zodFn: typeof zod,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
@@ -87,7 +87,7 @@ function propertiesSchema(
   const allOptional = objectProperties.every((prop) => prop.includes('.optional()'))
   if (required.length === 0 && allOptional) {
     const cleanProperties = objectProperties.map((prop) => prop.replace('.optional()', ''))
-    return `z.object({${cleanProperties}}).partial()`
+    return `z.object({${cleanProperties.join(',')}}).partial()`
   }
-  return `z.object({${objectProperties}})`
+  return `z.object({${objectProperties.join(',')}})`
 }

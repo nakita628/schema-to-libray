@@ -31,10 +31,10 @@ npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 
 #### Options
 
-| Flag | Description |
-|------|-------------|
+| Flag            | Description                   |
+| --------------- | ----------------------------- |
 | `--export-type` | Include type export in output |
-| `-h, --help` | Display help for command |
+| `-h, --help`    | Display help for command      |
 
 ### Example
 

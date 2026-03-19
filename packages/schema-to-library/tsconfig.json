@@ -2,14 +2,15 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "declaration": true
+    "declaration": true,
+    "exactOptionalPropertyTypes": true
   },
-  "include": ["**/src/**/*.ts"],
-  "exclude": ["**/src/**/*.test.ts", "fixtures"]
+  "exclude": ["**/src/**/*.test.ts", "tsdown.config.ts", "dist"]
 }

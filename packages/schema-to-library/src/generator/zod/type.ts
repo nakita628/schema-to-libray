@@ -68,7 +68,10 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
 
   // const
   if (schema.const !== undefined) {
-    return typeof schema.const === 'string' ? `"${schema.const}"` : String(schema.const)
+    if (typeof schema.const === 'string') return `"${schema.const}"`
+    if (typeof schema.const === 'number' || typeof schema.const === 'boolean')
+      return String(schema.const)
+    return JSON.stringify(schema.const) ?? 'null'
   }
 
   // enum
@@ -79,7 +82,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
     }
     const allStrings = schema.enum.every((v: unknown) => typeof v === 'string')
     if (allStrings) {
-      return `(${schema.enum.map((v: unknown) => `"${v}"`).join(' | ')})`
+      return `(${schema.enum.map((v: unknown) => `"${String(v)}"`).join(' | ')})`
     }
     return `(${schema.enum.map((v: unknown) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
   }

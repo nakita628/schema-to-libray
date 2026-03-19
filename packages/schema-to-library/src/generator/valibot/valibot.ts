@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -15,8 +15,10 @@ export function valibot(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isValibot: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
+  const ro = (s: string): string => (options?.readonly ? `v.pipe(${s},v.readonly())` : s)
+
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
@@ -44,6 +46,10 @@ export function valibot(
   if (schema.allOf) {
     return allOf(schema, rootName, isValibot, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('v.any()', schema)
+  }
   // const
   if (schema.const) {
     return wrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
@@ -51,20 +57,20 @@ export function valibot(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isValibot, valibot, options), schema)
+  if (schema.properties)
+    return ro(wrap(object(schema, rootName, isValibot, valibot, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('v.boolean()', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isValibot, options), schema)
+  if (types.includes('array')) return ro(wrap(array(schema, rootName, isValibot, options), schema))
   if (types.includes('object'))
-    return wrap(object(schema, rootName, isValibot, valibot, options), schema)
+    return ro(wrap(object(schema, rootName, isValibot, valibot, options), schema))
   if (types.includes('date')) return wrap('v.date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('v.null()', schema)
 
-  console.warn(`fallback to v.any(): schema=${JSON.stringify(schema)}`)
   return wrap('v.any()', schema)
 }
 
@@ -72,7 +78,7 @@ function allOf(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (!schema.allOf?.length) return wrap('v.any()', schema)
 
@@ -112,7 +118,7 @@ function array(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
   const base = `v.array(${items})`
@@ -160,7 +166,7 @@ function ref(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   // self reference (#)
   if (schema.$ref === '#' || schema.$ref === '') {

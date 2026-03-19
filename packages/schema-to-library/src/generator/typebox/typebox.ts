@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -15,8 +15,10 @@ export function typebox(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isTypebox: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
+  const ro = (s: string): string => (options?.readonly ? `Type.Readonly(${s})` : s)
+
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
@@ -44,6 +46,11 @@ export function typebox(
   if (schema.allOf) {
     return allOf(schema, rootName, isTypebox, options)
   }
+  // not
+  if (schema.not) {
+    const inner = typebox(schema.not, rootName, isTypebox, options)
+    return wrap(`Type.Not(${inner})`, schema)
+  }
   // const
   if (schema.const) {
     return wrap(`Type.Literal(${JSON.stringify(schema.const)})`, schema)
@@ -51,16 +58,17 @@ export function typebox(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
+  if (schema.properties)
+    return ro(wrap(object(schema, rootName, isTypebox, typebox, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('Type.Boolean()', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isTypebox, options), schema)
+  if (types.includes('array')) return ro(wrap(array(schema, rootName, isTypebox, options), schema))
   if (types.includes('object'))
-    return wrap(object(schema, rootName, isTypebox, typebox, options), schema)
+    return ro(wrap(object(schema, rootName, isTypebox, typebox, options), schema))
   if (types.includes('date')) return wrap('Type.Date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Type.Null()', schema)
 
@@ -71,7 +79,7 @@ function allOf(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (!schema.allOf?.length) return wrap('Type.Any()', schema)
 
@@ -111,7 +119,7 @@ function array(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
 
@@ -157,7 +165,11 @@ export function wrap(typeboxStr: string, schema: JSONSchema): string {
   return isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
 }
 
-function ref(schema: JSONSchema, rootName: string, options?: GeneratorOptions): string {
+function ref(
+  schema: JSONSchema,
+  rootName: string,
+  options?: { openapi?: boolean; readonly?: boolean },
+): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`Type.Recursive((_Self) => ${rootName})`, schema)
   }

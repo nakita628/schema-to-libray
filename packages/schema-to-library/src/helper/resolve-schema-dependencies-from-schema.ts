@@ -19,8 +19,8 @@ import type { JSONSchema } from './json-schema.js'
 export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[] {
   // Merge both definitions and $defs
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const isRecord = (v: unknown): v is { [k: string]: unknown } =>
@@ -102,8 +102,6 @@ export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[
   const visit = (name: string): void => {
     if (perm.has(name)) return
     if (temp.has(name)) {
-      // Circular dependency detected - skip this dependency but continue processing
-      // console.warn(`Warning: Circular dependency detected for type "${name}", skipping...`)
       return
     }
 

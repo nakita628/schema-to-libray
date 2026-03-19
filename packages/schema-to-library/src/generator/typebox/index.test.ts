@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import { schemaToTypebox } from './index.js'
 
 // Test run
@@ -601,5 +602,80 @@ export const Null = Type.Object({value:Type.Union([Type.String(),Type.Null()])})
 
 export type Null = Static<typeof Null>`
     expect(result).toBe(expected)
+  })
+
+  describe('readonly option', () => {
+    it('should generate readonly object schema', () => {
+      const result = schemaToTypebox(
+        {
+          title: 'User',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const User = Type.Readonly(Type.Object({name:Type.String()}))`,
+      )
+    })
+
+    it('should generate readonly array in object', () => {
+      const result = schemaToTypebox(
+        {
+          title: 'List',
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['items'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const List = Type.Readonly(Type.Object({items:Type.Readonly(Type.Array(Type.String()))}))`,
+      )
+    })
+
+    it('should not affect primitive types', () => {
+      const result = schemaToTypebox(
+        { title: 'Name', type: 'string' },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Name = Type.String()`,
+      )
+    })
+  })
+
+  describe('self-reference and complex schemas', () => {
+    it('should handle empty schema', () => {
+      const result = schemaToTypebox({}, { exportType: false })
+      expect(result).toBe(
+        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Schema = Type.Any()`,
+      )
+    })
+
+    it('should handle root name in definitions', () => {
+      const result = schemaToTypebox(
+        {
+          title: 'Node',
+          type: 'object',
+          definitions: {
+            Node: {
+              type: 'object',
+              properties: {
+                value: { type: 'string' },
+              },
+              required: ['value'],
+            },
+          },
+        },
+        { exportType: false },
+      )
+      expect(result).toBe(
+        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Node = Type.Object({value:Type.String()})`,
+      )
+    })
   })
 })

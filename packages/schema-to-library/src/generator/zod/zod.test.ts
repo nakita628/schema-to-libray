@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { zod } from './zod.js'
 
@@ -282,7 +283,17 @@ describe('zod', () => {
       })
     })
 
-    // TODO add not
+    describe('not', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ not: { type: 'string' } }, 'z.any()'],
+        [{ not: { type: 'integer' } }, 'z.any()'],
+        [{ not: { type: 'boolean' } }, 'z.any()'],
+        [{ not: { type: 'string' }, nullable: true }, 'z.any().nullable()'],
+        [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'z.any().nullable()'],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
+      })
+    })
 
     describe('const', () => {
       it.concurrent.each<[JSONSchema, string]>([
@@ -871,7 +882,6 @@ describe('zod', () => {
         it.concurrent.each<[JSONSchema, string]>([
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
             },
             'z.any()',
@@ -879,7 +889,6 @@ describe('zod', () => {
 
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               nullable: true,
             },
@@ -887,14 +896,12 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: ['any' as any, 'null'],
             },
             'z.any().nullable()',
           ],
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               default: 'test',
             },
@@ -902,7 +909,6 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               nullable: true,
               default: 'test',
@@ -911,7 +917,6 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: ['any' as any, 'null'],
               default: 'test',
             },
@@ -1190,6 +1195,90 @@ describe('zod', () => {
       [{ $ref: '#' }, 'z.lazy(() => Schema)'],
     ])('zod(%o) → %s', (input, expected) => {
       expect(zod(input)).toBe(expected)
+    })
+  })
+
+  describe('$ref edge cases', () => {
+    it('should handle self reference #', () => {
+      expect(zod({ $ref: '#' }, 'Schema')).toBe('z.lazy(() => Schema)')
+    })
+
+    it('should handle $ref with array type without items $ref', () => {
+      expect(zod({ $ref: '#/components/schemas/Test', type: 'array' })).toBe('TestSchema')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle int64 default format', () => {
+      expect(zod({ type: 'integer', format: 'int64', default: 42 })).toBe('z.int64().default(42n)')
+    })
+
+    it('should handle bigint default format', () => {
+      expect(zod({ type: 'integer', format: 'bigint', default: 100 })).toBe(
+        'z.bigint().default(BigInt(100))',
+      )
+    })
+
+    it('should handle date default', () => {
+      expect(zod({ type: 'date', default: '2024-01-01' })).toBe(
+        'z.date().default(new Date("2024-01-01"))',
+      )
+    })
+
+    it('should handle object default', () => {
+      expect(zod({ type: 'string', default: null })).toBe('z.string().default(null)')
+    })
+
+    it('should handle nullable via type array with null', () => {
+      expect(zod({ type: ['string', 'null'] })).toBe('z.string().nullable()')
+    })
+  })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(zod({ oneOf: [] })).toBe('z.any()')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(zod({ anyOf: [] })).toBe('z.any()')
+    })
+
+    it('should handle empty allOf', () => {
+      expect(zod({ allOf: [] })).toBe('z.any()')
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should add .readonly() to object', () => {
+      expect(
+        zod(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('z.object({name:z.string()}).readonly()')
+    })
+
+    it('should add .readonly() to array', () => {
+      expect(
+        zod({ type: 'array', items: { type: 'string' } }, 'Schema', false, { readonly: true }),
+      ).toBe('z.array(z.string()).readonly()')
+    })
+
+    it('should not add .readonly() to string', () => {
+      expect(zod({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('z.string()')
+    })
+
+    it('should not add .readonly() when option is false', () => {
+      expect(
+        zod(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: false },
+        ),
+      ).toBe('z.object({name:z.string()})')
     })
   })
 })

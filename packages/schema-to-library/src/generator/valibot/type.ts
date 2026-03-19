@@ -40,7 +40,10 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
 
   // const
   if (schema.const !== undefined) {
-    return typeof schema.const === 'string' ? `"${schema.const}"` : String(schema.const)
+    if (typeof schema.const === 'string') return `"${schema.const}"`
+    if (typeof schema.const === 'number' || typeof schema.const === 'boolean')
+      return String(schema.const)
+    return JSON.stringify(schema.const) ?? 'null'
   }
 
   // enum
