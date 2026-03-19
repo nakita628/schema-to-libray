@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { zod } from './zod.js'
 
@@ -282,7 +283,17 @@ describe('zod', () => {
       })
     })
 
-    // TODO add not
+    describe('not', () => {
+      it.concurrent.each<[JSONSchema, string]>([
+        [{ not: { type: 'string' } }, 'z.any()'],
+        [{ not: { type: 'integer' } }, 'z.any()'],
+        [{ not: { type: 'boolean' } }, 'z.any()'],
+        [{ not: { type: 'string' }, nullable: true }, 'z.any().nullable()'],
+        [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'z.any().nullable()'],
+      ])('zod(%o) → %s', (input, expected) => {
+        expect(zod(input)).toBe(expected)
+      })
+    })
 
     describe('const', () => {
       it.concurrent.each<[JSONSchema, string]>([
@@ -871,7 +882,6 @@ describe('zod', () => {
         it.concurrent.each<[JSONSchema, string]>([
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
             },
             'z.any()',
@@ -879,7 +889,6 @@ describe('zod', () => {
 
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               nullable: true,
             },
@@ -887,14 +896,12 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: ['any' as any, 'null'],
             },
             'z.any().nullable()',
           ],
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               default: 'test',
             },
@@ -902,7 +909,6 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: 'any' as any,
               nullable: true,
               default: 'test',
@@ -911,7 +917,6 @@ describe('zod', () => {
           ],
           [
             {
-              // biome-ignore lint: test
               type: ['any' as any, 'null'],
               default: 'test',
             },

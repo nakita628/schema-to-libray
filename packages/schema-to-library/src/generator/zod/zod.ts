@@ -57,6 +57,10 @@ export function zod(
   if (schema.allOf) {
     return allOf(schema, rootName, isZod, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('z.any()', schema)
+  }
   // const
   if (schema.const) {
     return wrap(`z.literal(${JSON.stringify(schema.const)})`, schema)

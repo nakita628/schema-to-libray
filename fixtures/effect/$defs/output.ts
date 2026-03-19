@@ -14,6 +14,4 @@ export const User: Schema.Schema<UserType> = Schema.Struct({
   address: Schema.optional(Schema.suspend(() => Address)),
 })
 
-export type UserType_ = typeof User.Type
-
 export type UserEncoded = typeof User.Encoded

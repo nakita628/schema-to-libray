@@ -44,6 +44,10 @@ export function effect(
   if (schema.allOf) {
     return allOf(schema, rootName, isEffect, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('Schema.Unknown', schema)
+  }
   // const
   if (schema.const) {
     return wrap(`Schema.Literal(${JSON.stringify(schema.const)})`, schema)

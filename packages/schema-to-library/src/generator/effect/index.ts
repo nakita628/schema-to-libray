@@ -49,8 +49,8 @@ export function schemaToEffect(
   const rootName = pascalTitle === 'Schema' ? 'Schema_' : pascalTitle
 
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const hasDefinitions = Object.keys(definitions).length > 0
@@ -105,10 +105,7 @@ export function schemaToEffect(
     schemaDefsCode,
     rootExport,
     ...(exportType
-      ? [
-          `export type ${rootName} = typeof ${rootName}.Type`,
-          `export type ${rootName}Encoded = typeof ${rootName}.Encoded`,
-        ]
+      ? [`export type ${rootName}Encoded = typeof ${rootName}.Encoded`]
       : []),
   ]
     .filter(Boolean)

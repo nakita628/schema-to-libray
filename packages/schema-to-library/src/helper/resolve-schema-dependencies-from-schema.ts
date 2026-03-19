@@ -19,8 +19,8 @@ import type { JSONSchema } from './json-schema.js'
 export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[] {
   // Merge both definitions and $defs
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const isRecord = (v: unknown): v is { [k: string]: unknown } =>

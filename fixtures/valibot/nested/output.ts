@@ -16,6 +16,4 @@ export const Order = v.object({
   status: v.picklist(['pending', 'confirmed', 'shipped', 'delivered']),
 })
 
-export type OrderInput = v.InferInput<typeof Order>
-
 export type OrderOutput = v.InferOutput<typeof Order>

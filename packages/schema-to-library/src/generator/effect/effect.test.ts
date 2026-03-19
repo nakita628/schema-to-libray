@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { effect } from './effect.js'
 
@@ -243,6 +244,18 @@ describe('effect', () => {
         },
         'Schema.optional(Schema.Struct({a:Schema.String}),{default:() => "hello"})',
       ],
+    ])('effect(%o) → %s', (input, expected) => {
+      expect(effect(input)).toBe(expected)
+    })
+  })
+
+  describe('not', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ not: { type: 'string' } }, 'Schema.Unknown'],
+      [{ not: { type: 'integer' } }, 'Schema.Unknown'],
+      [{ not: { type: 'boolean' } }, 'Schema.Unknown'],
+      [{ not: { type: 'string' }, nullable: true }, 'Schema.NullOr(Schema.Unknown)'],
+      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'Schema.NullOr(Schema.Unknown)'],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })

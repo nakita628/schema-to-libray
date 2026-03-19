@@ -44,6 +44,10 @@ export function valibot(
   if (schema.allOf) {
     return allOf(schema, rootName, isValibot, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('v.any()', schema)
+  }
   // const
   if (schema.const) {
     return wrap(`v.literal(${JSON.stringify(schema.const)})`, schema)

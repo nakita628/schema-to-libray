@@ -6,6 +6,4 @@ export const Schema: v.GenericSchema<SchemaType> = v.partial(
   v.object({ children: v.array(v.lazy(() => Schema)) }),
 )
 
-export type SchemaInput = v.InferInput<typeof Schema>
-
 export type SchemaOutput = v.InferOutput<typeof Schema>

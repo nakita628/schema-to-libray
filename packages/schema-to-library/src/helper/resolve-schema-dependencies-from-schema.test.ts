@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import { resolveSchemaDependenciesFromSchema } from './resolve-schema-dependencies-from-schema.js'
 
 // Test run

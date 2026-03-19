@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { arktype } from './arktype.js'
 
@@ -96,6 +97,18 @@ describe('arktype', () => {
         '"string & number | null"',
       ],
       [{ allOf: [] } as JSONSchema, '"unknown"'],
+    ])('arktype(%o) → %s', (input, expected) => {
+      expect(arktype(input)).toBe(expected)
+    })
+  })
+
+  describe('not', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ not: { type: 'string' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'integer' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'boolean' } } as JSONSchema, '"unknown"'],
+      [{ not: { type: 'string' }, nullable: true } as JSONSchema, '"unknown | null"'],
+      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, '"unknown | null"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })

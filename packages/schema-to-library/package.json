@@ -1,31 +1,54 @@
 {
   "name": "schema-to-library",
-  "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
   "version": "0.0.7",
-  "type": "module",
-  "license": "MIT",
+  "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
   "keywords": [
-    "zod",
-    "valibot",
+    "arktype",
     "effect",
     "typebox",
-    "arktype"
+    "valibot",
+    "zod"
   ],
   "homepage": "https://github.com/nakita628/schema-to-libray",
-  "publishConfig": {
-    "access": "public"
+  "bugs": {
+    "url": "https://github.com/nakita628/schema-to-libray/issues"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nakita628/schema-to-libray.git"
   },
-  "bugs": {
-    "url": "https://github.com/nakita628/schema-to-libray/issues"
+  "bin": {
+    "schema-to-arktype": "dist/cli/arktype.js",
+    "schema-to-effect": "dist/cli/effect.js",
+    "schema-to-typebox": "dist/cli/typebox.js",
+    "schema-to-valibot": "dist/cli/valibot.js",
+    "schema-to-zod": "dist/cli/zod.js"
   },
   "files": [
     "dist"
   ],
+  "type": "module",
   "main": "dist/index.js",
+  "typesVersions": {
+    "*": {
+      "zod": [
+        "./dist/zod.d.ts"
+      ],
+      "valibot": [
+        "./dist/valibot.d.ts"
+      ],
+      "effect": [
+        "./dist/effect.d.ts"
+      ],
+      "typebox": [
+        "./dist/typebox.d.ts"
+      ],
+      "arktype": [
+        "./dist/arktype.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -52,37 +75,13 @@
       "import": "./dist/arktype.js"
     }
   },
-  "typesVersions": {
-    "*": {
-      "zod": [
-        "./dist/zod.d.ts"
-      ],
-      "valibot": [
-        "./dist/valibot.d.ts"
-      ],
-      "effect": [
-        "./dist/effect.d.ts"
-      ],
-      "typebox": [
-        "./dist/typebox.d.ts"
-      ],
-      "arktype": [
-        "./dist/arktype.d.ts"
-      ]
-    }
-  },
-  "bin": {
-    "schema-to-zod": "dist/cli/zod.js",
-    "schema-to-valibot": "dist/cli/valibot.js",
-    "schema-to-effect": "dist/cli/effect.js",
-    "schema-to-typebox": "dist/cli/typebox.js",
-    "schema-to-arktype": "dist/cli/arktype.js"
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "deps": "rm -rf node_modules && rm -rf pnpm-lock.yaml && pnpm install",
+    "deps": "rm -rf node_modules && pnpm install",
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
     "release": "pnpm build && pnpm publish"
   },
   "dependencies": {

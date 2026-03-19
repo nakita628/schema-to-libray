@@ -11,6 +11,4 @@ export const User: v.GenericSchema<UserType> = v.object({
   address: v.optional(v.lazy(() => Address)),
 })
 
-export type UserInput = v.InferInput<typeof User>
-
 export type UserOutput = v.InferOutput<typeof User>

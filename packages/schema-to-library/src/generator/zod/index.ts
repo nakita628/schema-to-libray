@@ -53,8 +53,8 @@ export function schemaToZod(
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const hasDefinitions = Object.keys(definitions).length > 0

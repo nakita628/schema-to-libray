@@ -47,8 +47,8 @@ export function schemaToValibot(
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
   const definitions: { [k: string]: JSONSchema } = {
-    ...(schema.definitions ?? {}),
-    ...(schema.$defs ?? {}),
+    ...schema.definitions,
+    ...schema.$defs,
   }
 
   const hasDefinitions = Object.keys(definitions).length > 0
@@ -103,10 +103,7 @@ export function schemaToValibot(
     schemaDefsCode,
     rootExport,
     ...(exportType
-      ? [
-          `export type ${rootName}Input = v.InferInput<typeof ${rootName}>`,
-          `export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`,
-        ]
+      ? [`export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`]
       : []),
   ]
     .filter(Boolean)

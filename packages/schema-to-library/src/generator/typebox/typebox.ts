@@ -44,6 +44,11 @@ export function typebox(
   if (schema.allOf) {
     return allOf(schema, rootName, isTypebox, options)
   }
+  // not
+  if (schema.not) {
+    const inner = typebox(schema.not, rootName, isTypebox, options)
+    return wrap(`Type.Not(${inner})`, schema)
+  }
   // const
   if (schema.const) {
     return wrap(`Type.Literal(${JSON.stringify(schema.const)})`, schema)

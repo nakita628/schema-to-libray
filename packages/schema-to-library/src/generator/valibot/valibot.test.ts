@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../../helper/index.js'
 import { valibot } from './valibot.js'
 
@@ -297,6 +298,18 @@ describe('valibot', () => {
         },
         'v.optional(BaseSchema,"hello")',
       ],
+    ])('valibot(%o) → %s', (input, expected) => {
+      expect(valibot(input)).toBe(expected)
+    })
+  })
+
+  describe('not', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ not: { type: 'string' } }, 'v.any()'],
+      [{ not: { type: 'integer' } }, 'v.any()'],
+      [{ not: { type: 'boolean' } }, 'v.any()'],
+      [{ not: { type: 'string' }, nullable: true }, 'v.nullable(v.any())'],
+      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'v.nullable(v.any())'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -701,14 +714,12 @@ describe('valibot', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         {
-          // biome-ignore lint: test
           type: 'any' as any,
         },
         'v.any()',
       ],
       [
         {
-          // biome-ignore lint: test
           type: 'any' as any,
           nullable: true,
         },
@@ -716,14 +727,12 @@ describe('valibot', () => {
       ],
       [
         {
-          // biome-ignore lint: test
           type: ['any' as any, 'null'],
         },
         'v.nullable(v.any())',
       ],
       [
         {
-          // biome-ignore lint: test
           type: 'any' as any,
           default: 'test',
         },
@@ -731,7 +740,6 @@ describe('valibot', () => {
       ],
       [
         {
-          // biome-ignore lint: test
           type: 'any' as any,
           nullable: true,
           default: 'test',
@@ -740,7 +748,6 @@ describe('valibot', () => {
       ],
       [
         {
-          // biome-ignore lint: test
           type: ['any' as any, 'null'],
           default: 'test',
         },

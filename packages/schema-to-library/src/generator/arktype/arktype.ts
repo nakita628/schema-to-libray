@@ -44,6 +44,10 @@ export function arktype(
   if (schema.allOf) {
     return allOf(schema, rootName, isArktype, options)
   }
+  // not
+  if (schema.not) {
+    return wrap('"unknown"', schema)
+  }
   // const
   if (schema.const) {
     const v = typeof schema.const === 'string' ? `"'${schema.const}'"` : `"${schema.const}"`

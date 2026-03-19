@@ -1,6 +1,8 @@
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+
 import { parseSchemaFile } from './index.js'
 
 const tmpDir = path.join(import.meta.dirname, '__test_tmp__')

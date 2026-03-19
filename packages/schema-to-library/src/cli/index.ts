@@ -1,5 +1,6 @@
 import fsp from 'node:fs/promises'
 import path from 'node:path'
+
 import { fmt } from '../format/index.js'
 import type { JSONSchema } from '../helper/index.js'
 import { parseSchemaFile } from '../parser/index.js'
