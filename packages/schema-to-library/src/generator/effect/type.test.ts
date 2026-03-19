@@ -219,10 +219,7 @@ describe('effect type', () => {
     it('should exclude nullable: true only', () => {
       expect(
         type({
-          allOf: [
-            { type: 'object', properties: { name: { type: 'string' } } },
-            { nullable: true },
-          ],
+          allOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { nullable: true }],
         }),
       ).toBe('{readonly name?: string}')
     })
@@ -241,10 +238,7 @@ describe('effect type', () => {
     it('should exclude const-only object from intersection', () => {
       expect(
         type({
-          allOf: [
-            { type: 'object', properties: { name: { type: 'string' } } },
-            { const: 'hello' },
-          ],
+          allOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { const: 'hello' }],
         }),
       ).toBe('{readonly name?: string}')
     })

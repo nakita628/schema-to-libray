@@ -10,12 +10,7 @@ export { schemaToValibot } from './generator/valibot/index.js'
 export { valibot } from './generator/valibot/valibot.js'
 export { schemaToZod } from './generator/zod/index.js'
 export { zod } from './generator/zod/zod.js'
-export type {
-  GeneratorOptions,
-  JSONSchema,
-  JSONSchemaFormat,
-  JSONSchemaType,
-} from './helper/index.js'
+export type { JSONSchema, JSONSchemaFormat, JSONSchemaType } from './helper/index.js'
 export { parseSchemaFile } from './parser/index.js'
 
 // Utilities for OpenAPI component naming

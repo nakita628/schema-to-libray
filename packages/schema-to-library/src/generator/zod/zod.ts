@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -28,8 +28,10 @@ export function zod(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isZod: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
+  const ro = (s: string): string => (options?.readonly ? `${s}.readonly()` : s)
+
   // $ref
   if (schema.$ref) {
     if (Boolean(schema.$ref) === true) {
@@ -68,19 +70,19 @@ export function zod(
   // enum
   if (schema.enum) return wrap(_enum(schema), schema)
   // properties
-  if (schema.properties) return wrap(object(schema, rootName, isZod, zod, options), schema)
+  if (schema.properties) return ro(wrap(object(schema, rootName, isZod, zod, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return wrap(string(schema), schema)
   if (types.includes('number')) return wrap(number(schema), schema)
   if (types.includes('integer')) return wrap(integer(schema), schema)
   if (types.includes('boolean')) return wrap('z.boolean()', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isZod, options), schema)
-  if (types.includes('object')) return wrap(object(schema, rootName, isZod, zod, options), schema)
+  if (types.includes('array')) return ro(wrap(array(schema, rootName, isZod, options), schema))
+  if (types.includes('object'))
+    return ro(wrap(object(schema, rootName, isZod, zod, options), schema))
   if (types.includes('date')) return wrap('z.date()', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('z.null()', schema)
 
-  console.warn(`fallback to z.any(): schema=${JSON.stringify(schema)}`)
   return wrap('z.any()', schema)
 }
 
@@ -91,7 +93,7 @@ function allOf(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (!schema.allOf?.length) return wrap('z.any()', schema)
 
@@ -133,7 +135,7 @@ function array(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const base = `z.array(${schema.items ? zod(schema.items, rootName, isZod, options) : 'z.any()'})`
 
@@ -179,7 +181,7 @@ function ref(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   // self reference (#)
   if (schema.$ref === '#' || schema.$ref === '') {

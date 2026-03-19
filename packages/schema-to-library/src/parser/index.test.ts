@@ -64,7 +64,7 @@ describe('parseSchemaFile', () => {
     const result = await parseSchemaFile('/non/existent/file.json')
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.error).toContain('Failed to parse schema')
+      expect(result.error.startsWith('Failed to parse schema:')).toBe(true)
     }
   })
 

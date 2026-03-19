@@ -590,4 +590,45 @@ describe('typebox', () => {
       expect(typebox(input)).toBe(expected)
     })
   })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(typebox({ oneOf: [] })).toBe('Type.Any()')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(typebox({ anyOf: [] })).toBe('Type.Any()')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(typebox({ type: ['string', 'null'] })).toBe('Type.Union([Type.String(),Type.Null()])')
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should wrap object with Type.Readonly()', () => {
+      expect(
+        typebox(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('Type.Readonly(Type.Object({name:Type.String()}))')
+    })
+
+    it('should wrap array with Type.Readonly()', () => {
+      expect(
+        typebox({ type: 'array', items: { type: 'string' } }, 'Schema', false, {
+          readonly: true,
+        }),
+      ).toBe('Type.Readonly(Type.Array(Type.String()))')
+    })
+
+    it('should not wrap string', () => {
+      expect(typebox({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('Type.String()')
+    })
+  })
 })

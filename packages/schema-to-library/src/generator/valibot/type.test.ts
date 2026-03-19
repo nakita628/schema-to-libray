@@ -225,10 +225,7 @@ describe('valibot type', () => {
     it('should exclude nullable: true only', () => {
       expect(
         type({
-          allOf: [
-            { type: 'object', properties: { name: { type: 'string' } } },
-            { nullable: true },
-          ],
+          allOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { nullable: true }],
         }),
       ).toBe('{name?: string}')
     })
@@ -247,10 +244,7 @@ describe('valibot type', () => {
     it('should exclude const-only object from intersection', () => {
       expect(
         type({
-          allOf: [
-            { type: 'object', properties: { name: { type: 'string' } } },
-            { const: 'hello' },
-          ],
+          allOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { const: 'hello' }],
         }),
       ).toBe('{name?: string}')
     })

@@ -1000,8 +1000,8 @@ describe('syntax validation', () => {
 
           const code = fs.readFileSync(outFile, 'utf-8')
           expect(code.length).toBeGreaterThan(0)
-          expect(code).toContain('export const')
-          expect(code).toContain('import')
+          expect(code.includes('export const')).toBe(true)
+          expect(code.startsWith('import')).toBe(true)
 
           // Verify no unclosed brackets/parens
           const opens = (code.match(/[({[]/g) || []).length

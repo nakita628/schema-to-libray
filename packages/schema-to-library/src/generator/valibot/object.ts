@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import type { valibot } from './valibot.js'
 
 export function object(
@@ -6,7 +6,7 @@ export function object(
   rootName: string,
   isValibot: boolean,
   valibotFn: typeof valibot,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.additionalProperties) {
     if (typeof schema.additionalProperties === 'boolean') {
@@ -55,7 +55,7 @@ function propertiesSchema(
   rootName: string,
   isValibot: boolean,
   valibotFn: typeof valibot,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const objectProperties = Object.entries(properties)
     .map(([key, schema]) => {
@@ -72,7 +72,7 @@ function propertiesSchema(
     const cleanProperties = objectProperties.map((prop) =>
       prop.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'),
     )
-    return `v.partial(v.object({${cleanProperties}}))`
+    return `v.partial(v.object({${cleanProperties.join(',')}}))`
   }
-  return `v.object({${objectProperties}})`
+  return `v.object({${objectProperties.join(',')}})`
 }

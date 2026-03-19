@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
@@ -39,10 +39,10 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToValibot(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean },
+  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
 ): string {
-  const { exportType = true, openapi = false } = options ?? {}
-  const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
+  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
+  const genOptions = { openapi, readonly: readonlyMode }
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
@@ -102,9 +102,7 @@ export function schemaToValibot(
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    ...(exportType
-      ? [`export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`]
-      : []),
+    ...(exportType ? [`export type ${rootName}Output = v.InferOutput<typeof ${rootName}>`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

@@ -1,12 +1,12 @@
 import * as v from 'valibot'
 
-type UserType = { name: string; address?: AddressType }
+type _User = { name: string; address?: _Address }
 
-type AddressType = { street: string; city: string }
+type _Address = { street: string; city: string }
 
-const Address: v.GenericSchema<AddressType> = v.object({ street: v.string(), city: v.string() })
+const Address: v.GenericSchema<_Address> = v.object({ street: v.string(), city: v.string() })
 
-export const User: v.GenericSchema<UserType> = v.object({
+export const User: v.GenericSchema<_User> = v.object({
   name: v.string(),
   address: v.optional(v.lazy(() => Address)),
 })

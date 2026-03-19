@@ -5,9 +5,10 @@ export default defineConfig({
     sourcemap: true,
   },
   test: {
-    include: ['packages/**/*.test.ts'],
+    include: ['packages/**/*.test.ts', 'fixtures/*/src/*.test.ts'],
     testTimeout: 10_000,
     coverage: {
+      include: ['packages/**/*.ts'],
       reporter: ['text', 'html'],
       thresholds: {
         statements: 80,
@@ -18,7 +19,7 @@ export default defineConfig({
     },
   },
   lint: {
-    ignorePatterns: ['dist/**', 'fixtures/**'],
+    ignorePatterns: ['dist/**', 'fixtures/**', 'apps/**'],
     options: {
       typeAware: true,
       typeCheck: true,

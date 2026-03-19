@@ -102,8 +102,6 @@ export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[
   const visit = (name: string): void => {
     if (perm.has(name)) return
     if (temp.has(name)) {
-      // Circular dependency detected - skip this dependency but continue processing
-      // console.warn(`Warning: Circular dependency detected for type "${name}", skipping...`)
       return
     }
 

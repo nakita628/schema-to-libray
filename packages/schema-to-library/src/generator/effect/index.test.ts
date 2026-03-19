@@ -1028,4 +1028,62 @@ export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({wrap:Sch
 export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
+
+  describe('self-reference and complex schemas', () => {
+    it('should handle direct self-reference ($ref: "#")', () => {
+      const result = schemaToEffect({
+        title: 'Tree',
+        type: 'object',
+        properties: {
+          children: { type: 'array', items: { $ref: '#' } },
+        },
+      })
+      const expected = `import { Schema } from "effect"
+
+type _Tree = {readonly children?: readonly typeof Tree.Type[]}
+
+export const Tree: Schema.Schema<_Tree> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Tree))}))
+
+export type TreeEncoded = typeof Tree.Encoded`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle root name in definitions', () => {
+      const result = schemaToEffect(
+        {
+          title: 'Node',
+          type: 'object',
+          definitions: {
+            Node: {
+              type: 'object',
+              properties: {
+                value: { type: 'string' },
+                next: { $ref: '#/definitions/Node' },
+              },
+              required: ['value'],
+            },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import { Schema } from "effect"
+
+type _Node = {readonly value: string; readonly next?: _Node}
+
+export const Node: Schema.Schema<_Node> = Schema.Struct({value:Schema.String,next:Schema.optional(Schema.suspend(() => Node))})`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle empty schema', () => {
+      const result = schemaToEffect({}, { exportType: false })
+      expect(result).toBe(
+        `import { Schema } from "effect"\n\nexport const Schema_ = Schema.Unknown`,
+      )
+    })
+
+    it('should handle Schema title conflict', () => {
+      const result = schemaToEffect({ title: 'Schema', type: 'string' }, { exportType: false })
+      expect(result).toBe(`import { Schema } from "effect"\n\nexport const Schema_ = Schema.String`)
+    })
+  })
 })

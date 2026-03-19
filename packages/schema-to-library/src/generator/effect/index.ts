@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
@@ -39,10 +39,10 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToEffect(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean },
+  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
 ): string {
   const { exportType = true, openapi = false } = options ?? {}
-  const genOptions: GeneratorOptions | undefined = openapi ? { openapi } : undefined
+  const genOptions = { openapi }
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const pascalTitle = schema.title ? toName(schema.title) : 'Schema_'
   // Avoid conflict with `import { Schema } from "effect"`
@@ -104,9 +104,7 @@ export function schemaToEffect(
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    ...(exportType
-      ? [`export type ${rootName}Encoded = typeof ${rootName}.Encoded`]
-      : []),
+    ...(exportType ? [`export type ${rootName}Encoded = typeof ${rootName}.Encoded`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

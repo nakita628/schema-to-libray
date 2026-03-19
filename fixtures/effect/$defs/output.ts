@@ -1,15 +1,15 @@
 import { Schema } from 'effect'
 
-type UserType = { readonly name: string; readonly address?: AddressType }
+type _User = { readonly name: string; readonly address?: _Address }
 
-type AddressType = { readonly street: string; readonly city: string }
+type _Address = { readonly street: string; readonly city: string }
 
-const Address: Schema.Schema<AddressType> = Schema.Struct({
+const Address: Schema.Schema<_Address> = Schema.Struct({
   street: Schema.String,
   city: Schema.String,
 })
 
-export const User: Schema.Schema<UserType> = Schema.Struct({
+export const User: Schema.Schema<_User> = Schema.Struct({
   name: Schema.String,
   address: Schema.optional(Schema.suspend(() => Address)),
 })

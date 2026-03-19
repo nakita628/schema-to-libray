@@ -119,9 +119,6 @@ importers:
       tsdown:
         specifier: ^0.21.0
         version: 0.21.4(typescript@5.9.3)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
 
 packages:
 

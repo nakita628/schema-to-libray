@@ -16,7 +16,7 @@ Options:
  *
  * Processes command line arguments and generates Zod schemas from JSON Schema files
  */
-cli(schemaToZod, HELP_TEXT).then((result) => {
+void cli(schemaToZod, HELP_TEXT).then((result) => {
   if (result?.ok) {
     console.log(result.value)
   } else {

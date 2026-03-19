@@ -780,4 +780,26 @@ describe('effect', () => {
       expect(effect(input)).toBe(expected)
     })
   })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(effect({ oneOf: [] })).toBe('Schema.Unknown')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(effect({ anyOf: [] })).toBe('Schema.Unknown')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(effect({ type: ['string', 'null'] })).toBe('Schema.NullOr(Schema.String)')
+    })
+
+    it('should handle default with nullable', () => {
+      expect(effect({ type: 'string', nullable: true, default: 'x' })).toBe(
+        'Schema.NullOr(Schema.optionalWith(Schema.String,{default:() => "x"}))',
+      )
+    })
+  })
 })

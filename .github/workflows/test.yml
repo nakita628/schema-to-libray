@@ -23,6 +23,4 @@ jobs:
 
       - run: pnpm -F schema-to-library build
 
-      - run: pnpm -F schema-to-library typecheck
-
       - run: vp test --coverage

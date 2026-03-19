@@ -824,4 +824,112 @@ export type EmptyOutput = v.InferOutput<typeof Empty>`
     const expected = `import * as v from 'valibot'\n\ntype _Root = {data?: _Special}\n\ntype _Special = {"x-value": string; normal?: number}\n\nconst Special: v.GenericSchema<_Special> = v.object({"x-value":v.string(),normal:v.optional(v.number())})\n\nexport const Root: v.GenericSchema<_Root> = v.partial(v.object({data:v.lazy(() => Special)}))\n\nexport type RootOutput = v.InferOutput<typeof Root>`
     expect(result).toBe(expected)
   })
+
+  describe('readonly option', () => {
+    it('should generate readonly object schema', () => {
+      const result = schemaToValibot(
+        {
+          title: 'User',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as v from 'valibot'\n\nexport const User = v.pipe(v.object({name:v.string()}),v.readonly())`,
+      )
+    })
+
+    it('should generate readonly array in object', () => {
+      const result = schemaToValibot(
+        {
+          title: 'List',
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['items'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as v from 'valibot'\n\nexport const List = v.pipe(v.object({items:v.pipe(v.array(v.string()),v.readonly())}),v.readonly())`,
+      )
+    })
+
+    it('should not affect primitive types', () => {
+      const result = schemaToValibot(
+        { title: 'Name', type: 'string' },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(`import * as v from 'valibot'\n\nexport const Name = v.string()`)
+    })
+  })
+
+  describe('self-reference and circular schemas', () => {
+    it('should handle direct self-reference ($ref: "#")', () => {
+      const result = schemaToValibot({
+        title: 'Tree',
+        type: 'object',
+        properties: {
+          children: { type: 'array', items: { $ref: '#' } },
+        },
+      })
+      const expected = `import * as v from 'valibot'
+
+type _Tree = {children?: v.InferOutput<typeof Tree>[]}
+
+export const Tree: v.GenericSchema<_Tree> = v.partial(v.object({children:v.array(v.lazy(() => Tree))}))
+
+export type TreeOutput = v.InferOutput<typeof Tree>`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle root name in definitions', () => {
+      const result = schemaToValibot(
+        {
+          title: 'Node',
+          type: 'object',
+          definitions: {
+            Node: {
+              type: 'object',
+              properties: {
+                value: { type: 'string' },
+                next: { $ref: '#/definitions/Node' },
+              },
+              required: ['value'],
+            },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import * as v from 'valibot'
+
+type _Node = {value: string; next?: _Node}
+
+export const Node: v.GenericSchema<_Node> = v.object({value:v.string(),next:v.optional(v.lazy(() => Node))})`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle empty schema', () => {
+      const result = schemaToValibot({}, { exportType: false })
+      expect(result).toBe(`import * as v from 'valibot'\n\nexport const Schema = v.any()`)
+    })
+
+    it('should handle openapi option with title', () => {
+      const result = schemaToValibot(
+        {
+          title: 'user-profile',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { openapi: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as v from 'valibot'\n\nexport const UserProfile = v.object({name:v.string()})`,
+      )
+    })
+  })
 })

@@ -865,4 +865,51 @@ describe('valibot', () => {
       expect(valibot(input)).toBe(expected)
     })
   })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(valibot({ oneOf: [] })).toBe('v.any()')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(valibot({ anyOf: [] })).toBe('v.any()')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(valibot({ type: ['string', 'null'] })).toBe('v.nullable(v.string())')
+    })
+
+    it('should handle default with nullable', () => {
+      expect(valibot({ type: 'string', nullable: true, default: 'x' })).toBe(
+        'v.nullable(v.optional(v.string(),"x"))',
+      )
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should add v.readonly() to object', () => {
+      expect(
+        valibot(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('v.pipe(v.object({name:v.string()}),v.readonly())')
+    })
+
+    it('should add v.readonly() to array', () => {
+      expect(
+        valibot({ type: 'array', items: { type: 'string' } }, 'Schema', false, {
+          readonly: true,
+        }),
+      ).toBe('v.pipe(v.array(v.string()),v.readonly())')
+    })
+
+    it('should not add v.readonly() to string', () => {
+      expect(valibot({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('v.string()')
+    })
+  })
 })

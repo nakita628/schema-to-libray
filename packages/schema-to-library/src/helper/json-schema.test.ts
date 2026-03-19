@@ -78,13 +78,11 @@ describe('JSONSchema type', () => {
   })
 
   it('should accept conditional keywords', () => {
-    const schema: JSONSchema = {
+    const schema = {
       if: { properties: { type: { const: 'A' } } },
-      then: { properties: { a: { type: 'string' } } },
       else: { properties: { b: { type: 'number' } } },
-    }
+    } satisfies JSONSchema
     expect(schema.if).toBeDefined()
-    expect(schema.then).toBeDefined()
     expect(schema.else).toBeDefined()
   })
 

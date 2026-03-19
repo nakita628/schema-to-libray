@@ -1,4 +1,4 @@
-import type { GeneratorOptions, JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../helper/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -15,7 +15,7 @@ export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isEffect: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   // $ref
   if (schema.$ref) {
@@ -68,7 +68,6 @@ export function effect(
   if (types.includes('date')) return wrap('Schema.Date', schema)
   if (types.length === 1 && types[0] === 'null') return wrap('Schema.Null', schema)
 
-  console.warn(`fallback to Schema.Unknown: schema=${JSON.stringify(schema)}`)
   return wrap('Schema.Unknown', schema)
 }
 
@@ -76,7 +75,7 @@ function allOf(
   schema: JSONSchema,
   rootName: string,
   isEffect: boolean,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (!schema.allOf?.length) return wrap('Schema.Unknown', schema)
 
@@ -117,7 +116,7 @@ function array(
   schema: JSONSchema,
   rootName: string,
   isEffect: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   const items = schema.items ? effect(schema.items, rootName, isEffect, options) : 'Schema.Unknown'
   const base = `Schema.Array(${items})`
@@ -165,7 +164,7 @@ function ref(
   schema: JSONSchema,
   rootName: string,
   isEffect: boolean = false,
-  options?: GeneratorOptions,
+  options?: { openapi?: boolean; readonly?: boolean },
 ): string {
   if (schema.$ref === '#' || schema.$ref === '') {
     return wrap(`Schema.suspend(() => ${rootName})`, schema)

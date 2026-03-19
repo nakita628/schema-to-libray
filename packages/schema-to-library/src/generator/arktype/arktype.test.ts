@@ -411,4 +411,37 @@ describe('arktype', () => {
       expect(arktype(input)).toBe(expected)
     })
   })
+
+  describe('empty combinators', () => {
+    it('should handle empty oneOf', () => {
+      expect(arktype({ oneOf: [] })).toBe('"unknown"')
+    })
+
+    it('should handle empty anyOf', () => {
+      expect(arktype({ anyOf: [] })).toBe('"unknown"')
+    })
+  })
+
+  describe('wrap edge cases', () => {
+    it('should handle nullable via type array with null', () => {
+      expect(arktype({ type: ['string', 'null'] })).toBe('"string | null"')
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should add .readonly() to object', () => {
+      expect(
+        arktype(
+          { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
+          'Schema',
+          false,
+          { readonly: true },
+        ),
+      ).toBe('type({name:"string"}).readonly()')
+    })
+
+    it('should not add .readonly() to string', () => {
+      expect(arktype({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('"string"')
+    })
+  })
 })

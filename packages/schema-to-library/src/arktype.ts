@@ -8,7 +8,7 @@ Options:
   --export-type        include type export in output
   -h, --help           display help for command`
 
-cli(schemaToArktype, HELP_TEXT).then((result) => {
+void cli(schemaToArktype, HELP_TEXT).then((result) => {
   if (result?.ok) {
     console.log(result.value)
   } else {

@@ -149,7 +149,6 @@ export type User = z.infer<typeof User>`
         },
       },
     })
-    console.log(result)
     const expected = `import * as z from 'zod'
 
 type _A = {b?: _B}
@@ -715,6 +714,270 @@ export type RootSchema = z.infer<typeof RootSchema>`
       const withoutOpenapi = schemaToZod(schema)
       const withOpenapiOff = schemaToZod(schema, { openapi: false })
       expect(withoutOpenapi).toBe(withOpenapiOff)
+    })
+  })
+
+  describe('readonly option', () => {
+    it('should generate readonly object schema', () => {
+      const result = schemaToZod(
+        {
+          title: 'User',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as z from 'zod'\n\nexport const User = z.object({name:z.string()}).readonly()`,
+      )
+    })
+
+    it('should generate readonly array in object', () => {
+      const result = schemaToZod(
+        {
+          title: 'List',
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['items'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as z from 'zod'\n\nexport const List = z.object({items:z.array(z.string()).readonly()}).readonly()`,
+      )
+    })
+
+    it('should generate readonly with definitions', () => {
+      const result = schemaToZod(
+        {
+          title: 'Root',
+          type: 'object',
+          definitions: {
+            Item: {
+              type: 'object',
+              properties: { id: { type: 'integer' } },
+              required: ['id'],
+            },
+          },
+          properties: {
+            items: { type: 'array', items: { $ref: '#/definitions/Item' } },
+          },
+          required: ['items'],
+        },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as z from 'zod'\n\ntype _Root = {items: _Item[]}\n\ntype _Item = {id: number}\n\nconst Item: z.ZodType<_Item> = z.object({id:z.int()}).readonly()\n\nexport const Root: z.ZodType<_Root> = z.object({items:z.array(z.lazy(() => Item)).readonly()}).readonly()`,
+      )
+    })
+
+    it('should not affect primitive types', () => {
+      const result = schemaToZod(
+        { title: 'Name', type: 'string' },
+        { readonly: true, exportType: false },
+      )
+      expect(result).toBe(`import * as z from 'zod'\n\nexport const Name = z.string()`)
+    })
+  })
+
+  describe('self-reference and circular schemas', () => {
+    it('should handle direct self-reference ($ref: "#")', () => {
+      const result = schemaToZod({
+        title: 'Tree',
+        type: 'object',
+        properties: {
+          children: { type: 'array', items: { $ref: '#' } },
+        },
+      })
+      const expected = `import * as z from 'zod'
+
+type _Tree = {children?: z.infer<typeof Tree>[]}
+
+export const Tree: z.ZodType<_Tree> = z.object({children:z.array(z.lazy(() => Tree))}).partial()
+
+export type Tree = z.infer<typeof Tree>`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle circular A→B→A reference', () => {
+      const result = schemaToZod(
+        {
+          title: 'A',
+          type: 'object',
+          definitions: {
+            A: {
+              type: 'object',
+              properties: { b: { $ref: '#/definitions/B' } },
+            },
+            B: {
+              type: 'object',
+              properties: { a: { $ref: '#/definitions/A' } },
+            },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+type _A = {b?: _B}
+
+type _B = {a?: _A}
+
+const B: z.ZodType<_B> = z.object({a:z.lazy(() => A)}).partial()
+
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle deep $ref chain (A→B→C)', () => {
+      const result = schemaToZod(
+        {
+          title: 'Root',
+          type: 'object',
+          definitions: {
+            Inner: { type: 'string' },
+            Middle: {
+              type: 'object',
+              properties: { inner: { $ref: '#/definitions/Inner' } },
+            },
+          },
+          properties: {
+            mid: { $ref: '#/definitions/Middle' },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+type _Root = {mid?: _Middle}
+
+type _Inner = string
+
+type _Middle = {inner?: _Inner}
+
+const Inner: z.ZodType<_Inner> = z.string()
+
+const Middle: z.ZodType<_Middle> = z.object({inner:z.lazy(() => Inner)}).partial()
+
+export const Root: z.ZodType<_Root> = z.object({mid:z.lazy(() => Middle)}).partial()`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle root name in definitions', () => {
+      const result = schemaToZod(
+        {
+          title: 'Node',
+          type: 'object',
+          definitions: {
+            Node: {
+              type: 'object',
+              properties: {
+                value: { type: 'string' },
+                next: { $ref: '#/definitions/Node' },
+              },
+              required: ['value'],
+            },
+          },
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+type _Node = {value: string; next?: _Node}
+
+export const Node: z.ZodType<_Node> = z.object({value:z.string(),next:z.lazy(() => Node).optional()})`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle $defs with nested arrays', () => {
+      const result = schemaToZod(
+        {
+          title: 'Doc',
+          type: 'object',
+          $defs: {
+            Tag: { type: 'string' },
+          },
+          properties: {
+            tags: { type: 'array', items: { $ref: '#/$defs/Tag' } },
+          },
+          required: ['tags'],
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+type _Doc = {tags: _Tag[]}
+
+type _Tag = string
+
+const Tag: z.ZodType<_Tag> = z.string()
+
+export const Doc: z.ZodType<_Doc> = z.object({tags:z.array(z.lazy(() => Tag))})`
+      expect(result).toBe(expected)
+    })
+  })
+
+  describe('complex schemas', () => {
+    it('should handle nullable + default + enum', () => {
+      const result = schemaToZod(
+        {
+          title: 'Status',
+          type: 'object',
+          properties: {
+            role: { type: 'string', enum: ['admin', 'user'], default: 'user' },
+            active: { type: 'boolean', nullable: true, default: true },
+          },
+          required: ['role'],
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+export const Status = z.object({role:z.enum(["admin","user"]).default("user"),active:z.boolean().default(true).nullable().optional()})`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle allOf with nullable and default', () => {
+      const result = schemaToZod(
+        {
+          title: 'Config',
+          type: 'object',
+          properties: {
+            value: {
+              allOf: [{ type: 'string' }, { default: 'hello' }, { type: 'null' }],
+            },
+          },
+          required: ['value'],
+        },
+        { exportType: false },
+      )
+      const expected = `import * as z from 'zod'
+
+export const Config = z.object({value:z.string().default("hello").nullable()})`
+      expect(result).toBe(expected)
+    })
+
+    it('should handle empty schema', () => {
+      const result = schemaToZod({}, { exportType: false })
+      expect(result).toBe(`import * as z from 'zod'\n\nexport const Schema = z.any()`)
+    })
+
+    it('should handle openapi option with title', () => {
+      const result = schemaToZod(
+        {
+          title: 'user-profile',
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+        },
+        { openapi: true, exportType: false },
+      )
+      expect(result).toBe(
+        `import * as z from 'zod'\n\nexport const UserProfile = z.object({name:z.string()})`,
+      )
     })
   })
 })
