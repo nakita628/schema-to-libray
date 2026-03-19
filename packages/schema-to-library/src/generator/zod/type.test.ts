@@ -19,6 +19,24 @@ describe('type', () => {
       expect(type({ $ref: '' }, 'Schema')).toBe('unknown')
     })
 
+    it('should handle #fragment reference without slash', () => {
+      expect(type({ $ref: '#animal' }, 'Schema')).toBe('_Animal')
+    })
+
+    it('should handle external file reference with fragment', () => {
+      expect(type({ $ref: './other.json#/definitions/User' }, 'Schema')).toBe('unknown')
+    })
+
+    it('should handle HTTP reference', () => {
+      expect(type({ $ref: 'https://example.com/schema.json' }, 'Schema')).toBe('unknown')
+    })
+
+    it('should handle HTTP reference with fragment', () => {
+      expect(type({ $ref: 'https://example.com/schema.json#/definitions/User' }, 'Schema')).toBe(
+        'unknown',
+      )
+    })
+
     it('should handle self reference with custom name', () => {
       expect(type({ $ref: '#/definitions/Node' }, 'Node')).toBe('_Node')
     })

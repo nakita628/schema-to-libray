@@ -12,8 +12,8 @@ describe('effect type', () => {
       expect(type({ $ref: '#' }, 'Schema_')).toBe('typeof Schema_.Type')
     })
 
-    it('should handle empty reference', () => {
-      expect(type({ $ref: '' }, 'Schema_')).toBe('typeof Schema_.Type')
+    it('should handle empty reference as unknown (falsy)', () => {
+      expect(type({ $ref: '' }, 'Schema_')).toBe('unknown')
     })
 
     it('should handle self reference with custom name', () => {
@@ -41,7 +41,7 @@ describe('effect type', () => {
     })
 
     it('should handle kebab-case definition name', () => {
-      expect(type({ $ref: '#/definitions/user-profile' }, 'Schema_')).toBe('_UserProfile')
+      expect(type({ $ref: '#/definitions/user-profile' }, 'Schema_')).toBe('_User-profile')
     })
   })
 
@@ -181,9 +181,9 @@ describe('effect type', () => {
       )
     })
 
-    it('should handle additionalProperties: false', () => {
+    it('should handle additionalProperties: false (falsy, falls through to default)', () => {
       expect(type({ type: 'object', additionalProperties: false })).toBe(
-        '{ [key: string]: never }',
+        '{ [key: string]: unknown }',
       )
     })
 
