@@ -1,6 +1,6 @@
 {
   "name": "schema-to-library",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
   "keywords": [
     "arktype",
