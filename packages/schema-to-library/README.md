@@ -34,7 +34,7 @@ npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 | Flag            | Description                   |
 | --------------- | ----------------------------- |
 | `--export-type` | Include type export in output |
-| `--readonly`    | Generate readonly types        |
+| `--readonly`    | Generate readonly types       |
 | `-h, --help`    | Display help for command      |
 
 ### Example
