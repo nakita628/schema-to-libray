@@ -34,6 +34,7 @@ npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 | Flag            | Description                   |
 | --------------- | ----------------------------- |
 | `--export-type` | Include type export in output |
+| `--readonly`    | Generate readonly types        |
 | `-h, --help`    | Display help for command      |
 
 ### Example
@@ -122,11 +123,9 @@ With `--export-type`, type exports are also generated:
 export type User = z.infer<typeof User>
 
 // Valibot
-export type UserInput = v.InferInput<typeof User>
 export type UserOutput = v.InferOutput<typeof User>
 
 // Effect Schema
-export type UserType_ = typeof User.Type
 export type UserEncoded = typeof User.Encoded
 
 // TypeBox
