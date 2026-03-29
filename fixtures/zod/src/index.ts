@@ -5,6 +5,7 @@ import { fmt, parseSchemaFile, schemaToZod } from 'schema-to-library'
 const fixturesDir = join(import.meta.dirname, '..')
 
 const SPLIT_FIXTURES = ['split-refs', 'split-nested']
+const READONLY_FIXTURES = ['readonly']
 
 const fixtures = readdirSync(fixturesDir, { withFileTypes: true })
   .filter((d) => d.isDirectory() && d.name !== 'src' && d.name !== 'node_modules')
@@ -23,6 +24,9 @@ for (const name of fixtures) {
       continue
     }
     raw = schemaToZod(result.value)
+  } else if (READONLY_FIXTURES.includes(name)) {
+    const input = JSON.parse(readFileSync(inputPath, 'utf-8'))
+    raw = schemaToZod(input, { readonly: true })
   } else {
     const input = JSON.parse(readFileSync(inputPath, 'utf-8'))
     raw = schemaToZod(input)

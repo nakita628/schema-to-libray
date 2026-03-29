@@ -6,4 +6,4 @@ export const Schema_: Schema.Schema<_Schema_> = Schema.partial(
   Schema.Struct({ children: Schema.Array(Schema.suspend(() => Schema_)) }),
 )
 
-export type Schema_Encoded = typeof Schema_.Encoded
+export type Schema_Type = typeof Schema_.Type

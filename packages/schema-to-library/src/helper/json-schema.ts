@@ -253,6 +253,8 @@ export type JSONSchema = {
   readonly 'x-multipleOf-message'?: string
   /** Per-value enum error messages */
   readonly 'x-enum-error-messages'?: { readonly [k: string]: string }
+  /** Branded type name for nominal typing */
+  readonly 'x-brand'?: string
 
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */

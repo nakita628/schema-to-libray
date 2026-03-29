@@ -912,4 +912,42 @@ describe('valibot', () => {
       expect(valibot({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('v.string()')
     })
   })
+
+  describe('x-brand', () => {
+    it('should add v.brand() for string', () => {
+      expect(valibot({ type: 'string', 'x-brand': 'UserId' })).toBe(
+        'v.pipe(v.string(),v.brand("UserId"))',
+      )
+    })
+
+    it('should add v.brand() for number with constraints', () => {
+      expect(valibot({ type: 'number', minimum: 0, 'x-brand': 'Price' })).toBe(
+        'v.pipe(v.pipe(v.number(),v.minValue(0)),v.brand("Price"))',
+      )
+    })
+
+    it('should add v.brand() after v.nullable()', () => {
+      expect(valibot({ type: 'string', nullable: true, 'x-brand': 'Email' })).toBe(
+        'v.pipe(v.nullable(v.string()),v.brand("Email"))',
+      )
+    })
+
+    it('should add v.brand() after v.optional()', () => {
+      expect(valibot({ type: 'string', default: 'foo', 'x-brand': 'Name' })).toBe(
+        'v.pipe(v.optional(v.string(),"foo"),v.brand("Name"))',
+      )
+    })
+
+    it('should add v.brand() for integer', () => {
+      expect(valibot({ type: 'integer', minimum: 0, 'x-brand': 'Quantity' })).toBe(
+        'v.pipe(v.pipe(v.number(),v.integer(),v.minValue(0)),v.brand("Quantity"))',
+      )
+    })
+
+    it('should add v.brand() for array', () => {
+      expect(
+        valibot({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
+      ).toBe('v.pipe(v.pipe(v.array(v.string()),v.minLength(1)),v.brand("Tags"))')
+    })
+  })
 })

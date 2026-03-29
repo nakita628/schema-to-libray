@@ -12,4 +12,4 @@ const B: Schema.Schema<_B> = Schema.partial(Schema.Struct({ c: Schema.suspend(()
 
 export const A: Schema.Schema<_A> = Schema.partial(Schema.Struct({ b: Schema.suspend(() => B) }))
 
-export type AEncoded = typeof A.Encoded
+export type AType = typeof A.Type

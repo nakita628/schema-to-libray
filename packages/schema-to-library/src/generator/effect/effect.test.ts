@@ -802,4 +802,42 @@ describe('effect', () => {
       )
     })
   })
+
+  describe('x-brand', () => {
+    it('should add Schema.brand() for string', () => {
+      expect(effect({ type: 'string', 'x-brand': 'UserId' })).toBe(
+        'Schema.String.pipe(Schema.brand("UserId"))',
+      )
+    })
+
+    it('should add Schema.brand() for number with constraints', () => {
+      expect(effect({ type: 'number', minimum: 0, 'x-brand': 'Price' })).toBe(
+        'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Price"))',
+      )
+    })
+
+    it('should add Schema.brand() after Schema.NullOr()', () => {
+      expect(effect({ type: 'string', nullable: true, 'x-brand': 'Email' })).toBe(
+        'Schema.NullOr(Schema.String).pipe(Schema.brand("Email"))',
+      )
+    })
+
+    it('should add Schema.brand() after Schema.optionalWith()', () => {
+      expect(effect({ type: 'string', default: 'foo', 'x-brand': 'Name' })).toBe(
+        'Schema.optionalWith(Schema.String,{default:() => "foo"}).pipe(Schema.brand("Name"))',
+      )
+    })
+
+    it('should add Schema.brand() for integer', () => {
+      expect(effect({ type: 'integer', minimum: 0, 'x-brand': 'Quantity' })).toBe(
+        'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Quantity"))',
+      )
+    })
+
+    it('should add Schema.brand() for array', () => {
+      expect(
+        effect({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
+      ).toBe('Schema.Array(Schema.String).pipe(Schema.minItems(1)).pipe(Schema.brand("Tags"))')
+    })
+  })
 })

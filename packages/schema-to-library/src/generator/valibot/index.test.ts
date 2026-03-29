@@ -932,4 +932,151 @@ export const Node: v.GenericSchema<_Node> = v.object({value:v.string(),next:v.op
       )
     })
   })
+
+  describe('x-brand', () => {
+    it('should generate branded properties in object', () => {
+      const result = schemaToValibot({
+        title: 'User',
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', 'x-brand': 'UserId' },
+          name: { type: 'string' },
+        },
+        required: ['id', 'name'],
+      })
+      const expected = `import * as v from 'valibot'
+
+export const User = v.object({id:v.pipe(v.pipe(v.string(),v.uuid()),v.brand("UserId")),name:v.string()})
+
+export type UserOutput = v.InferOutput<typeof User>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded number with constraints', () => {
+      const result = schemaToValibot({
+        title: 'Product',
+        type: 'object',
+        properties: {
+          price: { type: 'number', minimum: 0, 'x-brand': 'Price' },
+          quantity: { type: 'integer', minimum: 0, 'x-brand': 'Quantity' },
+        },
+        required: ['price', 'quantity'],
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Product = v.object({price:v.pipe(v.pipe(v.number(),v.minValue(0)),v.brand("Price")),quantity:v.pipe(v.pipe(v.number(),v.integer(),v.minValue(0)),v.brand("Quantity"))})
+
+export type ProductOutput = v.InferOutput<typeof Product>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded array', () => {
+      const result = schemaToValibot({
+        title: 'TagList',
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 1,
+        maxItems: 10,
+        'x-brand': 'Tags',
+      })
+      const expected = `import * as v from 'valibot'
+
+export const TagList = v.pipe(v.pipe(v.array(v.string()),v.minLength(1),v.maxLength(10)),v.brand("Tags"))
+
+export type TagListOutput = v.InferOutput<typeof TagList>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with email format', () => {
+      const result = schemaToValibot({
+        title: 'Email',
+        type: 'string',
+        format: 'email',
+        'x-brand': 'Email',
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Email = v.pipe(v.pipe(v.string(),v.email()),v.brand("Email"))
+
+export type EmailOutput = v.InferOutput<typeof Email>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded nullable string', () => {
+      const result = schemaToValibot({
+        title: 'NullableId',
+        type: 'object',
+        properties: {
+          id: { type: 'string', nullable: true, 'x-brand': 'NullableId' },
+        },
+        required: ['id'],
+      })
+      const expected = `import * as v from 'valibot'
+
+export const NullableId = v.object({id:v.pipe(v.nullable(v.string()),v.brand("NullableId"))})
+
+export type NullableIdOutput = v.InferOutput<typeof NullableId>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with default', () => {
+      const result = schemaToValibot({
+        title: 'Config',
+        type: 'object',
+        properties: {
+          role: { type: 'string', default: 'user', 'x-brand': 'Role' },
+        },
+        required: ['role'],
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Config = v.object({role:v.pipe(v.optional(v.string(),"user"),v.brand("Role"))})
+
+export type ConfigOutput = v.InferOutput<typeof Config>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with minLength/maxLength', () => {
+      const result = schemaToValibot({
+        title: 'Username',
+        type: 'string',
+        minLength: 3,
+        maxLength: 20,
+        'x-brand': 'Username',
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Username = v.pipe(v.pipe(v.string(),v.minLength(3),v.maxLength(20)),v.brand("Username"))
+
+export type UsernameOutput = v.InferOutput<typeof Username>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded boolean', () => {
+      const result = schemaToValibot({
+        title: 'Flag',
+        type: 'boolean',
+        'x-brand': 'Flag',
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Flag = v.pipe(v.boolean(),v.brand("Flag"))
+
+export type FlagOutput = v.InferOutput<typeof Flag>`
+      expect(result).toBe(expected)
+    })
+
+    it('should not add brand when x-brand is absent', () => {
+      const result = schemaToValibot({
+        title: 'Plain',
+        type: 'string',
+      })
+      const expected = `import * as v from 'valibot'
+
+export const Plain = v.string()
+
+export type PlainOutput = v.InferOutput<typeof Plain>`
+      expect(result).toBe(expected)
+    })
+  })
 })

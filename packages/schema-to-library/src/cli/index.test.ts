@@ -301,7 +301,7 @@ export const User = Schema.Struct({
   age: Schema.optional(Schema.Number.pipe(Schema.int())),
 })
 
-export type UserEncoded = typeof User.Encoded
+export type UserType = typeof User.Type
 `
     expect(generatedCode).toBe(expectedCode)
   })
