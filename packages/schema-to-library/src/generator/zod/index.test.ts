@@ -980,4 +980,151 @@ export const Config = z.object({value:z.string().default("hello").nullable()})`
       )
     })
   })
+
+  describe('x-brand', () => {
+    it('should generate branded properties in object', () => {
+      const result = schemaToZod({
+        title: 'User',
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', 'x-brand': 'UserId' },
+          name: { type: 'string' },
+        },
+        required: ['id', 'name'],
+      })
+      const expected = `import * as z from 'zod'
+
+export const User = z.object({id:z.uuid().brand<"UserId">(),name:z.string()})
+
+export type User = z.infer<typeof User>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded number with constraints', () => {
+      const result = schemaToZod({
+        title: 'Product',
+        type: 'object',
+        properties: {
+          price: { type: 'number', minimum: 0, 'x-brand': 'Price' },
+          quantity: { type: 'integer', minimum: 0, 'x-brand': 'Quantity' },
+        },
+        required: ['price', 'quantity'],
+      })
+      const expected = `import * as z from 'zod'
+
+export const Product = z.object({price:z.number().min(0).brand<"Price">(),quantity:z.int().min(0).brand<"Quantity">()})
+
+export type Product = z.infer<typeof Product>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded array', () => {
+      const result = schemaToZod({
+        title: 'TagList',
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 1,
+        maxItems: 10,
+        'x-brand': 'Tags',
+      })
+      const expected = `import * as z from 'zod'
+
+export const TagList = z.array(z.string()).min(1).max(10).brand<"Tags">()
+
+export type TagList = z.infer<typeof TagList>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with email format', () => {
+      const result = schemaToZod({
+        title: 'Email',
+        type: 'string',
+        format: 'email',
+        'x-brand': 'Email',
+      })
+      const expected = `import * as z from 'zod'
+
+export const Email = z.email().brand<"Email">()
+
+export type Email = z.infer<typeof Email>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded nullable string', () => {
+      const result = schemaToZod({
+        title: 'NullableId',
+        type: 'object',
+        properties: {
+          id: { type: 'string', nullable: true, 'x-brand': 'NullableId' },
+        },
+        required: ['id'],
+      })
+      const expected = `import * as z from 'zod'
+
+export const NullableId = z.object({id:z.string().nullable().brand<"NullableId">()})
+
+export type NullableId = z.infer<typeof NullableId>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with default', () => {
+      const result = schemaToZod({
+        title: 'Config',
+        type: 'object',
+        properties: {
+          role: { type: 'string', default: 'user', 'x-brand': 'Role' },
+        },
+        required: ['role'],
+      })
+      const expected = `import * as z from 'zod'
+
+export const Config = z.object({role:z.string().default("user").brand<"Role">()})
+
+export type Config = z.infer<typeof Config>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with minLength/maxLength', () => {
+      const result = schemaToZod({
+        title: 'Username',
+        type: 'string',
+        minLength: 3,
+        maxLength: 20,
+        'x-brand': 'Username',
+      })
+      const expected = `import * as z from 'zod'
+
+export const Username = z.string().min(3).max(20).brand<"Username">()
+
+export type Username = z.infer<typeof Username>`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded boolean', () => {
+      const result = schemaToZod({
+        title: 'Flag',
+        type: 'boolean',
+        'x-brand': 'Flag',
+      })
+      const expected = `import * as z from 'zod'
+
+export const Flag = z.boolean().brand<"Flag">()
+
+export type Flag = z.infer<typeof Flag>`
+      expect(result).toBe(expected)
+    })
+
+    it('should not add brand when x-brand is absent', () => {
+      const result = schemaToZod({
+        title: 'Plain',
+        type: 'string',
+      })
+      const expected = `import * as z from 'zod'
+
+export const Plain = z.string()
+
+export type Plain = z.infer<typeof Plain>`
+      expect(result).toBe(expected)
+    })
+  })
 })

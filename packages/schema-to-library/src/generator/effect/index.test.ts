@@ -1086,4 +1086,160 @@ export const Node: Schema.Schema<_Node> = Schema.Struct({value:Schema.String,nex
       expect(result).toBe(`import { Schema } from "effect"\n\nexport const Schema_ = Schema.String`)
     })
   })
+
+  describe('x-brand', () => {
+    it('should generate branded properties in object', () => {
+      const result = schemaToEffect({
+        title: 'User',
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', 'x-brand': 'UserId' },
+          name: { type: 'string' },
+        },
+        required: ['id', 'name'],
+      })
+      const expected = `import { Schema } from "effect"
+
+export const User = Schema.Struct({id:Schema.UUID.pipe(Schema.brand("UserId")),name:Schema.String})
+
+export type UserType = typeof User.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded number with constraints', () => {
+      const result = schemaToEffect({
+        title: 'Product',
+        type: 'object',
+        properties: {
+          price: { type: 'number', minimum: 0, 'x-brand': 'Price' },
+          quantity: { type: 'integer', minimum: 0, 'x-brand': 'Quantity' },
+        },
+        required: ['price', 'quantity'],
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Product = Schema.Struct({price:Schema.Number.pipe(Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Price")),quantity:Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Quantity"))})
+
+export type ProductType = typeof Product.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded array', () => {
+      const result = schemaToEffect({
+        title: 'TagList',
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 1,
+        maxItems: 10,
+        'x-brand': 'Tags',
+      })
+      const expected = `import { Schema } from "effect"
+
+export const TagList = Schema.Array(Schema.String).pipe(Schema.minItems(1),Schema.maxItems(10)).pipe(Schema.brand("Tags"))
+
+export type TagListType = typeof TagList.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with email format', () => {
+      const result = schemaToEffect({
+        title: 'Email',
+        type: 'string',
+        format: 'email',
+        'x-brand': 'Email',
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Email = Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)).pipe(Schema.brand("Email"))
+
+export type EmailType = typeof Email.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded nullable string', () => {
+      const result = schemaToEffect({
+        title: 'NullableId',
+        type: 'object',
+        properties: {
+          id: { type: 'string', nullable: true, 'x-brand': 'NullableId' },
+        },
+        required: ['id'],
+      })
+      const expected = `import { Schema } from "effect"
+
+export const NullableId = Schema.Struct({id:Schema.NullOr(Schema.String).pipe(Schema.brand("NullableId"))})
+
+export type NullableIdType = typeof NullableId.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with default', () => {
+      const result = schemaToEffect({
+        title: 'Config',
+        type: 'object',
+        properties: {
+          role: { type: 'string', default: 'user', 'x-brand': 'Role' },
+        },
+        required: ['role'],
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Config = Schema.Struct({role:Schema.optionalWith(Schema.String,{default:() => "user"}).pipe(Schema.brand("Role"))})
+
+export type ConfigType = typeof Config.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with minLength/maxLength', () => {
+      const result = schemaToEffect({
+        title: 'Username',
+        type: 'string',
+        minLength: 3,
+        maxLength: 20,
+        'x-brand': 'Username',
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Username = Schema.String.pipe(Schema.minLength(3),Schema.maxLength(20)).pipe(Schema.brand("Username"))
+
+export type UsernameType = typeof Username.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded boolean', () => {
+      const result = schemaToEffect({
+        title: 'Flag',
+        type: 'boolean',
+        'x-brand': 'Flag',
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Flag = Schema.Boolean.pipe(Schema.brand("Flag"))
+
+export type FlagType = typeof Flag.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should not add brand when x-brand is absent', () => {
+      const result = schemaToEffect({
+        title: 'Plain',
+        type: 'string',
+      })
+      const expected = `import { Schema } from "effect"
+
+export const Plain = Schema.String
+
+export type PlainType = typeof Plain.Type`
+      expect(result).toBe(expected)
+    })
+
+    it('should use Type export for schemas with brand', () => {
+      const result = schemaToEffect({
+        title: 'Id',
+        type: 'string',
+        'x-brand': 'Id',
+      })
+      expect(result).toContain('typeof Id.Type')
+    })
+  })
 })

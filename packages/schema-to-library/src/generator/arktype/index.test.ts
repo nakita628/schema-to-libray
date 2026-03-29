@@ -557,4 +557,138 @@ export const Root = types.Root`
       expect(result).toBe(expected)
     })
   })
+
+  describe('x-brand', () => {
+    it('should generate branded properties in object', () => {
+      const result = schemaToArktype({
+        title: 'User',
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', 'x-brand': 'UserId' },
+          name: { type: 'string' },
+        },
+        required: ['id', 'name'],
+      })
+      const expected = `import { type } from "arktype"
+
+export const User = type({id:type("string.uuid").brand("UserId"),name:"string"})
+
+export type User = typeof User.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded number with constraints', () => {
+      const result = schemaToArktype({
+        title: 'Product',
+        type: 'object',
+        properties: {
+          price: { type: 'number', minimum: 0, 'x-brand': 'Price' },
+          quantity: { type: 'integer', minimum: 0, 'x-brand': 'Quantity' },
+        },
+        required: ['price', 'quantity'],
+      })
+      const expected = `import { type } from "arktype"
+
+export const Product = type({price:type("number >= 0").brand("Price"),quantity:type("number.integer >= 0").brand("Quantity")})
+
+export type Product = typeof Product.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded array', () => {
+      const result = schemaToArktype({
+        title: 'TagList',
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 1,
+        maxItems: 10,
+        'x-brand': 'Tags',
+      })
+      const expected = `import { type } from "arktype"
+
+export const TagList = type("string[]").and(type("1 <= unknown[] <= 10")).brand("Tags")
+
+export type TagList = typeof TagList.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with email format', () => {
+      const result = schemaToArktype({
+        title: 'Email',
+        type: 'string',
+        format: 'email',
+        'x-brand': 'Email',
+      })
+      const expected = `import { type } from "arktype"
+
+export const Email = type("string.email").brand("Email")
+
+export type Email = typeof Email.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded nullable string', () => {
+      const result = schemaToArktype({
+        title: 'NullableId',
+        type: 'object',
+        properties: {
+          id: { type: 'string', nullable: true, 'x-brand': 'NullableId' },
+        },
+        required: ['id'],
+      })
+      const expected = `import { type } from "arktype"
+
+export const NullableId = type({id:type("string | null").brand("NullableId")})
+
+export type NullableId = typeof NullableId.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded string with constraints', () => {
+      const result = schemaToArktype({
+        title: 'Username',
+        type: 'string',
+        minLength: 3,
+        maxLength: 20,
+        'x-brand': 'Username',
+      })
+      const expected = `import { type } from "arktype"
+
+export const Username = type("3 <= string <= 20").brand("Username")
+
+export type Username = typeof Username.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should generate branded object', () => {
+      const result = schemaToArktype({
+        title: 'Config',
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+        },
+        required: ['name'],
+        'x-brand': 'Config',
+      })
+      const expected = `import { type } from "arktype"
+
+export const Config = type({name:"string"}).brand("Config")
+
+export type Config = typeof Config.infer`
+      expect(result).toBe(expected)
+    })
+
+    it('should not add brand when x-brand is absent', () => {
+      const result = schemaToArktype({
+        title: 'Plain',
+        type: 'string',
+      })
+      const expected = `import { type } from "arktype"
+
+export const Plain = type("string")
+
+export type Plain = typeof Plain.infer`
+      expect(result).toBe(expected)
+    })
+  })
 })
