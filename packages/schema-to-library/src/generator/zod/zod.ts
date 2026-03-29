@@ -171,7 +171,8 @@ export function wrap(zodStr: string, schema: JSONSchema): string {
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
 
-  return isNullable ? `${withDefault}.nullable()` : withDefault
+  const withNullable = isNullable ? `${withDefault}.nullable()` : withDefault
+  return schema['x-brand'] ? `${withNullable}.brand<"${schema['x-brand']}">()` : withNullable
 }
 
 /**

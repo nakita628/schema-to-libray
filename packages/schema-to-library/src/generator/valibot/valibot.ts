@@ -159,7 +159,10 @@ export function wrap(valibotStr: string, schema: JSONSchema): string {
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
 
-  return isNullable ? `v.nullable(${withDefault})` : withDefault
+  const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
+  return schema['x-brand']
+    ? `v.pipe(${withNullable},v.brand("${schema['x-brand']}"))`
+    : withNullable
 }
 
 function ref(

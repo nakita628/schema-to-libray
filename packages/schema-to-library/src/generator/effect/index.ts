@@ -104,7 +104,7 @@ export function schemaToEffect(
     typeDefsCode,
     schemaDefsCode,
     rootExport,
-    ...(exportType ? [`export type ${rootName}Encoded = typeof ${rootName}.Encoded`] : []),
+    ...(exportType ? [`export type ${rootName}Type = typeof ${rootName}.Type`] : []),
   ]
     .filter(Boolean)
     .join('\n\n')

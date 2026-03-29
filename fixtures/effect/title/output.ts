@@ -5,4 +5,4 @@ export const User = Schema.Struct({
   email: Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)),
 })
 
-export type UserEncoded = typeof User.Encoded
+export type UserType = typeof User.Type

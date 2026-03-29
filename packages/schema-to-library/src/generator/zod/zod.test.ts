@@ -1281,4 +1281,40 @@ describe('zod', () => {
       ).toBe('z.object({name:z.string()})')
     })
   })
+
+  describe('x-brand', () => {
+    it('should add .brand() for string', () => {
+      expect(zod({ type: 'string', 'x-brand': 'UserId' })).toBe('z.string().brand<"UserId">()')
+    })
+
+    it('should add .brand() for number with constraints', () => {
+      expect(zod({ type: 'number', minimum: 0, 'x-brand': 'Price' })).toBe(
+        'z.number().min(0).brand<"Price">()',
+      )
+    })
+
+    it('should add .brand() after .nullable()', () => {
+      expect(zod({ type: 'string', nullable: true, 'x-brand': 'Email' })).toBe(
+        'z.string().nullable().brand<"Email">()',
+      )
+    })
+
+    it('should add .brand() after .default()', () => {
+      expect(zod({ type: 'string', default: 'foo', 'x-brand': 'Name' })).toBe(
+        'z.string().default("foo").brand<"Name">()',
+      )
+    })
+
+    it('should add .brand() for integer', () => {
+      expect(zod({ type: 'integer', minimum: 0, 'x-brand': 'Quantity' })).toBe(
+        'z.int().min(0).brand<"Quantity">()',
+      )
+    })
+
+    it('should add .brand() for array', () => {
+      expect(
+        zod({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
+      ).toBe('z.array(z.string()).min(1).brand<"Tags">()')
+    })
+  })
 })

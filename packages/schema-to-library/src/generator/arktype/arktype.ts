@@ -150,16 +150,19 @@ export function wrap(arktypeStr: string, schema: JSONSchema): string {
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
 
-  if (isNullable) {
-    // If it's a simple string type, combine with | null
-    if (arktypeStr.startsWith('"') && arktypeStr.endsWith('"')) {
-      const inner = arktypeStr.slice(1, -1)
-      return `"${inner} | null"`
-    }
-    return `type(${arktypeStr}).or("null")`
-  }
+  const withNullable = isNullable
+    ? arktypeStr.startsWith('"') && arktypeStr.endsWith('"')
+      ? `"${arktypeStr.slice(1, -1)} | null"`
+      : `type(${arktypeStr}).or("null")`
+    : arktypeStr
 
-  return arktypeStr
+  if (!schema['x-brand']) return withNullable
+
+  // brand requires function-call form
+  if (withNullable.startsWith('"') && withNullable.endsWith('"')) {
+    return `type(${withNullable}).brand("${schema['x-brand']}")`
+  }
+  return `${withNullable}.brand("${schema['x-brand']}")`
 }
 
 function unionStr(schemas: string[]): string {

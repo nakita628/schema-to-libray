@@ -157,7 +157,10 @@ export function wrap(effectStr: string, schema: JSONSchema): string {
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
 
-  return isNullable ? `Schema.NullOr(${withDefault})` : withDefault
+  const withNullable = isNullable ? `Schema.NullOr(${withDefault})` : withDefault
+  return schema['x-brand']
+    ? `${withNullable}.pipe(Schema.brand("${schema['x-brand']}"))`
+    : withNullable
 }
 
 function ref(

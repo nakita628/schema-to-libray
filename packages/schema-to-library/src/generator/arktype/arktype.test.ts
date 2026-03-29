@@ -444,4 +444,47 @@ describe('arktype', () => {
       expect(arktype({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('"string"')
     })
   })
+
+  describe('x-brand', () => {
+    it('should add .brand() for string', () => {
+      expect(arktype({ type: 'string', 'x-brand': 'UserId' })).toBe(
+        'type("string").brand("UserId")',
+      )
+    })
+
+    it('should add .brand() for number with constraints', () => {
+      expect(arktype({ type: 'number', minimum: 0, 'x-brand': 'Price' })).toBe(
+        'type("number >= 0").brand("Price")',
+      )
+    })
+
+    it('should add .brand() after nullable', () => {
+      expect(arktype({ type: 'string', nullable: true, 'x-brand': 'Email' })).toBe(
+        'type("string | null").brand("Email")',
+      )
+    })
+
+    it('should add .brand() for integer', () => {
+      expect(arktype({ type: 'integer', minimum: 0, 'x-brand': 'Quantity' })).toBe(
+        'type("number.integer >= 0").brand("Quantity")',
+      )
+    })
+
+    it('should add .brand() for array', () => {
+      expect(
+        arktype({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
+      ).toBe('type("string[]").and(type("unknown[] >= 1")).brand("Tags")')
+    })
+
+    it('should add .brand() for complex type', () => {
+      expect(
+        arktype({
+          type: 'object',
+          properties: { name: { type: 'string' } },
+          required: ['name'],
+          'x-brand': 'User',
+        }),
+      ).toBe('type({name:"string"}).brand("User")')
+    })
+  })
 })

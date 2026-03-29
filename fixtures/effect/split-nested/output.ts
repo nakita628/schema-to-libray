@@ -10,4 +10,4 @@ export const Order = Schema.Struct({
   status: Schema.Literal('pending', 'shipped', 'delivered'),
 })
 
-export type OrderEncoded = typeof Order.Encoded
+export type OrderType = typeof Order.Type
