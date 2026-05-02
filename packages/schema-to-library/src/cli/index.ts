@@ -2,7 +2,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 
 import { fmt } from '../format/index.js'
-import type { JSONSchema } from '../helper/index.js'
+import type { JSONSchema } from '../parser/index.js'
 import { parseSchemaFile } from '../parser/index.js'
 
 function validateIO(input: string | undefined, output: string | undefined) {

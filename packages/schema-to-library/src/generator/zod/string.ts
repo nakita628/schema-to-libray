@@ -1,5 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { error } from '../../utils/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { zodError } from '../../utils/index.js'
 
 const FORMAT_STRING: { readonly [k: string]: string } = {
   email: 'email()',
@@ -30,52 +30,37 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
   jwt: 'jwt()',
 }
 
-/**
- * Generate Zod string schema from JSON Schema
- *
- * @param schema - JSON Schema object with string type
- * @returns Generated Zod string schema code
- * @example
- * ```ts
- * string({ type: 'string', format: 'email' }) // 'z.email()'
- * ```
- */
-export function string(schema: JSONSchema): string {
+export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
-  const format = schema.format && FORMAT_STRING[schema.format]
-
-  const base = (() => {
-    if (!format) return errorMessage ? `z.string(${error(errorMessage)})` : 'z.string()'
-    return errorMessage ? `z.${format.replace(/\(\)$/, `(${error(errorMessage)})`)}` : `z.${format}`
-  })()
-
+  const baseErrorArg = errorMessage ? zodError(errorMessage) : ''
   const patternMessage = schema['x-pattern-message']
-  const patternMsgPart = patternMessage ? `,${error(patternMessage)}` : ''
-  const pattern = schema.pattern
-    ? `.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternMsgPart})`
-    : undefined
-
+  const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
   const sizeMessage = schema['x-size-message']
-  const sizeMsgPart = sizeMessage ? `,${error(sizeMessage)}` : ''
+  const sizeErrorPart = sizeMessage ? `,${zodError(sizeMessage)}` : ''
   const minimumMessage = schema['x-minimum-message']
-  const minMsgPart = minimumMessage ? `,${error(minimumMessage)}` : ''
+  const minErrorPart = minimumMessage ? `,${zodError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maximum-message']
-  const maxMsgPart = maximumMessage ? `,${error(maximumMessage)}` : ''
-
+  const maxErrorPart = maximumMessage ? `,${zodError(maximumMessage)}` : ''
+  const format = schema.format && FORMAT_STRING[schema.format]
+  const base = format
+    ? `z.${format.replace(/\(\)$/, `(${baseErrorArg})`)}`
+    : `z.string(${baseErrorArg})`
+  const pattern = schema.pattern
+    ? `.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
+    : undefined
   const isFixedLength =
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
-
   return [
     base,
     pattern,
-    isFixedLength ? `.length(${schema.minLength}${sizeMsgPart})` : undefined,
+    isFixedLength ? `.length(${schema.minLength}${sizeErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `.min(${schema.minLength}${minMsgPart})`
+      ? `.min(${schema.minLength}${minErrorPart})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `.max(${schema.maxLength}${maxMsgPart})`
+      ? `.max(${schema.maxLength}${maxErrorPart})`
       : undefined,
   ]
     .filter((v) => v !== undefined)

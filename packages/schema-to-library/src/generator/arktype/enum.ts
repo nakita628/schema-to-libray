@@ -1,6 +1,6 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 
-export function _enum(schema: JSONSchema): string {
+export function _enum(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
 

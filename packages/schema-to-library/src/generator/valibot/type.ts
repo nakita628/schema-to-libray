@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { normalizeTypes, toPascalCase } from '../../utils/index.js'
 
 export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'): string {

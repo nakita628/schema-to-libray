@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
-  effectMessage,
-  error,
+  effectError,
   normalizeTypes,
   resolveOpenAPIRef,
   toIdentifierPascalCase,
   toPascalCase,
-  valibotMessage,
+  valibotError,
+  zodError,
 } from './index.js'
 
 // Test run
@@ -46,49 +46,49 @@ describe('helper', () => {
     })
   })
 
-  describe('error', () => {
+  describe('zodError', () => {
     it('should wrap string message in Zod v4 error format', () => {
-      expect(error('Name is required')).toBe('{error:"Name is required"}')
+      expect(zodError('Name is required')).toBe('{error:"Name is required"}')
     })
 
     it('should handle message with special characters', () => {
-      expect(error('Must be 3-20 characters')).toBe('{error:"Must be 3-20 characters"}')
+      expect(zodError('Must be 3-20 characters')).toBe('{error:"Must be 3-20 characters"}')
     })
 
     it('should handle arrow function expression as-is', () => {
-      expect(error('(v) => `Expected ${v}`')).toBe('{error:(v) => `Expected ${v}`}')
+      expect(zodError('(v) => `Expected ${v}`')).toBe('{error:(v) => `Expected ${v}`}')
     })
 
     it('should handle arrow function with spaces', () => {
-      expect(error('  (val) => val.toString()')).toBe('{error:  (val) => val.toString()}')
+      expect(zodError('  (val) => val.toString()')).toBe('{error:  (val) => val.toString()}')
     })
 
     it('should escape quotes in string messages', () => {
-      expect(error('Must be "valid"')).toBe('{error:"Must be \\"valid\\""}')
+      expect(zodError('Must be "valid"')).toBe('{error:"Must be \\"valid\\""}')
     })
   })
 
-  describe('valibotMessage', () => {
+  describe('valibotError', () => {
     it('should wrap plain string in JSON.stringify', () => {
-      expect(valibotMessage('Must be valid')).toBe('"Must be valid"')
+      expect(valibotError('Must be valid')).toBe('"Must be valid"')
     })
 
     it('should pass through arrow function expression', () => {
-      expect(valibotMessage('(issue) => issue.message')).toBe('(issue) => issue.message')
+      expect(valibotError('(issue) => issue.message')).toBe('(issue) => issue.message')
     })
 
     it('should detect arrow function with spaces', () => {
-      expect(valibotMessage('  (val) => val.toString()')).toBe('  (val) => val.toString()')
+      expect(valibotError('  (val) => val.toString()')).toBe('  (val) => val.toString()')
     })
   })
 
-  describe('effectMessage', () => {
+  describe('effectError', () => {
     it('should wrap plain string in message annotation', () => {
-      expect(effectMessage('Required field')).toBe('{message:()=>"Required field"}')
+      expect(effectError('Required field')).toBe('{message:()=>"Required field"}')
     })
 
     it('should pass through arrow function in message annotation', () => {
-      expect(effectMessage('(issue) => `Error: ${issue}`')).toBe(
+      expect(effectError('(issue) => `Error: ${issue}`')).toBe(
         '{message:(issue) => `Error: ${issue}`}',
       )
     })

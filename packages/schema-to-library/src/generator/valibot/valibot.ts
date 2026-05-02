@@ -1,4 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
+import { valibotWrap } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -17,217 +18,178 @@ export function valibot(
   isValibot: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const ro = (s: string): string => (options?.readonly ? `v.pipe(${s},v.readonly())` : s)
+  const withReadonly = (s: string) => (options?.readonly ? `v.pipe(${s},v.readonly())` : s)
 
-  // $ref
   if (schema.$ref) {
-    if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName, isValibot, options), schema)
-    }
-    if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
-      if (schema.items?.$ref) {
-        return `v.array(${wrap(ref(schema.items, rootName, isValibot, options), schema.items)})`
+    const ref = (s: JSONSchema): string => {
+      if (s.$ref === '#' || s.$ref === '') {
+        return valibotWrap(`v.lazy(() => ${rootName})`, s)
       }
-      return wrap('v.array(v.any())', schema)
+      if (options?.openapi && s.$ref) {
+        const resolved = resolveOpenAPIRef(s.$ref)
+        if (resolved) {
+          if (resolved === rootName) return valibotWrap(`v.lazy(() => ${resolved})`, s)
+          return valibotWrap(isValibot ? `v.lazy(() => ${resolved})` : resolved, s)
+        }
+      }
+      const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
+      const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
+      for (const prefix of REF_PREFIXES) {
+        if (s.$ref?.startsWith(prefix)) {
+          const pascalCaseName = toName(s.$ref.slice(prefix.length))
+          if (pascalCaseName === rootName) return valibotWrap(`v.lazy(() => ${pascalCaseName})`, s)
+          const refExpr = isValibot
+            ? `v.lazy(() => ${pascalCaseName})`
+            : rootName === 'Schema'
+              ? `${pascalCaseName}Schema`
+              : `v.lazy(() => ${pascalCaseName})`
+          return valibotWrap(refExpr, s)
+        }
+      }
+      if (s.$ref?.startsWith('#')) {
+        const refName = s.$ref.slice(1)
+        if (refName === '') return `v.lazy(() => ${rootName})`
+        const pascalCaseName = toName(refName)
+        return isValibot
+          ? `v.lazy(() => ${pascalCaseName})`
+          : rootName === 'Schema'
+            ? `${pascalCaseName}Schema`
+            : `v.lazy(() => ${pascalCaseName})`
+      }
+      if (s.$ref?.includes('#')) return 'v.unknown()'
+      if (s.$ref?.startsWith('http')) {
+        const last = s.$ref.split('/').at(-1)
+        if (last) return last.replace(/\.json$/, '')
+      }
+      return 'v.any()'
     }
-    return wrap('v.any()', schema)
+    if (schema.type === 'array' && schema.items?.$ref) {
+      return `v.array(${valibotWrap(ref(schema.items), schema.items)})`
+    }
+    return valibotWrap(ref(schema), schema)
   }
-  // combinators
+
   if (schema.oneOf) {
-    if (!schema.oneOf?.length) return wrap('v.any()', schema)
-    const schemas = schema.oneOf.map((s: JSONSchema) => valibot(s, rootName, isValibot, options))
-    return wrap(`v.union([${schemas.join(',')}])`, schema)
+    if (!schema.oneOf.length) return valibotWrap('v.any()', schema)
+    const schemas = schema.oneOf.map((s) => valibot(s, rootName, isValibot, options))
+    const discriminator = schema.discriminator?.propertyName
+    const hasRefOrAllOf = schema.oneOf.some((s) => s.$ref !== undefined || s.allOf !== undefined)
+    const expr =
+      discriminator && !hasRefOrAllOf
+        ? `v.variant('${discriminator}',[${schemas.join(',')}])`
+        : `v.union([${schemas.join(',')}])`
+    return valibotWrap(expr, schema)
   }
+
   if (schema.anyOf) {
-    if (!schema.anyOf?.length) return wrap('v.any()', schema)
-    const schemas = schema.anyOf.map((s: JSONSchema) => valibot(s, rootName, isValibot, options))
-    return wrap(`v.union([${schemas.join(',')}])`, schema)
+    if (!schema.anyOf.length) return valibotWrap('v.any()', schema)
+    const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
+    return valibotWrap(`v.union([${schemas.join(',')}])`, schema)
   }
+
   if (schema.allOf) {
-    return allOf(schema, rootName, isValibot, options)
+    if (!schema.allOf.length) return valibotWrap('v.any()', schema)
+    const isNullType = (s: JSONSchema) =>
+      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
+    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
+    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    const nullable =
+      schema.nullable === true ||
+      (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
+      schema.allOf.some(isNullType)
+    const defaultValue = schema.allOf.find(isDefaultOnly)?.default
+    const schemas = schema.allOf
+      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .map((s) => valibot(s, rootName, isValibot, options))
+    if (!schemas.length) return valibotWrap('v.any()', { ...schema, nullable })
+    const baseResult = schemas.length === 1 ? schemas[0] : `v.intersect([${schemas.join(',')}])`
+    if (defaultValue !== undefined) {
+      const formatLiteral = (value: unknown): string => {
+        if (typeof value === 'boolean') return `${value}`
+        if (typeof value === 'number') return `${value}`
+        return JSON.stringify(value)
+      }
+      const withDefault = `v.optional(${baseResult},${formatLiteral(defaultValue)})`
+      return nullable ? `v.nullable(${withDefault})` : withDefault
+    }
+    return valibotWrap(baseResult, { ...schema, nullable })
   }
-  // not
+
   if (schema.not) {
-    return wrap('v.any()', schema)
+    const inner = schema.not
+    if (typeof inner !== 'object' || inner === null) return valibotWrap('v.any()', schema)
+    const custom = (predicate: string) => valibotWrap(`v.custom<unknown>(${predicate})`, schema)
+    const typePredicates: { readonly [k: string]: string } = {
+      string: `(v) => typeof v !== 'string'`,
+      number: `(v) => typeof v !== 'number'`,
+      integer: `(v) => typeof v !== 'number' || !Number.isInteger(v)`,
+      boolean: `(v) => typeof v !== 'boolean'`,
+      array: '(v) => !Array.isArray(v)',
+      object: `(v) => typeof v !== 'object' || v === null || Array.isArray(v)`,
+      null: '(v) => v !== null',
+    }
+    if ('const' in inner) return custom(`(v) => v !== ${JSON.stringify(inner.const)}`)
+    if (typeof inner.type === 'string') {
+      const predicate = typePredicates[inner.type]
+      if (predicate) return custom(predicate)
+    }
+    if (Array.isArray(inner.type)) {
+      const bodies = inner.type
+        .map((t) => typePredicates[t])
+        .filter((p): p is string => p !== undefined)
+        .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
+      if (bodies.length > 0) return custom(`(v) => ${bodies.join(' && ')}`)
+    }
+    if (Array.isArray(inner.enum)) {
+      return custom(`(v) => !${JSON.stringify(inner.enum)}.includes(v)`)
+    }
+    const innerExpr = valibot(inner, rootName, isValibot, options)
+    return custom(`(v) => !v.safeParse(${innerExpr},v).success`)
   }
-  // const
-  if (schema.const) {
-    return wrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
-  }
-  // enum
-  if (schema.enum) return wrap(_enum(schema), schema)
-  // properties
+
+  if (schema.const !== undefined)
+    return valibotWrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
-    return ro(wrap(object(schema, rootName, isValibot, valibot, options), schema))
+    return withReadonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
 
   const types = normalizeTypes(schema.type)
-  if (types.includes('string')) return wrap(string(schema), schema)
-  if (types.includes('number')) return wrap(number(schema), schema)
-  if (types.includes('integer')) return wrap(integer(schema), schema)
-  if (types.includes('boolean')) return wrap('v.boolean()', schema)
-  if (types.includes('array')) return ro(wrap(array(schema, rootName, isValibot, options), schema))
+  if (types.includes('string')) return valibotWrap(string(schema), schema)
+  if (types.includes('number')) return valibotWrap(number(schema), schema)
+  if (types.includes('integer')) return valibotWrap(integer(schema), schema)
+  if (types.includes('boolean')) return valibotWrap('v.boolean()', schema)
+
+  if (types.includes('array')) {
+    if (schema.prefixItems?.length) {
+      const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
+      return withReadonly(valibotWrap(`v.tuple([${items.join(',')}])`, schema))
+    }
+    const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
+    const base = `v.array(${items})`
+    const isFixedLength =
+      typeof schema.minItems === 'number' &&
+      typeof schema.maxItems === 'number' &&
+      schema.minItems === schema.maxItems
+    const actions = [
+      isFixedLength ? `v.length(${schema.minItems})` : undefined,
+      !isFixedLength && typeof schema.minItems === 'number'
+        ? `v.minLength(${schema.minItems})`
+        : undefined,
+      !isFixedLength && typeof schema.maxItems === 'number'
+        ? `v.maxLength(${schema.maxItems})`
+        : undefined,
+      schema.uniqueItems === true
+        ? `v.check((items) => new Set(items).size === items.length)`
+        : undefined,
+    ].filter((v) => v !== undefined)
+    const arrayExpr = actions.length > 0 ? `v.pipe(${base},${actions.join(',')})` : base
+    return withReadonly(valibotWrap(arrayExpr, schema))
+  }
+
   if (types.includes('object'))
-    return ro(wrap(object(schema, rootName, isValibot, valibot, options), schema))
-  if (types.includes('date')) return wrap('v.date()', schema)
-  if (types.length === 1 && types[0] === 'null') return wrap('v.null()', schema)
+    return withReadonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
+  if (types.includes('date')) return valibotWrap('v.date()', schema)
+  if (types.length === 1 && types[0] === 'null') return valibotWrap('v.null()', schema)
 
-  return wrap('v.any()', schema)
-}
-
-function allOf(
-  schema: JSONSchema,
-  rootName: string,
-  isValibot: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (!schema.allOf?.length) return wrap('v.any()', schema)
-
-  const isNullType = (s: JSONSchema) =>
-    s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-
-  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-
-  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
-
-  const nullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-    schema.allOf.some(isNullType)
-
-  const defaultValue = schema.allOf.find(isDefaultOnly)?.default
-
-  const schemas = schema.allOf
-    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
-    .map((s) => valibot(s, rootName, isValibot, options))
-
-  if (!schemas.length) return wrap('v.any()', { ...schema, nullable })
-
-  const baseResult = schemas.length === 1 ? schemas[0] : `v.intersect([${schemas.join(',')}])`
-
-  if (defaultValue !== undefined) {
-    const formatLiteral = (v: unknown): string =>
-      typeof v === 'number' ? `${v}` : JSON.stringify(v)
-    const withDefault = `v.optional(${baseResult},${formatLiteral(defaultValue)})`
-    return nullable ? `v.nullable(${withDefault})` : withDefault
-  }
-
-  return wrap(baseResult, { ...schema, nullable })
-}
-
-function array(
-  schema: JSONSchema,
-  rootName: string,
-  isValibot: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
-  const base = `v.array(${items})`
-
-  const isFixedLength =
-    typeof schema.minItems === 'number' &&
-    typeof schema.maxItems === 'number' &&
-    schema.minItems === schema.maxItems
-
-  const actions = [
-    isFixedLength ? `v.length(${schema.minItems})` : undefined,
-    !isFixedLength && typeof schema.minItems === 'number'
-      ? `v.minLength(${schema.minItems})`
-      : undefined,
-    !isFixedLength && typeof schema.maxItems === 'number'
-      ? `v.maxLength(${schema.maxItems})`
-      : undefined,
-  ].filter((v) => v !== undefined)
-
-  if (actions.length > 0) return `v.pipe(${base},${actions.join(',')})`
-  return base
-}
-
-export function wrap(valibotStr: string, schema: JSONSchema): string {
-  const formatLiteral = (v: unknown): string => {
-    if (typeof v === 'boolean') return `${v}`
-    if (typeof v === 'number') return `${v}`
-    if (typeof v === 'string') return JSON.stringify(v)
-    return JSON.stringify(v)
-  }
-
-  const withDefault =
-    schema.default !== undefined
-      ? `v.optional(${valibotStr},${formatLiteral(schema.default)})`
-      : valibotStr
-
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-
-  const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
-  return schema['x-brand']
-    ? `v.pipe(${withNullable},v.brand("${schema['x-brand']}"))`
-    : withNullable
-}
-
-function ref(
-  schema: JSONSchema,
-  rootName: string,
-  isValibot: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  // self reference (#)
-  if (schema.$ref === '#' || schema.$ref === '') {
-    return wrap(`v.lazy(() => ${rootName})`, schema)
-  }
-
-  // OpenAPI component-aware resolution
-  if (options?.openapi && schema.$ref) {
-    const resolved = resolveOpenAPIRef(schema.$ref)
-    if (resolved) {
-      if (resolved === rootName) {
-        return wrap(`v.lazy(() => ${resolved})`, schema)
-      }
-      return wrap(isValibot ? `v.lazy(() => ${resolved})` : resolved, schema)
-    }
-  }
-
-  // components / definitions / $defs
-  const TABLE = [
-    ['#/components/schemas/', 'Schema'],
-    ['#/definitions/', 'Schema'],
-    ['#/$defs/', 'Schema'],
-  ] as const
-
-  const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
-
-  for (const [prefix] of TABLE) {
-    if (schema.$ref?.startsWith(prefix)) {
-      const pascalCaseName = toName(schema.$ref.slice(prefix.length))
-      if (pascalCaseName === rootName) {
-        return wrap(`v.lazy(() => ${pascalCaseName})`, schema)
-      }
-      const v = isValibot
-        ? `v.lazy(() => ${pascalCaseName})`
-        : rootName === 'Schema'
-          ? `${pascalCaseName}Schema`
-          : `v.lazy(() => ${pascalCaseName})`
-      return wrap(v, schema)
-    }
-  }
-
-  if (schema.$ref?.startsWith('#')) {
-    const refName = schema.$ref.slice(1)
-    if (refName === '') return `v.lazy(() => ${rootName})`
-    const pascalCaseName = toName(refName)
-    return isValibot
-      ? `v.lazy(() => ${pascalCaseName})`
-      : rootName === 'Schema'
-        ? `${pascalCaseName}Schema`
-        : `v.lazy(() => ${pascalCaseName})`
-  }
-
-  if (schema.$ref?.includes('#')) return 'v.unknown()'
-  if (schema.$ref?.startsWith('http')) {
-    const parts = schema.$ref?.split('/')
-    const last = parts?.[parts.length - 1]
-    if (last) return last.replace(/\.json$/, '')
-  }
-
-  return 'v.any()'
+  return valibotWrap('v.any()', schema)
 }

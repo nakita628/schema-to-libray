@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { effect } from './effect.js'
 
 // Test run
@@ -251,11 +251,31 @@ describe('effect', () => {
 
   describe('not', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } }, 'Schema.Unknown'],
-      [{ not: { type: 'integer' } }, 'Schema.Unknown'],
-      [{ not: { type: 'boolean' } }, 'Schema.Unknown'],
-      [{ not: { type: 'string' }, nullable: true }, 'Schema.NullOr(Schema.Unknown)'],
-      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'Schema.NullOr(Schema.Unknown)'],
+      [
+        { not: { type: 'string' } },
+        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string'))",
+      ],
+      [
+        { not: { type: 'integer' } },
+        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'number' || !Number.isInteger(v)))",
+      ],
+      [
+        { not: { type: 'boolean' } },
+        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'boolean'))",
+      ],
+      [
+        { not: { type: 'string' }, nullable: true },
+        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string')))",
+      ],
+      [
+        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string')))",
+      ],
+      [{ not: { const: 42 } }, 'Schema.Unknown.pipe(Schema.filter((v) => v !== 42))'],
+      [
+        { not: { enum: ['a', 'b'] } },
+        'Schema.Unknown.pipe(Schema.filter((v) => !["a","b"].includes(v)))',
+      ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })

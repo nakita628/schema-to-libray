@@ -15,19 +15,15 @@ import $RefParser from '@apidevtools/json-schema-ref-parser'
  * @param input - File path to JSON/YAML schema
  * @returns Bundled JSON Schema or error
  */
-export async function parseSchemaFile(
-  input: string,
-): Promise<
-  { readonly ok: true; readonly value: JSONSchema } | { readonly ok: false; readonly error: string }
-> {
+export async function parseSchemaFile(input: string) {
   try {
     const schema = await $RefParser.bundle(input)
-    return { ok: true, value: schema as JSONSchema }
-  } catch (error) {
+    return { ok: true, value: schema as JSONSchema } as const
+  } catch (e) {
     return {
       ok: false,
-      error: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
-    }
+      error: `Failed to parse schema: ${e instanceof Error ? e.message : String(e)}`,
+    } as const
   }
 }
 
@@ -284,6 +280,12 @@ export type JSONSchema = {
   readonly 'x-size-message'?: string
   /** MultipleOf constraint error message */
   'x-multipleOf-message'?: string
+  /** oneOf combinator error message */
+  readonly 'x-oneOf-message'?: string
+  /** anyOf combinator error message */
+  readonly 'x-anyOf-message'?: string
+  /** not combinator error message */
+  readonly 'x-not-message'?: string
   /** Per-value enum error messages */
   readonly 'x-enum-error-messages'?: { readonly [k: string]: string }
 

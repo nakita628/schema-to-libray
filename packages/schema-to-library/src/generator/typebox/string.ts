@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
   email: 'email',
@@ -11,7 +11,7 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
   time: 'time',
 }
 
-export function string(schema: JSONSchema): string {
+export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
 
   const isFixedLength =

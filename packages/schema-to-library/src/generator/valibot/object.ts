@@ -1,78 +1,41 @@
-import type { JSONSchema } from '../../helper/index.js'
-import type { valibot } from './valibot.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { valibot } from './valibot.js'
 
 export function object(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean,
-  valibotFn: typeof valibot,
   options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (schema.additionalProperties) {
-    if (typeof schema.additionalProperties === 'boolean') {
-      if (schema.properties) {
-        const s = propertiesSchema(
-          schema.properties,
-          Array.isArray(schema.required) ? schema.required : [],
-          rootName,
-          isValibot,
-          valibotFn,
-          options,
-        )
-        if (schema.additionalProperties === true) {
-          return s.replace('v.object', 'v.looseObject')
-        }
-      }
-      return 'v.any()'
-    }
-    return `v.record(v.string(),${valibotFn(schema.additionalProperties)})`
+) {
+  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
+    return valibot(schema, rootName, isValibot, options)
   }
-  if (schema.properties) {
-    const result = propertiesSchema(
-      schema.properties,
-      Array.isArray(schema.required) ? schema.required : [],
-      rootName,
-      isValibot,
-      valibotFn,
-      options,
-    )
-    if (schema.additionalProperties === false) {
-      return result.replace('v.object', 'v.strictObject')
-    }
-    return result
+  if (typeof schema.additionalProperties === 'object') {
+    return `v.record(v.string(),${valibot(schema.additionalProperties)})`
   }
-  // allOf, oneOf, anyOf, not
-  if (schema.oneOf) return valibotFn(schema, rootName, isValibot, options)
-  if (schema.anyOf) return valibotFn(schema, rootName, isValibot, options)
-  if (schema.allOf) return valibotFn(schema, rootName, isValibot, options)
-  if (schema.not) return valibotFn(schema, rootName, isValibot, options)
-  return 'v.object({})'
-}
-
-function propertiesSchema(
-  properties: { [k: string]: JSONSchema },
-  required: readonly string[],
-  rootName: string,
-  isValibot: boolean,
-  valibotFn: typeof valibot,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  const objectProperties = Object.entries(properties)
-    .map(([key, schema]) => {
-      const parsed = valibotFn(schema, rootName, isValibot, options)
+  if (!schema.properties) {
+    if (schema.additionalProperties === true) return 'v.any()'
+    return 'v.object({})'
+  }
+  const required = Array.isArray(schema.required) ? schema.required : []
+  const props = Object.entries(schema.properties)
+    .map(([key, propSchema]) => {
+      const parsed = valibot(propSchema, rootName, isValibot, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
       return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:v.optional(${parsed})`
     })
     .filter((v): v is string => v !== null)
-
-  const allOptional = objectProperties.every((prop) => prop.includes('v.optional('))
-  if (required.length === 0 && allOptional) {
-    const cleanProperties = objectProperties.map((prop) =>
-      prop.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'),
-    )
-    return `v.partial(v.object({${cleanProperties.join(',')}}))`
+  const objectKind =
+    schema.additionalProperties === true
+      ? 'looseObject'
+      : schema.additionalProperties === false
+        ? 'strictObject'
+        : 'object'
+  if (required.length === 0 && props.every((p) => p.includes('v.optional('))) {
+    const cleaned = props.map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
+    return `v.partial(v.${objectKind}({${cleaned.join(',')}}))`
   }
-  return `v.object({${objectProperties.join(',')}})`
+  return `v.${objectKind}({${props.join(',')}})`
 }

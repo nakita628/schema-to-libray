@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { valibot } from './valibot.js'
 
 // Test run
@@ -305,11 +305,22 @@ describe('valibot', () => {
 
   describe('not', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } }, 'v.any()'],
-      [{ not: { type: 'integer' } }, 'v.any()'],
-      [{ not: { type: 'boolean' } }, 'v.any()'],
-      [{ not: { type: 'string' }, nullable: true }, 'v.nullable(v.any())'],
-      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'v.nullable(v.any())'],
+      [{ not: { type: 'string' } }, "v.custom<unknown>((v) => typeof v !== 'string')"],
+      [
+        { not: { type: 'integer' } },
+        "v.custom<unknown>((v) => typeof v !== 'number' || !Number.isInteger(v))",
+      ],
+      [{ not: { type: 'boolean' } }, "v.custom<unknown>((v) => typeof v !== 'boolean')"],
+      [
+        { not: { type: 'string' }, nullable: true },
+        "v.nullable(v.custom<unknown>((v) => typeof v !== 'string'))",
+      ],
+      [
+        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        "v.nullable(v.custom<unknown>((v) => typeof v !== 'string'))",
+      ],
+      [{ not: { const: 42 } }, 'v.custom<unknown>((v) => v !== 42)'],
+      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((v) => !["a","b"].includes(v))'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })

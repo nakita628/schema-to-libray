@@ -854,7 +854,7 @@ describe('oneOf: schema-to-zod', () => {
 
 export const Shape = z.object({
   kind: z.string(),
-  value: z.union([z.string(), z.number(), z.boolean()]),
+  value: z.xor([z.string(), z.number(), z.boolean()]),
 })
 `
     expect(generatedCode).toBe(expectedCode)
