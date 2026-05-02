@@ -34,7 +34,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
   }
 
   if (schema.oneOf || schema.anyOf) {
-    const members = (schema.oneOf ?? schema.anyOf) as readonly JSONSchema[]
+    const members = schema.oneOf ?? schema.anyOf ?? []
     return `(${members.map((s) => type(s, rootName)).join(' | ')})`
   }
 

@@ -11,7 +11,7 @@ function hasSelfReference(schema: JSONSchema): boolean {
   const isRecord = (v: unknown): v is { [k: string]: unknown } =>
     typeof v === 'object' && v !== null
 
-  const stack: unknown[] = Object.entries(schema)
+  const stack = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
     .map(([, value]) => value)
 
