@@ -162,7 +162,7 @@ describe('valibot', () => {
             },
           ],
         },
-        'v.intersect([GeoJsonObjectSchema,v.object({type:v.picklist(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])})])',
+        'v.pipe(v.intersect([GeoJsonObjectSchema,v.object({type:v.picklist(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])})]),v.description("Abstract type for all GeoJSon object except Feature and FeatureCollection\\n"),v.metadata({externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3"}}))',
       ],
       [
         {
@@ -206,7 +206,7 @@ describe('valibot', () => {
             },
           ],
         },
-        'v.intersect([GeoJsonObjectSchema,v.object({geometry:v.nullable(GeometrySchema),properties:v.nullable(v.object({})),id:v.optional(v.union([v.number(),v.string()]))})])',
+        'v.pipe(v.intersect([GeoJsonObjectSchema,v.object({geometry:v.nullable(GeometrySchema),properties:v.nullable(v.object({})),id:v.optional(v.union([v.number(),v.string()]))})]),v.description("GeoJSon \'Feature\' object"),v.metadata({externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}}))',
       ],
       [
         {

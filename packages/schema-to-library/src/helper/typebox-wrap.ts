@@ -1,8 +1,15 @@
 import type { JSONSchema } from '../parser/index.js'
 
 /**
- * Wraps a TypeBox schema string with `Type.Optional()` (with default) and
- * `Type.Union([..., Type.Null()])` based on `default` / `nullable` fields.
+ * Wraps a TypeBox schema string with `Type.Optional()` (when a `default` is
+ * present) and `Type.Union([..., Type.Null()])` (when nullable).
+ *
+ * Metadata (`description`, `examples`, `deprecated`, `externalDocs`,
+ * `readOnly`, `writeOnly`) is NOT handled here. Each TypeBox factory call
+ * (`Type.String`, `Type.Object`, `Type.Array`, etc.) embeds metadata directly
+ * into its own options argument via {@link typeboxMetaOpts} at construction
+ * time, because TypeBox stores metadata on the schema object during
+ * construction and exposes no post-construction `.meta()` method.
  */
 export function typeboxWrap(typeboxStr: string, schema: JSONSchema): string {
   const formatLiteral = (value: unknown): string => {

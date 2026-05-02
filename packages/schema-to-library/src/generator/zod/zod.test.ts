@@ -155,7 +155,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({type:z.enum(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])}))',
+          'z.intersection(GeoJsonObjectSchema,z.object({type:z.enum(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])})).meta({description:"Abstract type for all GeoJSon object except Feature and FeatureCollection\\n",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3"}})',
         ],
         [
           {
@@ -199,7 +199,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).optional()}))',
+          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).optional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
         ],
         [
           {

@@ -1,3 +1,4 @@
+import { typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 export function _enum(schema: JSONSchema) {
@@ -8,15 +9,17 @@ export function _enum(schema: JSONSchema) {
     return JSON.stringify(v) ?? 'null'
   }
   const errorMessage = schema['x-error-message']
-  const errOpt = errorMessage ? `,{errorMessage:${JSON.stringify(errorMessage)}}` : ''
-  if (!schema.enum || schema.enum.length === 0) return 'Type.Any()'
+  const metaOpts = typeboxMetaOpts(schema)
+  const optsParts = [
+    errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+    ...metaOpts,
+  ].filter((v): v is string => v !== undefined)
+  const optsTrailer = optsParts.length > 0 ? `,{${optsParts.join(',')}}` : ''
+  if (!schema.enum || schema.enum.length === 0) {
+    return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'
+  }
   if (schema.enum.length === 1) {
-    return errorMessage
-      ? `Type.Literal(${lit(schema.enum[0])},{errorMessage:${JSON.stringify(errorMessage)}})`
-      : `Type.Literal(${lit(schema.enum[0])})`
+    return `Type.Literal(${lit(schema.enum[0])}${optsTrailer})`
   }
-  if (schema.enum.every((v: unknown) => typeof v === 'string')) {
-    return `Type.Union([${schema.enum.map((v: unknown) => `Type.Literal(${lit(v)})`).join(',')}]${errOpt})`
-  }
-  return `Type.Union([${schema.enum.map((v: unknown) => `Type.Literal(${lit(v)})`).join(',')}]${errOpt})`
+  return `Type.Union([${schema.enum.map((v: unknown) => `Type.Literal(${lit(v)})`).join(',')}]${optsTrailer})`
 }

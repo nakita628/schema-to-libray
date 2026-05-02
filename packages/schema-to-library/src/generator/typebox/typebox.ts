@@ -1,4 +1,5 @@
 import { typeboxWrap } from '../../helper/index.js'
+import { typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -12,6 +13,30 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
+/**
+ * Emits a single-argument TypeBox factory call (`Type.X({opts})`), embedding
+ * any meta options from the schema. Returns `Type.X()` when no options.
+ */
+function tbPrim(name: string, schema: JSONSchema, extraOpts: readonly string[] = []): string {
+  const opts = [...extraOpts, ...typeboxMetaOpts(schema)]
+  return opts.length === 0 ? `${name}()` : `${name}({${opts.join(',')}})`
+}
+
+/**
+ * Emits a two-argument TypeBox factory call (`Type.X(payload, {opts})`),
+ * embedding any meta options from the schema. Returns `Type.X(payload)` when
+ * no options.
+ */
+function tbComp(
+  name: string,
+  payload: string,
+  schema: JSONSchema,
+  extraOpts: readonly string[] = [],
+): string {
+  const opts = [...extraOpts, ...typeboxMetaOpts(schema)]
+  return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
+}
+
 export function typebox(
   schema: JSONSchema,
   rootName: string = 'Schema',
@@ -23,12 +48,13 @@ export function typebox(
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
-        return typeboxWrap(`Type.Recursive((_Self) => ${rootName})`, s)
+        return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${rootName}`, s), s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
         if (resolved) {
-          if (resolved === rootName) return typeboxWrap(`Type.Recursive((_Self) => ${resolved})`, s)
+          if (resolved === rootName)
+            return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${resolved}`, s), s)
           return typeboxWrap(resolved, s)
         }
       }
@@ -57,19 +83,19 @@ export function typebox(
   }
 
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return typeboxWrap('Type.Any()', schema)
+    if (!schema.oneOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, options))
-    return typeboxWrap(`Type.Union([${schemas.join(',')}])`, schema)
+    return typeboxWrap(tbComp('Type.Union', `[${schemas.join(',')}]`, schema), schema)
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return typeboxWrap('Type.Any()', schema)
+    if (!schema.anyOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, options))
-    return typeboxWrap(`Type.Union([${schemas.join(',')}])`, schema)
+    return typeboxWrap(tbComp('Type.Union', `[${schemas.join(',')}]`, schema), schema)
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return typeboxWrap('Type.Any()', schema)
+    if (!schema.allOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const isNullType = (s: JSONSchema) =>
       s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
     const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
@@ -82,8 +108,11 @@ export function typebox(
     const schemas = schema.allOf
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => typebox(s, rootName, isTypebox, options))
-    if (!schemas.length) return typeboxWrap('Type.Any()', { ...schema, nullable })
-    const baseResult = schemas.length === 1 ? schemas[0] : `Type.Intersect([${schemas.join(',')}])`
+    if (!schemas.length) return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
+    const baseResult =
+      schemas.length === 1
+        ? schemas[0]
+        : tbComp('Type.Intersect', `[${schemas.join(',')}]`, schema)
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`
@@ -98,12 +127,16 @@ export function typebox(
 
   if (schema.not) {
     const inner = schema.not
-    if (typeof inner !== 'object' || inner === null) return typeboxWrap('Type.Any()', schema)
-    return typeboxWrap(`Type.Not(${typebox(inner, rootName, isTypebox, options)})`, schema)
+    if (typeof inner !== 'object' || inner === null)
+      return typeboxWrap(tbPrim('Type.Any', schema), schema)
+    return typeboxWrap(
+      tbComp('Type.Not', typebox(inner, rootName, isTypebox, options), schema),
+      schema,
+    )
   }
 
   if (schema.const !== undefined)
-    return typeboxWrap(`Type.Literal(${JSON.stringify(schema.const)})`, schema)
+    return typeboxWrap(tbComp('Type.Literal', JSON.stringify(schema.const), schema), schema)
   if (schema.enum) return typeboxWrap(_enum(schema), schema)
   if (schema.properties)
     return withReadonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
@@ -112,28 +145,29 @@ export function typebox(
   if (types.includes('string')) return typeboxWrap(string(schema), schema)
   if (types.includes('number')) return typeboxWrap(number(schema), schema)
   if (types.includes('integer')) return typeboxWrap(integer(schema), schema)
-  if (types.includes('boolean')) return typeboxWrap('Type.Boolean()', schema)
+  if (types.includes('boolean')) return typeboxWrap(tbPrim('Type.Boolean', schema), schema)
 
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
-      return withReadonly(typeboxWrap(`Type.Tuple([${items.join(',')}])`, schema))
+      return withReadonly(
+        typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema), schema),
+      )
     }
     const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
-    const opts = [
+    const arrayOpts = [
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
       schema.uniqueItems === true ? `uniqueItems:true` : undefined,
-    ].filter((v) => v !== undefined)
-    const arrayExpr =
-      opts.length > 0 ? `Type.Array(${items},{${opts.join(',')}})` : `Type.Array(${items})`
-    return withReadonly(typeboxWrap(arrayExpr, schema))
+    ].filter((v): v is string => v !== undefined)
+    return withReadonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
   }
 
   if (types.includes('object'))
     return withReadonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
-  if (types.includes('date')) return typeboxWrap('Type.Date()', schema)
-  if (types.length === 1 && types[0] === 'null') return typeboxWrap('Type.Null()', schema)
+  if (types.includes('date')) return typeboxWrap(tbPrim('Type.Date', schema), schema)
+  if (types.length === 1 && types[0] === 'null')
+    return typeboxWrap(tbPrim('Type.Null', schema), schema)
 
-  return typeboxWrap('Type.Any()', schema)
+  return typeboxWrap(tbPrim('Type.Any', schema), schema)
 }

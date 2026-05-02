@@ -1,3 +1,4 @@
+import { typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { typebox } from './typebox.js'
 
@@ -27,6 +28,10 @@ export function object(
       return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:Type.Optional(${parsed})`
     })
     .filter((v): v is string => v !== null)
-  const opts = schema.additionalProperties === false ? ',{additionalProperties:false}' : ''
+  const optParts = [
+    schema.additionalProperties === false ? 'additionalProperties:false' : undefined,
+    ...typeboxMetaOpts(schema),
+  ].filter((v): v is string => v !== undefined)
+  const opts = optParts.length > 0 ? `,{${optParts.join(',')}}` : ''
   return `Type.Object({${props.join(',')}}${opts})`
 }

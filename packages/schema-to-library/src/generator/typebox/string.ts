@@ -1,3 +1,4 @@
+import { typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
@@ -29,6 +30,7 @@ export function string(schema: JSONSchema) {
     !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
     !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+    ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {
