@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const Combined = Type.Intersect([
   Type.Object({ name: Type.String() }),

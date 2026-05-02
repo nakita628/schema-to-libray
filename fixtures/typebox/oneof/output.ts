@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const Shape = Type.Union([
   Type.Object({ kind: Type.Literal('circle'), radius: Type.Number() }),

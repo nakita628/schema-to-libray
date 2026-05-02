@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 const B = Type.Object({ a: Type.Optional(A) })
 

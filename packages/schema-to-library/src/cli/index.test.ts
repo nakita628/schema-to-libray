@@ -324,7 +324,7 @@ describe('schema-to-typebox', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-typebox.ts' })
 
     const generatedCode = fs.readFileSync('test-output-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from '@sinclair/typebox'
+    const expectedCode = `import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({ name: Type.String(), age: Type.Optional(Type.Integer()) })
 `
@@ -354,7 +354,7 @@ describe('schema-to-typebox --export-type', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-typebox-et.ts' })
 
     const generatedCode = fs.readFileSync('test-output-typebox-et.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from '@sinclair/typebox'
+    const expectedCode = `import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({ name: Type.String(), age: Type.Optional(Type.Integer()) })
 
@@ -534,7 +534,7 @@ describe('x-error-message: schema-to-typebox', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-typebox.ts' })
 
     const generatedCode = fs.readFileSync('test-msg-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from '@sinclair/typebox'
+    const expectedCode = `import { Type, type Static } from 'typebox'
 
 export const UserForm = Type.Object({
   name: Type.String({ minLength: 1, errorMessage: 'Name is required' }),
@@ -792,7 +792,7 @@ describe('array/nullable/default: schema-to-typebox', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-typebox.ts' })
 
     const generatedCode = fs.readFileSync('test-array-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from '@sinclair/typebox'
+    const expectedCode = `import { Type, type Static } from 'typebox'
 
 export const Config = Type.Object({
   tags: Type.Array(Type.String(), { minItems: 1 }),
@@ -928,7 +928,7 @@ describe('oneOf: schema-to-typebox', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-typebox.ts' })
 
     const generatedCode = fs.readFileSync('test-oneof-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from '@sinclair/typebox'
+    const expectedCode = `import { Type, type Static } from 'typebox'
 
 export const Shape = Type.Object({
   kind: Type.String(),

@@ -47,7 +47,7 @@ export function schemaToTypebox(
 
   // Assemble output
   return [
-    `import { Type, type Static } from '@sinclair/typebox'`,
+    `import { Type, type Static } from 'typebox'`,
     schemaDefsCode,
     rootExport,
     ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),
