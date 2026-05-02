@@ -1,93 +1,40 @@
-import type { JSONSchema } from '../../helper/index.js'
-import type { zod } from './zod.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { zod } from './zod.js'
 
-/**
- * Generate Zod object schema from JSON Schema
- *
- * @param schema - JSON Schema object with object type
- * @param rootName - Root schema name for reference resolution
- * @param isZod - Whether this is called from zod function
- * @param zodFn - Reference to the main zod function for recursive calls
- * @param options - Generator options
- * @returns Generated Zod object schema code
- * @example
- * ```ts
- * object(schema, 'MySchema', false, zod) // 'z.object({name:z.string()})'
- * ```
- */
 export function object(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean,
-  zodFn: typeof zod,
   options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (schema.additionalProperties) {
-    if (typeof schema.additionalProperties === 'boolean') {
-      if (schema.properties) {
-        const s = propertiesSchema(
-          schema.properties,
-          Array.isArray(schema.required) ? schema.required : [],
-          rootName,
-          isZod,
-          zodFn,
-          options,
-        )
-        if (schema.additionalProperties === true) {
-          return s.replace('object', 'looseObject')
-        }
-      }
-      return 'z.any()'
-    }
-    return `z.record(z.string(),${zodFn(schema.additionalProperties)})`
+) {
+  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
+    return zod(schema, rootName, isZod, options)
   }
-  if (schema.properties) {
-    const result = propertiesSchema(
-      schema.properties,
-      Array.isArray(schema.required) ? schema.required : [],
-      rootName,
-      isZod,
-      zodFn,
-      options,
-    )
-    if (schema.additionalProperties === false) {
-      return result.replace('object', 'strictObject')
-    }
-    return result
+  if (typeof schema.additionalProperties === 'object') {
+    return `z.record(z.string(),${zod(schema.additionalProperties)})`
   }
-  // allOf, oneOf, anyOf, not
-  if (schema.oneOf) return zodFn(schema, rootName, isZod, options)
-  if (schema.anyOf) return zodFn(schema, rootName, isZod, options)
-  if (schema.allOf) return zodFn(schema, rootName, isZod, options)
-  if (schema.not) return zodFn(schema, rootName, isZod, options)
-  return 'z.object({})'
-}
-
-/**
- * Generate Zod object properties schema from JSON Schema properties
- */
-function propertiesSchema(
-  properties: { [k: string]: JSONSchema },
-  required: readonly string[],
-  rootName: string,
-  isZod: boolean,
-  zodFn: typeof zod,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  const objectProperties = Object.entries(properties)
-    .map(([key, schema]) => {
-      const parsed = zodFn(schema, rootName, isZod, options)
+  if (!schema.properties) {
+    if (schema.additionalProperties === true) return 'z.any()'
+    return 'z.object({})'
+  }
+  const objectType =
+    schema.additionalProperties === true
+      ? 'looseObject'
+      : schema.additionalProperties === false
+        ? 'strictObject'
+        : 'object'
+  const required = Array.isArray(schema.required) ? schema.required : []
+  const props = Object.entries(schema.properties)
+    .map(([key, propSchema]) => {
+      const parsed = zod(propSchema, rootName, isZod, options)
       if (!parsed) return null
-      const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
-      return `${safeKey}:${parsed}${isRequired ? '' : '.optional()'}`
+      return `${safeKey}:${parsed}${required.includes(key) ? '' : '.optional()'}`
     })
     .filter((v): v is string => v !== null)
-
-  const allOptional = objectProperties.every((prop) => prop.includes('.optional()'))
-  if (required.length === 0 && allOptional) {
-    const cleanProperties = objectProperties.map((prop) => prop.replace('.optional()', ''))
-    return `z.object({${cleanProperties.join(',')}}).partial()`
+  if (required.length === 0 && props.every((p) => p.includes('.optional()'))) {
+    const cleaned = props.map((p) => p.replace('.optional()', ''))
+    return `z.${objectType}({${cleaned.join(',')}}).partial()`
   }
-  return `z.object({${objectProperties.join(',')}})`
+  return `z.${objectType}({${props.join(',')}})`
 }

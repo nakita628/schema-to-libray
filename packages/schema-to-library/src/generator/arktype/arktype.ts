@@ -1,4 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
+import { arktypeWrap } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -11,216 +12,165 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
+const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
+
+const unionStr = (schemas: string[]) =>
+  schemas.every(isQuoted)
+    ? `"${schemas.map((s) => s.slice(1, -1)).join(' | ')}"`
+    : schemas.reduce((acc, s) => `type(${acc}).or(${s})`)
+
+const intersectionStr = (schemas: string[]) =>
+  schemas.every(isQuoted)
+    ? `"${schemas.map((s) => s.slice(1, -1)).join(' & ')}"`
+    : schemas.reduce((acc, s) => `type(${acc}).and(${s})`)
+
 export function arktype(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isArktype: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const ro = (s: string): string => (options?.readonly ? `${s}.readonly()` : s)
+  const withReadonly = (s: string) => (options?.readonly ? `${s}.readonly()` : s)
 
-  // $ref
   if (schema.$ref) {
-    if (Boolean(schema.$ref) === true) {
-      return wrap(ref(schema, rootName, options), schema)
-    }
-    if (schema.type === 'array' && Boolean(schema.items?.$ref)) {
-      if (schema.items?.$ref) {
-        return wrap(`${ref(schema.items, rootName, options)}.array()`, schema)
+    const ref = (s: JSONSchema): string => {
+      if (s.$ref === '#' || s.$ref === '') return `"${rootName}"`
+      if (options?.openapi && s.$ref) {
+        const resolved = resolveOpenAPIRef(s.$ref)
+        if (resolved) return `"${resolved}"`
       }
-      return wrap('"unknown[]"', schema)
+      const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
+      const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
+      for (const prefix of REF_PREFIXES) {
+        if (s.$ref?.startsWith(prefix)) return `"${toName(s.$ref.slice(prefix.length))}"`
+      }
+      if (s.$ref?.startsWith('#')) {
+        const refName = s.$ref.slice(1)
+        return refName === '' ? `"${rootName}"` : `"${toName(refName)}"`
+      }
+      return '"unknown"'
     }
-    return wrap('"unknown"', schema)
+    if (schema.type === 'array' && schema.items?.$ref) {
+      return arktypeWrap(`${ref(schema.items)}.array()`, schema)
+    }
+    return arktypeWrap(ref(schema), schema)
   }
-  // combinators
+
   if (schema.oneOf) {
-    if (!schema.oneOf?.length) return wrap('"unknown"', schema)
-    const schemas = schema.oneOf.map((s: JSONSchema) => arktype(s, rootName, isArktype, options))
-    return wrap(unionStr(schemas), schema)
+    if (!schema.oneOf.length) return arktypeWrap('"unknown"', schema)
+    const schemas = schema.oneOf.map((s) => arktype(s, rootName, isArktype, options))
+    return arktypeWrap(unionStr(schemas), schema)
   }
+
   if (schema.anyOf) {
-    if (!schema.anyOf?.length) return wrap('"unknown"', schema)
-    const schemas = schema.anyOf.map((s: JSONSchema) => arktype(s, rootName, isArktype, options))
-    return wrap(unionStr(schemas), schema)
+    if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
+    const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
+    return arktypeWrap(unionStr(schemas), schema)
   }
+
   if (schema.allOf) {
-    return allOf(schema, rootName, isArktype, options)
+    if (!schema.allOf.length) return arktypeWrap('"unknown"', schema)
+    const isNullType = (s: JSONSchema) =>
+      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
+    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
+    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    const nullable =
+      schema.nullable === true ||
+      (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
+      schema.allOf.some(isNullType)
+    const schemas = schema.allOf
+      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .map((s) => arktype(s, rootName, isArktype, options))
+    if (!schemas.length) return arktypeWrap('"unknown"', { ...schema, nullable })
+    const baseResult = schemas.length === 1 ? schemas[0] : intersectionStr(schemas)
+    return arktypeWrap(baseResult, { ...schema, nullable })
   }
-  // not
+
   if (schema.not) {
-    return wrap('"unknown"', schema)
+    const inner = schema.not
+    if (typeof inner !== 'object' || inner === null) return arktypeWrap('"unknown"', schema)
+    const narrow = (predicate: string) =>
+      arktypeWrap(`type("unknown").narrow(${predicate})`, schema)
+    const typePredicates: { readonly [k: string]: string } = {
+      string: `(v: unknown) => typeof v !== 'string'`,
+      number: `(v: unknown) => typeof v !== 'number'`,
+      integer: `(v: unknown) => typeof v !== 'number' || !Number.isInteger(v)`,
+      boolean: `(v: unknown) => typeof v !== 'boolean'`,
+      array: '(v: unknown) => !Array.isArray(v)',
+      object: `(v: unknown) => typeof v !== 'object' || v === null || Array.isArray(v)`,
+      null: '(v: unknown) => v !== null',
+    }
+    if ('const' in inner) return narrow(`(v: unknown) => v !== ${JSON.stringify(inner.const)}`)
+    if (typeof inner.type === 'string') {
+      const predicate = typePredicates[inner.type]
+      if (predicate) return narrow(predicate)
+    }
+    if (Array.isArray(inner.type)) {
+      const bodies = inner.type
+        .map((t) => typePredicates[t])
+        .filter((p): p is string => p !== undefined)
+        .map((p) => `(${p.replace(/^\(v: unknown\) => /, '')})`)
+      if (bodies.length > 0) return narrow(`(v: unknown) => ${bodies.join(' && ')}`)
+    }
+    if (Array.isArray(inner.enum)) {
+      return narrow(`(v: unknown) => !${JSON.stringify(inner.enum)}.includes(v as never)`)
+    }
+    return arktypeWrap('"unknown"', schema)
   }
-  // const
-  if (schema.const) {
-    const v =
-      typeof schema.const === 'string'
-        ? `"'${schema.const}'"`
-        : typeof schema.const === 'number' || typeof schema.const === 'boolean'
-          ? `"${String(schema.const)}"`
-          : `"${JSON.stringify(schema.const) ?? 'null'}"`
-    return wrap(v, schema)
+
+  if (schema.const !== undefined) {
+    const formatConst = (value: unknown): string => {
+      if (typeof value === 'string') return `"'${value}'"`
+      if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
+      return `"${JSON.stringify(value) ?? 'null'}"`
+    }
+    return arktypeWrap(formatConst(schema.const), schema)
   }
-  // enum
-  if (schema.enum) return wrap(_enum(schema), schema)
-  // properties
+  if (schema.enum) return arktypeWrap(_enum(schema), schema)
   if (schema.properties)
-    return ro(wrap(object(schema, rootName, isArktype, arktype, options), schema))
+    return withReadonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
 
   const types = normalizeTypes(schema.type)
-  if (types.includes('string')) return wrap(string(schema), schema)
-  if (types.includes('number')) return wrap(number(schema), schema)
-  if (types.includes('integer')) return wrap(integer(schema), schema)
-  if (types.includes('boolean')) return wrap('"boolean"', schema)
-  if (types.includes('array')) return wrap(array(schema, rootName, isArktype, options), schema)
-  if (types.includes('object'))
-    return ro(wrap(object(schema, rootName, isArktype, arktype, options), schema))
-  if (types.includes('date')) return wrap('"Date"', schema)
-  if (types.length === 1 && types[0] === 'null') return wrap('"null"', schema)
+  if (types.includes('string')) return arktypeWrap(string(schema), schema)
+  if (types.includes('number')) return arktypeWrap(number(schema), schema)
+  if (types.includes('integer')) return arktypeWrap(integer(schema), schema)
+  if (types.includes('boolean')) return arktypeWrap('"boolean"', schema)
 
-  return wrap('"unknown"', schema)
-}
-
-function allOf(
-  schema: JSONSchema,
-  rootName: string,
-  isArktype: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (!schema.allOf?.length) return wrap('"unknown"', schema)
-
-  const isNullType = (s: JSONSchema) =>
-    s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-
-  const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-
-  const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
-
-  const nullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-    schema.allOf.some(isNullType)
-
-  const schemas = schema.allOf
-    .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
-    .map((s) => arktype(s, rootName, isArktype, options))
-
-  if (!schemas.length) return wrap('"unknown"', { ...schema, nullable })
-
-  const baseResult = schemas.length === 1 ? schemas[0] : intersectionStr(schemas)
-
-  return wrap(baseResult, { ...schema, nullable })
-}
-
-function array(
-  schema: JSONSchema,
-  rootName: string,
-  isArktype: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
-
-  // For simple string types, use inline syntax
-  if (items.startsWith('"') && items.endsWith('"')) {
+  if (types.includes('array')) {
+    if (schema.prefixItems?.length) {
+      const items = schema.prefixItems.map((s) => arktype(s, rootName, isArktype, options))
+      const tupleExpr = items.every(isQuoted)
+        ? `"[${items.map((s) => s.slice(1, -1)).join(', ')}]"`
+        : `type([${items.join(',')}])`
+      return arktypeWrap(tupleExpr, schema)
+    }
+    const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
+    if (!isQuoted(items)) return arktypeWrap(`type(${items}).array()`, schema)
     const inner = items.slice(1, -1)
     const base = `"${inner}[]"`
-
+    const { minItems, maxItems } = schema
     const isFixedLength =
-      typeof schema.minItems === 'number' &&
-      typeof schema.maxItems === 'number' &&
-      schema.minItems === schema.maxItems
-
-    if (isFixedLength) return `type(${base}).and(type("unknown[] == ${schema.minItems}"))`
-
-    const hasMin = typeof schema.minItems === 'number'
-    const hasMax = typeof schema.maxItems === 'number'
-    if (hasMin && hasMax)
-      return `type(${base}).and(type("${schema.minItems} <= unknown[] <= ${schema.maxItems}"))`
-    if (hasMin) return `type(${base}).and(type("unknown[] >= ${schema.minItems}"))`
-    if (hasMax) return `type(${base}).and(type("unknown[] <= ${schema.maxItems}"))`
-
-    return base
+      typeof minItems === 'number' && typeof maxItems === 'number' && minItems === maxItems
+    const lengthExpr = isFixedLength
+      ? `type(${base}).and(type("unknown[] == ${minItems}"))`
+      : typeof minItems === 'number' && typeof maxItems === 'number'
+        ? `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
+        : typeof minItems === 'number'
+          ? `type(${base}).and(type("unknown[] >= ${minItems}"))`
+          : typeof maxItems === 'number'
+            ? `type(${base}).and(type("unknown[] <= ${maxItems}"))`
+            : base
+    const arrayExpr =
+      schema.uniqueItems === true
+        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[]) => new Set(items).size === items.length)`
+        : lengthExpr
+    return arktypeWrap(arrayExpr, schema)
   }
 
-  // Complex items type
-  return `type(${items}).array()`
-}
+  if (types.includes('object'))
+    return withReadonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
+  if (types.includes('date')) return arktypeWrap('"Date"', schema)
+  if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 
-export function wrap(arktypeStr: string, schema: JSONSchema): string {
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-
-  const withNullable = isNullable
-    ? arktypeStr.startsWith('"') && arktypeStr.endsWith('"')
-      ? `"${arktypeStr.slice(1, -1)} | null"`
-      : `type(${arktypeStr}).or("null")`
-    : arktypeStr
-
-  if (!schema['x-brand']) return withNullable
-
-  // brand requires function-call form
-  if (withNullable.startsWith('"') && withNullable.endsWith('"')) {
-    return `type(${withNullable}).brand("${schema['x-brand']}")`
-  }
-  return `${withNullable}.brand("${schema['x-brand']}")`
-}
-
-function unionStr(schemas: string[]): string {
-  // If all are simple string types, combine them
-  if (schemas.every((s) => s.startsWith('"') && s.endsWith('"'))) {
-    const inner = schemas.map((s) => s.slice(1, -1)).join(' | ')
-    return `"${inner}"`
-  }
-  // Otherwise use .or() chaining
-  return schemas.reduce((acc, s) => `type(${acc}).or(${s})`)
-}
-
-function intersectionStr(schemas: string[]): string {
-  // If all are simple string types, combine them
-  if (schemas.every((s) => s.startsWith('"') && s.endsWith('"'))) {
-    const inner = schemas.map((s) => s.slice(1, -1)).join(' & ')
-    return `"${inner}"`
-  }
-  return schemas.reduce((acc, s) => `type(${acc}).and(${s})`)
-}
-
-function ref(
-  schema: JSONSchema,
-  rootName: string,
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (schema.$ref === '#' || schema.$ref === '') {
-    return `"${rootName}"`
-  }
-
-  // OpenAPI component-aware resolution
-  if (options?.openapi && schema.$ref) {
-    const resolved = resolveOpenAPIRef(schema.$ref)
-    if (resolved) {
-      return `"${resolved}"`
-    }
-  }
-
-  const TABLE = [
-    ['#/components/schemas/', 'Schema'],
-    ['#/definitions/', 'Schema'],
-    ['#/$defs/', 'Schema'],
-  ] as const
-
-  const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
-
-  for (const [prefix] of TABLE) {
-    if (schema.$ref?.startsWith(prefix)) {
-      const name = toName(schema.$ref.slice(prefix.length))
-      return `"${name}"`
-    }
-  }
-
-  if (schema.$ref?.startsWith('#')) {
-    const refName = schema.$ref.slice(1)
-    if (refName === '') return `"${rootName}"`
-    return `"${toName(refName)}"`
-  }
-
-  return '"unknown"'
+  return arktypeWrap('"unknown"', schema)
 }

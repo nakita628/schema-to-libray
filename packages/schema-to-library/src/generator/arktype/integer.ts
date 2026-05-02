@@ -1,6 +1,6 @@
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 
-export function integer(schema: JSONSchema): string {
+export function integer(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
 

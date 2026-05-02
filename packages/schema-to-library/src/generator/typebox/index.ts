@@ -1,5 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
@@ -47,7 +47,7 @@ export function schemaToTypebox(
 
   // Assemble output
   return [
-    `import { Type, type Static } from '@sinclair/typebox'`,
+    `import { Type, type Static } from 'typebox'`,
     schemaDefsCode,
     rootExport,
     ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),

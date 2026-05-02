@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const Schema = Type.Object({
   children: Type.Optional(Type.Array(Type.Recursive((_Self) => Schema))),

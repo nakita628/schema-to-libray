@@ -1,4 +1,4 @@
-import type { JSONSchema } from './json-schema.js'
+import type { JSONSchema } from '../parser/index.js'
 
 /**
  * Resolve schema dependencies and return them in topological order

@@ -1,61 +1,33 @@
-import type { JSONSchema } from '../../helper/index.js'
-import type { arktype } from './arktype.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { arktype } from './arktype.js'
 
 export function object(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean,
-  arktypeFn: typeof arktype,
   options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (schema.additionalProperties) {
-    if (typeof schema.additionalProperties === 'boolean') {
-      if (schema.properties) {
-        return propertiesSchema(
-          schema.properties,
-          Array.isArray(schema.required) ? schema.required : [],
-          rootName,
-          isArktype,
-          arktypeFn,
-          schema.additionalProperties === true ? 'delete' : undefined,
-          options,
-        )
-      }
-      return '"unknown"'
-    }
-    const inner = `{"[string]":${arktypeFn(schema.additionalProperties, rootName, isArktype, options)}}`
+) {
+  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
+    return arktype(schema, rootName, isArktype, options)
+  }
+  if (typeof schema.additionalProperties === 'object') {
+    const inner = `{"[string]":${arktype(schema.additionalProperties, rootName, isArktype, options)}}`
     return isArktype ? inner : `type(${inner})`
   }
-  if (schema.properties) {
-    return propertiesSchema(
-      schema.properties,
-      Array.isArray(schema.required) ? schema.required : [],
-      rootName,
-      isArktype,
-      arktypeFn,
-      schema.additionalProperties === false ? 'reject' : undefined,
-      options,
-    )
+  if (!schema.properties) {
+    if (schema.additionalProperties === true) return '"unknown"'
+    return isArktype ? '{}' : 'type({})'
   }
-  if (schema.oneOf) return arktypeFn(schema, rootName, isArktype, options)
-  if (schema.anyOf) return arktypeFn(schema, rootName, isArktype, options)
-  if (schema.allOf) return arktypeFn(schema, rootName, isArktype, options)
-  if (schema.not) return arktypeFn(schema, rootName, isArktype, options)
-  return isArktype ? '{}' : 'type({})'
-}
-
-function propertiesSchema(
-  properties: { [k: string]: JSONSchema },
-  required: readonly string[],
-  rootName: string,
-  isArktype: boolean,
-  arktypeFn: typeof arktype,
-  additionalMode?: 'delete' | 'reject',
-  options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  const objectProperties = Object.entries(properties)
-    .map(([key, schema]) => {
-      const parsed = arktypeFn(schema, rootName, isArktype, options)
+  const additionalMode =
+    schema.additionalProperties === true
+      ? 'delete'
+      : schema.additionalProperties === false
+        ? 'reject'
+        : undefined
+  const required = Array.isArray(schema.required) ? schema.required : []
+  const props = Object.entries(schema.properties)
+    .map(([key, propSchema]) => {
+      const parsed = arktype(propSchema, rootName, isArktype, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
@@ -68,9 +40,7 @@ function propertiesSchema(
       return `${safeKey}:${parsed}`
     })
     .filter((v): v is string => v !== null)
-
   const additionalProp = additionalMode ? `"+":"${additionalMode}"` : undefined
-  const allProps = [...objectProperties, additionalProp].filter((v): v is string => v !== undefined)
-
+  const allProps = [...props, additionalProp].filter((v): v is string => v !== undefined)
   return isArktype ? `{${allProps.join(',')}}` : `type({${allProps.join(',')}})`
 }

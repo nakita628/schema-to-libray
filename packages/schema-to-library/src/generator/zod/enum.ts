@@ -1,89 +1,52 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { error } from '../../utils/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { zodError } from '../../utils/index.js'
 
-/**
- * Generate Zod enum schema from JSON Schema
- *
- * @param schema - JSON Schema object with enum values
- * @returns Generated Zod enum schema code
- * @example
- * ```ts
- * const schema = { enum: ['red', 'green', 'blue'] }
- * _enum(schema) // 'z.enum(["red","green","blue"])'
- * ```
- */
-export function _enum(schema: JSONSchema): string {
-  /* -------------------------- helpers -------------------------- */
-  const hasType = (t: string): boolean =>
-    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
-
+export function _enum(schema: JSONSchema) {
+  if (!schema.enum || schema.enum.length === 0) return 'z.any()'
+  const ht = (t: string): boolean =>
+    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x) => x === t))
   const lit = (v: unknown): string => {
     if (v === null) return 'null'
     if (typeof v === 'string') return `'${v}'`
     if (typeof v === 'number' || typeof v === 'boolean') return String(v)
     return JSON.stringify(v) ?? 'null'
   }
-
   const tuple = (arr: readonly unknown[]): string =>
-    `z.tuple([${arr.map((i: unknown) => `z.literal(${lit(i)})`).join(',')}])`
-
-  /* ---------------------- error messages ----------------------- */
+    `z.tuple([${arr.map((i) => `z.literal(${lit(i)})`).join(',')}])`
   const errorMessage = schema['x-error-message']
-  const errArg = errorMessage ? `,${error(errorMessage)}` : ''
+  const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
   const enumMessages = schema['x-enum-error-messages']
-  const litErrArg = (v: unknown): string => {
+  const litErrorArg = (v: unknown): string => {
     if (enumMessages) {
       const key = String(v)
-      if (key in enumMessages) return `,${error(enumMessages[key])}`
+      if (key in enumMessages) return `,${zodError(enumMessages[key])}`
     }
-    return errArg
+    return errorArg
   }
-
-  /* --------------------------- guard --------------------------- */
-  if (!schema.enum || schema.enum.length === 0) return 'z.any()'
-
-  /* ------------------- number / integer enum ------------------- */
-  if (hasType('number') || hasType('integer')) {
+  if (ht('number') || ht('integer') || ht('boolean')) {
     return schema.enum.length > 1
-      ? `z.union([${schema.enum.map((v: unknown) => `z.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
-      : `z.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
+      ? `z.union([${schema.enum.map((v) => `z.literal(${lit(v)}${litErrorArg(v)})`).join(',')}]${errorArg})`
+      : `z.literal(${lit(schema.enum[0])}${litErrorArg(schema.enum[0])})`
   }
-
-  /* ----------------------- boolean enum ------------------------ */
-  if (hasType('boolean')) {
-    return schema.enum.length > 1
-      ? `z.union([${schema.enum.map((v: unknown) => `z.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
-      : `z.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
-  }
-
-  /* ----------------------- array enum -------------------------- */
-  if (hasType('array')) {
-    if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
-      return tuple(schema.enum[0])
-    }
-
-    const parts = schema.enum.map((v: unknown) =>
-      Array.isArray(v) ? tuple(v) : `z.literal(${lit(v)}${litErrArg(v)})`,
+  if (ht('array')) {
+    if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) return tuple(schema.enum[0])
+    const parts = schema.enum.map((v) =>
+      Array.isArray(v) ? tuple(v) : `z.literal(${lit(v)}${litErrorArg(v)})`,
     )
-    return `z.union([${parts.join(',')}]${errArg})`
+    return `z.union([${parts.join(',')}]${errorArg})`
   }
-
-  /* ----------------------- string enum ------------------------- */
-  if (schema.enum.every((v: unknown) => typeof v === 'string')) {
+  if (schema.enum.every((v) => typeof v === 'string')) {
     if (schema.enum.length > 1) {
       if (enumMessages) {
-        return `z.union([${schema.enum.map((v: unknown) => `z.literal(${lit(v)}${litErrArg(v)})`).join(',')}]${errArg})`
+        return `z.union([${schema.enum.map((v) => `z.literal(${lit(v)}${litErrorArg(v)})`).join(',')}]${errorArg})`
       }
-      return `z.enum(${JSON.stringify(schema.enum)}${errArg})`
+      return `z.enum(${JSON.stringify(schema.enum)}${errorArg})`
     }
-    return `z.literal('${schema.enum[0]}'${litErrArg(schema.enum[0])})`
+    return `z.literal('${schema.enum[0]}'${litErrorArg(schema.enum[0])})`
   }
-
-  /* -------------------- mixed / null only ---------------------- */
   if (schema.enum.length > 1) {
-    const parts = schema.enum.map((v: unknown) => `z.literal(${lit(v)}${litErrArg(v)})`)
-    return `z.union([${parts.join(',')}]${errArg})`
+    const parts = schema.enum.map((v) => `z.literal(${lit(v)}${litErrorArg(v)})`)
+    return `z.union([${parts.join(',')}]${errorArg})`
   }
-
-  return `z.literal(${lit(schema.enum[0])}${litErrArg(schema.enum[0])})`
+  return `z.literal(${lit(schema.enum[0])}${litErrorArg(schema.enum[0])})`
 }

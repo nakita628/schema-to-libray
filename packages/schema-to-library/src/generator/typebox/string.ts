@@ -1,4 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
+import { typeboxMetaOpts } from '../../helper/meta.js'
+import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
   email: 'email',
@@ -11,7 +12,7 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
   time: 'time',
 }
 
-export function string(schema: JSONSchema): string {
+export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
 
   const isFixedLength =
@@ -29,6 +30,7 @@ export function string(schema: JSONSchema): string {
     !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
     !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+    ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {

@@ -1,8 +1,8 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { effectMessage } from '../../utils/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { effectError } from '../../utils/index.js'
 
-export function _enum(schema: JSONSchema): string {
-  const hasType = (t: string): boolean =>
+export function _enum(schema: JSONSchema) {
+  const ht = (t: string): boolean =>
     schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
 
   const lit = (v: unknown): string => {
@@ -11,38 +11,28 @@ export function _enum(schema: JSONSchema): string {
     if (typeof v === 'number' || typeof v === 'boolean') return String(v)
     return JSON.stringify(v) ?? 'null'
   }
-
   const errorMessage = schema['x-error-message']
   const enumMessages = schema['x-enum-error-messages']
-
   const annotate = (code: string): string =>
-    errorMessage ? `${code}.annotations(${effectMessage(errorMessage)})` : code
-
+    errorMessage ? `${code}.annotations(${effectError(errorMessage)})` : code
   const tuple = (arr: readonly unknown[]): string =>
     `Schema.Tuple(${arr.map((i: unknown) => `Schema.Literal(${lit(i)})`).join(',')})`
-
   if (!schema.enum || schema.enum.length === 0) return 'Schema.Unknown'
-
-  // number / integer enum
-  if (hasType('number') || hasType('integer')) {
+  if (ht('number') || ht('integer')) {
     return annotate(
       schema.enum.length > 1
         ? `Schema.Union(${schema.enum.map((v: unknown) => `Schema.Literal(${lit(v)})`).join(',')})`
         : `Schema.Literal(${lit(schema.enum[0])})`,
     )
   }
-
-  // boolean enum
-  if (hasType('boolean')) {
+  if (ht('boolean')) {
     return annotate(
       schema.enum.length > 1
         ? `Schema.Union(${schema.enum.map((v: unknown) => `Schema.Literal(${lit(v)})`).join(',')})`
         : `Schema.Literal(${lit(schema.enum[0])})`,
     )
   }
-
-  // array enum
-  if (hasType('array')) {
+  if (ht('array')) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
       return annotate(tuple(schema.enum[0]))
     }
@@ -51,8 +41,6 @@ export function _enum(schema: JSONSchema): string {
     )
     return annotate(`Schema.Union(${parts.join(',')})`)
   }
-
-  // string enum — use Literal with multiple values
   if (schema.enum.every((v: unknown) => typeof v === 'string')) {
     if (schema.enum.length > 1) {
       if (enumMessages) {
@@ -66,12 +54,9 @@ export function _enum(schema: JSONSchema): string {
     }
     return annotate(`Schema.Literal("${String(schema.enum[0])}")`)
   }
-
-  // mixed / null only
   if (schema.enum.length > 1) {
     const parts = schema.enum.map((v: unknown) => `Schema.Literal(${lit(v)})`)
     return annotate(`Schema.Union(${parts.join(',')})`)
   }
-
   return annotate(`Schema.Literal(${lit(schema.enum[0])})`)
 }

@@ -1,5 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
 import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
 import { zod } from './zod.js'
@@ -52,10 +52,10 @@ export function schemaToZod(
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
-  const definitions: { [k: string]: JSONSchema } = {
+  const definitions = {
     ...schema.definitions,
     ...schema.$defs,
-  }
+  } as const
 
   const hasDefinitions = Object.keys(definitions).length > 0
   const needsTypeDef = hasDefinitions || hasSelfReference(schema)

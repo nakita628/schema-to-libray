@@ -1,66 +1,37 @@
-import type { JSONSchema } from '../../helper/index.js'
-import type { typebox } from './typebox.js'
+import { typeboxMetaOpts } from '../../helper/meta.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { typebox } from './typebox.js'
 
 export function object(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  typeboxFn: typeof typebox,
   options?: { openapi?: boolean; readonly?: boolean },
-): string {
-  if (schema.additionalProperties) {
-    if (typeof schema.additionalProperties === 'boolean') {
-      if (schema.properties) {
-        return propertiesSchema(
-          schema.properties,
-          Array.isArray(schema.required) ? schema.required : [],
-          rootName,
-          isTypebox,
-          typeboxFn,
-          options,
-        )
-      }
-      return 'Type.Any()'
-    }
-    return `Type.Record(Type.String(),${typeboxFn(schema.additionalProperties)})`
+) {
+  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
+    return typebox(schema, rootName, isTypebox, options)
   }
-  if (schema.properties) {
-    return propertiesSchema(
-      schema.properties,
-      Array.isArray(schema.required) ? schema.required : [],
-      rootName,
-      isTypebox,
-      typeboxFn,
-      options,
-      schema.additionalProperties === false,
-    )
+  if (typeof schema.additionalProperties === 'object') {
+    return `Type.Record(Type.String(),${typebox(schema.additionalProperties)})`
   }
-  if (schema.oneOf) return typeboxFn(schema, rootName, isTypebox, options)
-  if (schema.anyOf) return typeboxFn(schema, rootName, isTypebox, options)
-  if (schema.allOf) return typeboxFn(schema, rootName, isTypebox, options)
-  if (schema.not) return typeboxFn(schema, rootName, isTypebox, options)
-  return 'Type.Object({})'
-}
-
-function propertiesSchema(
-  properties: { [k: string]: JSONSchema },
-  required: readonly string[],
-  rootName: string,
-  isTypebox: boolean,
-  typeboxFn: typeof typebox,
-  options?: { openapi?: boolean; readonly?: boolean },
-  noAdditional: boolean = false,
-): string {
-  const objectProperties = Object.entries(properties)
-    .map(([key, schema]) => {
-      const parsed = typeboxFn(schema, rootName, isTypebox, options)
+  if (!schema.properties) {
+    if (schema.additionalProperties === true) return 'Type.Any()'
+    return 'Type.Object({})'
+  }
+  const required = Array.isArray(schema.required) ? schema.required : []
+  const props = Object.entries(schema.properties)
+    .map(([key, propSchema]) => {
+      const parsed = typebox(propSchema, rootName, isTypebox, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
       return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:Type.Optional(${parsed})`
     })
     .filter((v): v is string => v !== null)
-
-  const opts = noAdditional ? ',{additionalProperties:false}' : ''
-  return `Type.Object({${objectProperties.join(',')}}${opts})`
+  const optParts = [
+    schema.additionalProperties === false ? 'additionalProperties:false' : undefined,
+    ...typeboxMetaOpts(schema),
+  ].filter((v): v is string => v !== undefined)
+  const opts = optParts.length > 0 ? `,{${optParts.join(',')}}` : ''
+  return `Type.Object({${props.join(',')}}${opts})`
 }
