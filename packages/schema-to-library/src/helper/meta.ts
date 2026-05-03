@@ -21,7 +21,7 @@ export function typeboxMetaOpts(schema: JSONSchema): readonly string[] {
       : undefined,
     schema.readOnly !== undefined ? `readOnly:${schema.readOnly}` : undefined,
     schema.writeOnly !== undefined ? `writeOnly:${schema.writeOnly}` : undefined,
-  ].filter((v): v is string => v !== undefined)
+  ].filter((v)=> v !== undefined)
 }
 
 /**
