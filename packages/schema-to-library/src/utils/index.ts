@@ -1,15 +1,13 @@
 /**
  * Convert string to PascalCase (first character uppercase)
  *
- * @param name - String to convert
- * @returns PascalCase string
  * @example
  * ```ts
- * toPascalCase('animal') // 'Animal'
+ * toPascalCase('animal')      // 'Animal'
  * toPascalCase('userProfile') // 'UserProfile'
  * ```
  */
-export function toPascalCase(name: string): string {
+export function toPascalCase(name: string) {
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
@@ -19,8 +17,6 @@ export function toPascalCase(name: string): string {
  * Splits by non-alphanumeric characters and capitalizes each segment.
  * Handles hyphens, underscores, dots, spaces, leading numbers, and non-ASCII characters.
  *
- * @param name - String to convert
- * @returns Valid PascalCase identifier string
  * @example
  * ```ts
  * toIdentifierPascalCase('user-name')   // 'UserName'
@@ -29,16 +25,75 @@ export function toPascalCase(name: string): string {
  * toIdentifierPascalCase('user')        // 'User'
  * ```
  */
-export function toIdentifierPascalCase(name: string): string {
+export function toIdentifierPascalCase(name: string) {
   const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean)
   if (parts.length === 0) return 'Schema'
   const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
   if (/^[0-9]/.test(result)) {
-    // Find where digits end and letters begin, capitalize the first letter
     const prefixed = `_${result}`
-    return prefixed.replace(/([0-9])([a-z])/, (_, d, c) => `${d}${c.toUpperCase()}`)
+    return prefixed.replace(/([0-9])([a-z])/, (_, d, c: string) => `${d}${c.toUpperCase()}`)
   }
   return result
+}
+
+/**
+ * Normalize schema type to array format
+ *
+ * @example
+ * ```ts
+ * normalizeTypes('string')             // ['string']
+ * normalizeTypes(['string', 'number']) // ['string', 'number']
+ * normalizeTypes(undefined)            // []
+ * ```
+ */
+export function normalizeTypes(t?: string | readonly string[]) {
+  if (t === undefined) return []
+  if (typeof t === 'string') return [t]
+  return [...t]
+}
+
+/**
+ * Format an error message argument using the Zod v4 unified `error` parameter.
+ *
+ * @example
+ * ```ts
+ * zodError('Name must be 3-20 characters') // '{error:"Name must be 3-20 characters"}'
+ * zodError('(v) => `Expected ${v}`')        // '{error:(v) => `Expected ${v}`}'
+ * ```
+ */
+export function zodError(message: string) {
+  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
+  return isArrowExpression(message) ? `{error:${message}}` : `{error:${JSON.stringify(message)}}`
+}
+
+/**
+ * Format an error message argument for Valibot.
+ *
+ * @example
+ * ```ts
+ * valibotError('Must be valid')          // '"Must be valid"'
+ * valibotError('(issue) => issue.input') // '(issue) => issue.input'
+ * ```
+ */
+export function valibotError(message: string) {
+  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
+  return isArrowExpression(message) ? message : JSON.stringify(message)
+}
+
+/**
+ * Format an error message annotation for Effect Schema.
+ *
+ * @example
+ * ```ts
+ * effectError('Required')             // '{message:()=>"Required"}'
+ * effectError('(issue) => ...')        // '{message:(issue) => ...}'
+ * ```
+ */
+export function effectError(message: string) {
+  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
+  return isArrowExpression(message)
+    ? `{message:${message}}`
+    : `{message:()=>${JSON.stringify(message)}}`
 }
 
 /**
@@ -68,8 +123,6 @@ export const OPENAPI_COMPONENT_SUFFIX_MAP: ReadonlyArray<{
 /**
  * Resolve an OpenAPI $ref string to a variable name with the appropriate suffix
  *
- * @param $ref - OpenAPI $ref string
- * @returns Variable name with suffix, or null if not an OpenAPI component ref
  * @example
  * ```ts
  * resolveOpenAPIRef('#/components/schemas/User')      // 'UserSchema'
@@ -77,77 +130,37 @@ export const OPENAPI_COMPONENT_SUFFIX_MAP: ReadonlyArray<{
  * resolveOpenAPIRef('#/definitions/Address')          // null
  * ```
  */
-export function resolveOpenAPIRef($ref: string): string | null {
+export function resolveOpenAPIRef($ref: string) {
+  const toIdentifierName = (name: string) => {
+    const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean)
+    if (parts.length === 0) return 'Schema'
+    const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
+    if (/^[0-9]/.test(result)) {
+      const prefixed = `_${result}`
+      return prefixed.replace(/([0-9])([a-z])/, (_, d, c: string) => `${d}${c.toUpperCase()}`)
+    }
+    return result
+  }
   for (const { prefix, suffix } of OPENAPI_COMPONENT_SUFFIX_MAP) {
     if ($ref.startsWith(prefix)) {
       const rawName = decodeURIComponent($ref.slice(prefix.length))
-      return toIdentifierPascalCase(rawName) + suffix
+      return toIdentifierName(rawName) + suffix
     }
   }
   return null
 }
 
 /**
- * Normalize schema type to array format
+ * Encode a property key safely for object literal output.
+ * Bare identifiers stay unquoted; everything else is JSON-encoded.
  *
- * @param t - Schema type value (string or array of strings)
- * @returns Array of type strings
  * @example
  * ```ts
- * normalizeTypes('string') // ['string']
- * normalizeTypes(['string', 'number']) // ['string', 'number']
- * normalizeTypes(undefined) // []
+ * makeSafeKey('foo')      // 'foo'
+ * makeSafeKey('foo-bar')  // '"foo-bar"'
+ * makeSafeKey('123')      // '"123"'
  * ```
  */
-export function normalizeTypes(t?: string | readonly string[]): string[] {
-  if (t === undefined) return []
-  if (typeof t === 'string') return [t]
-  return [...t]
-}
-
-/**
- * Format an error message argument using the Zod v4 unified `error` parameter
- *
- * @param message - The error message string or arrow function expression
- * @returns `{error:"message"}` or `{error:(v)=>expr}` formatted string
- * @example
- * ```ts
- * error('Name must be 3-20 characters')
- * // → '{error:"Name must be 3-20 characters"}'
- *
- * error('(v) => `Expected ${v}`')
- * // → '{error:(v) => `Expected ${v}`}'
- * ```
- */
-export function error(message: string): string {
-  if (/^\s*\(.*?\)\s*=>/.test(message)) {
-    return `{error:${message}}`
-  }
-  return `{error:${JSON.stringify(message)}}`
-}
-
-/**
- * Format an error message argument for Valibot
- *
- * @param message - The error message string or arrow function expression
- * @returns `"message"` or `(issue)=>expr` formatted string
- */
-export function valibotMessage(message: string): string {
-  if (/^\s*\(.*?\)\s*=>/.test(message)) {
-    return message
-  }
-  return JSON.stringify(message)
-}
-
-/**
- * Format an error message annotation for Effect Schema
- *
- * @param message - The error message string or arrow function expression
- * @returns `{message:()=>"message"}` or `{message:(issue)=>expr}` formatted string
- */
-export function effectMessage(message: string): string {
-  if (/^\s*\(.*?\)\s*=>/.test(message)) {
-    return `{message:${message}}`
-  }
-  return `{message:()=>${JSON.stringify(message)}}`
+export function makeSafeKey(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
 }

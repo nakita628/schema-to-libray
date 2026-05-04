@@ -1,6 +1,7 @@
-import type { JSONSchema } from '../../helper/index.js'
+import { typeboxMetaOpts } from '../../helper/meta.js'
+import type { JSONSchema } from '../../parser/index.js'
 
-export function number(schema: JSONSchema): string {
+export function number(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
 
   const opts = [
@@ -14,6 +15,7 @@ export function number(schema: JSONSchema): string {
       : undefined,
     schema.multipleOf !== undefined ? `multipleOf:${schema.multipleOf}` : undefined,
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+    ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
 
   if (opts.length > 0) {

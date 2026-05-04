@@ -905,7 +905,7 @@ type _Root = {readonly neg?: _Neg}
 
 type _Neg = unknown
 
-const Neg: Schema.Schema<_Neg> = Schema.Unknown
+const Neg: Schema.Schema<_Neg> = Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string'))
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({neg:Schema.suspend(() => Neg)}))
 

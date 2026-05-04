@@ -1,5 +1,5 @@
-import type { JSONSchema } from '../../helper/index.js'
-import { effectMessage } from '../../utils/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { effectError } from '../../utils/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
   uuid: 'Schema.UUID',
@@ -16,57 +16,50 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
   time: 'Schema.pattern(/^\\d{2}:\\d{2}:\\d{2}/)',
 }
 
-export function string(schema: JSONSchema): string {
+export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const patternMessage = schema['x-pattern-message']
+  const patternErrorPart = patternMessage ? `,${effectError(patternMessage)}` : ''
   const sizeMessage = schema['x-size-message']
+  const sizeErrorPart = sizeMessage ? `,${effectError(sizeMessage)}` : ''
   const minimumMessage = schema['x-minimum-message']
+  const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maximum-message']
-
+  const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
   const isFixedLength =
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
-
   const lengthActions = [
     schema.pattern
-      ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternMessage ? `,${effectMessage(patternMessage)}` : ''})`
+      ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
       : undefined,
-    isFixedLength
-      ? `Schema.length(${schema.minLength}${sizeMessage ? `,${effectMessage(sizeMessage)}` : ''})`
-      : undefined,
+    isFixedLength ? `Schema.length(${schema.minLength}${sizeErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `Schema.minLength(${schema.minLength}${minimumMessage ? `,${effectMessage(minimumMessage)}` : ''})`
+      ? `Schema.minLength(${schema.minLength}${minErrorPart})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `Schema.maxLength(${schema.maxLength}${maximumMessage ? `,${effectMessage(maximumMessage)}` : ''})`
+      ? `Schema.maxLength(${schema.maxLength}${maxErrorPart})`
       : undefined,
   ].filter((v) => v !== undefined)
-
-  // Check for format that maps to a standalone schema
   if (schema.format && FORMAT_MAP[schema.format]) {
     const base = FORMAT_MAP[schema.format]
     if (lengthActions.length > 0) {
       const result = `${base}.pipe(${lengthActions.join(',')})`
-      return errorMessage ? `${result}.annotations(${effectMessage(errorMessage)})` : result
+      return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
     }
-    return errorMessage ? `${base}.annotations(${effectMessage(errorMessage)})` : base
+    return errorMessage ? `${base}.annotations(${effectError(errorMessage)})` : base
   }
-
   const format = schema.format && FORMAT_PIPE[schema.format]
-  const formatWithMsg = (() => {
-    if (!format) return undefined
-    if (!patternMessage) return format
-    return format.replace(/\)$/, `,${effectMessage(patternMessage)})`)
-  })()
-
-  const actions = [formatWithMsg ?? format, ...lengthActions].filter((v) => v !== undefined)
-
+  const formatAction = format
+    ? patternMessage
+      ? format.replace(/\)$/, `,${effectError(patternMessage)})`)
+      : format
+    : undefined
+  const actions = [formatAction, ...lengthActions].filter((v) => v !== undefined)
   if (actions.length > 0) {
     const result = `Schema.String.pipe(${actions.join(',')})`
-    return errorMessage ? `${result}.annotations(${effectMessage(errorMessage)})` : result
+    return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
   }
-  return errorMessage
-    ? `Schema.String.annotations(${effectMessage(errorMessage)})`
-    : 'Schema.String'
+  return errorMessage ? `Schema.String.annotations(${effectError(errorMessage)})` : 'Schema.String'
 }

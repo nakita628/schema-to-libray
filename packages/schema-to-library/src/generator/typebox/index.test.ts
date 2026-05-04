@@ -15,7 +15,7 @@ describe('schemaToTypebox', () => {
       },
       required: ['name'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Schema = Type.Object({name:Type.String(),age:Type.Optional(Type.Number())})
 
@@ -31,7 +31,7 @@ export type Schema = Static<typeof Schema>`
         name: { type: 'string' },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({name:Type.Optional(Type.String())})
 
@@ -50,7 +50,7 @@ export type User = Static<typeof User>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Enum = Type.Object({status:Type.Optional(Type.Union([Type.Literal("active"),Type.Literal("inactive")]))})
 
@@ -68,7 +68,7 @@ export type Enum = Static<typeof Enum>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Const = Type.Object({type:Type.Optional(Type.Literal("user"))})
 
@@ -88,7 +88,7 @@ export type Const = Static<typeof Const>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const MinMax = Type.Object({age:Type.Optional(Type.Number({minimum:0,maximum:120}))})
 
@@ -108,7 +108,7 @@ export type MinMax = Static<typeof MinMax>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Length = Type.Object({name:Type.Optional(Type.String({minLength:1,maxLength:100}))})
 
@@ -126,7 +126,7 @@ export type Length = Static<typeof Length>`
       },
       required: ['name', 'age'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Required = Type.Object({name:Type.String(),age:Type.Number()})
 
@@ -144,7 +144,7 @@ export type Required = Static<typeof Required>`
       },
       required: ['count', 'score'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Int = Type.Object({count:Type.Integer(),score:Type.Integer({minimum:0,maximum:100})})
 
@@ -163,7 +163,7 @@ export type Int = Static<typeof Int>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Array = Type.Object({items:Type.Optional(Type.Array(Type.String()))})
 
@@ -181,7 +181,7 @@ export type Array = Static<typeof Array>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Union = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
 
@@ -202,7 +202,7 @@ export type Union = Static<typeof Union>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const AllOf = Type.Object({value:Type.Optional(Type.Intersect([Type.Object({name:Type.Optional(Type.String())}),Type.Object({age:Type.Optional(Type.Number())})]))})
 
@@ -216,7 +216,7 @@ export type AllOf = Static<typeof AllOf>`
       type: 'object',
       additionalProperties: { type: 'string' },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Additional = Type.Record(Type.String(),Type.String())
 
@@ -235,7 +235,7 @@ export type Additional = Static<typeof Additional>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Format = Type.Object({email:Type.Optional(Type.String({format:"email"}))})
 
@@ -254,7 +254,7 @@ export type Format = Static<typeof Format>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Pattern = Type.Object({phone:Type.Optional(Type.String({pattern:"^\\\\d+$"}))})
 
@@ -270,7 +270,7 @@ export type Pattern = Static<typeof Pattern>`
         name: { type: 'string', nullable: true },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Nullable = Type.Object({name:Type.Optional(Type.Union([Type.String(),Type.Null()]))})
 
@@ -294,7 +294,7 @@ export type Nullable = Static<typeof Nullable>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 const B = Type.Object({name:Type.Optional(Type.String())})
 
@@ -314,7 +314,7 @@ export type A = Static<typeof A>`
       },
       { exportType: false },
     )
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Schema = Type.Object({name:Type.Optional(Type.String())})`
     expect(result).toBe(expected)
@@ -330,7 +330,7 @@ export const Schema = Type.Object({name:Type.Optional(Type.String())})`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.String(),{default:"active"}))})
 
@@ -348,7 +348,7 @@ export type WithDefault = Static<typeof WithDefault>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.String(),{default:"x"}),Type.Null()]))})
 
@@ -366,7 +366,7 @@ export type NullDefault = Static<typeof NullDefault>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const AnyOf = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
 
@@ -383,7 +383,7 @@ export type AnyOf = Static<typeof AnyOf>`
       },
       required: ['tags'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Arr = Type.Object({tags:Type.Array(Type.String(),{minItems:1,maxItems:10})})
 
@@ -400,7 +400,7 @@ export type Arr = Static<typeof Arr>`
       },
       required: ['pair'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Fixed = Type.Object({pair:Type.Array(Type.Number(),{minItems:3,maxItems:3})})
 
@@ -416,7 +416,7 @@ export type Fixed = Static<typeof Fixed>`
         enabled: { type: 'boolean', default: true },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean(),{default:true}))})
 
@@ -429,7 +429,7 @@ export type Def = Static<typeof Def>`
       title: 'D',
       type: 'date',
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const D = Type.Date()
 
@@ -442,7 +442,7 @@ export type D = Static<typeof D>`
       title: 'N',
       type: 'null',
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const N = Type.Union([Type.Null(),Type.Null()])
 
@@ -466,7 +466,7 @@ export type N = Static<typeof N>`
         address: { $ref: '#/$defs/Address' },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 const Address = Type.Object({street:Type.Optional(Type.String())})
 
@@ -483,7 +483,7 @@ export type User = Static<typeof User>`
       required: ['test'],
       additionalProperties: false,
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Schema = Type.Object({test:Type.String()},{additionalProperties:false})
 
@@ -496,7 +496,7 @@ export type Schema = Static<typeof Schema>`
       title: 'Empty',
       type: 'object',
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Empty = Type.Object({})
 
@@ -514,7 +514,7 @@ export type Empty = Static<typeof Empty>`
       required: ['name'],
       additionalProperties: true,
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Loose = Type.Object({name:Type.String()})
 
@@ -528,7 +528,7 @@ export type Loose = Static<typeof Loose>`
       type: 'object',
       additionalProperties: true,
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const AnyObj = Type.Any()
 
@@ -545,7 +545,7 @@ export type AnyObj = Static<typeof AnyObj>`
       },
       required: ['x-value'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Special = Type.Object({"x-value":Type.String()})
 
@@ -563,7 +563,7 @@ export type Special = Static<typeof Special>`
         },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const AnyOf = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
 
@@ -579,7 +579,7 @@ export type AnyOf = Static<typeof AnyOf>`
         label: { type: 'string', default: 'untitled' },
       },
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String(),{default:"untitled"}))})
 
@@ -596,7 +596,7 @@ export type Def = Static<typeof Def>`
       },
       required: ['value'],
     })
-    const expected = `import { Type, type Static } from '@sinclair/typebox'
+    const expected = `import { Type, type Static } from 'typebox'
 
 export const Null = Type.Object({value:Type.Union([Type.String(),Type.Null()])})
 
@@ -616,7 +616,7 @@ export type Null = Static<typeof Null>`
         { readonly: true, exportType: false },
       )
       expect(result).toBe(
-        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const User = Type.Readonly(Type.Object({name:Type.String()}))`,
+        `import { Type, type Static } from 'typebox'\n\nexport const User = Type.Readonly(Type.Object({name:Type.String()}))`,
       )
     })
 
@@ -633,7 +633,7 @@ export type Null = Static<typeof Null>`
         { readonly: true, exportType: false },
       )
       expect(result).toBe(
-        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const List = Type.Readonly(Type.Object({items:Type.Readonly(Type.Array(Type.String()))}))`,
+        `import { Type, type Static } from 'typebox'\n\nexport const List = Type.Readonly(Type.Object({items:Type.Readonly(Type.Array(Type.String()))}))`,
       )
     })
 
@@ -643,7 +643,7 @@ export type Null = Static<typeof Null>`
         { readonly: true, exportType: false },
       )
       expect(result).toBe(
-        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Name = Type.String()`,
+        `import { Type, type Static } from 'typebox'\n\nexport const Name = Type.String()`,
       )
     })
   })
@@ -652,7 +652,7 @@ export type Null = Static<typeof Null>`
     it('should handle empty schema', () => {
       const result = schemaToTypebox({}, { exportType: false })
       expect(result).toBe(
-        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Schema = Type.Any()`,
+        `import { Type, type Static } from 'typebox'\n\nexport const Schema = Type.Any()`,
       )
     })
 
@@ -674,7 +674,7 @@ export type Null = Static<typeof Null>`
         { exportType: false },
       )
       expect(result).toBe(
-        `import { Type, type Static } from '@sinclair/typebox'\n\nexport const Node = Type.Object({value:Type.String()})`,
+        `import { Type, type Static } from 'typebox'\n\nexport const Node = Type.Object({value:Type.String()})`,
       )
     })
   })

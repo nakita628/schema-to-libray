@@ -211,7 +211,7 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Union = z.object({value:z.union([z.string(),z.number()])}).partial()
+export const Union = z.object({value:z.xor([z.string(),z.number()])}).partial()
 
 export type Union = z.infer<typeof Union>`
     expect(result).toBe(expected)

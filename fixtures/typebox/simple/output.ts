@@ -1,4 +1,4 @@
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const Schema = Type.Object({ name: Type.String(), age: Type.Optional(Type.Number()) })
 

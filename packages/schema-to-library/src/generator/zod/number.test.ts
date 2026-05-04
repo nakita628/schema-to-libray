@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { number } from './number.js'
 
 // Test run

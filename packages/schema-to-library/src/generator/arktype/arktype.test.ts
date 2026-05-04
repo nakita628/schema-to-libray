@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { arktype } from './arktype.js'
 
 // Test run
@@ -104,11 +104,31 @@ describe('arktype', () => {
 
   describe('not', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } } as JSONSchema, '"unknown"'],
-      [{ not: { type: 'integer' } } as JSONSchema, '"unknown"'],
-      [{ not: { type: 'boolean' } } as JSONSchema, '"unknown"'],
-      [{ not: { type: 'string' }, nullable: true } as JSONSchema, '"unknown | null"'],
-      [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, '"unknown | null"'],
+      [
+        { not: { type: 'string' } } as JSONSchema,
+        `type("unknown").narrow((v: unknown) => typeof v !== 'string')`,
+      ],
+      [
+        { not: { type: 'integer' } } as JSONSchema,
+        `type("unknown").narrow((v: unknown) => typeof v !== 'number' || !Number.isInteger(v))`,
+      ],
+      [
+        { not: { type: 'boolean' } } as JSONSchema,
+        `type("unknown").narrow((v: unknown) => typeof v !== 'boolean')`,
+      ],
+      [
+        { not: { type: 'string' }, nullable: true } as JSONSchema,
+        `type(type("unknown").narrow((v: unknown) => typeof v !== 'string')).or("null")`,
+      ],
+      [
+        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        `type(type("unknown").narrow((v: unknown) => typeof v !== 'string')).or("null")`,
+      ],
+      [{ not: { const: 42 } } as JSONSchema, `type("unknown").narrow((v: unknown) => v !== 42)`],
+      [
+        { not: { enum: ['a', 'b'] } } as JSONSchema,
+        `type("unknown").narrow((v: unknown) => !["a","b"].includes(v as never))`,
+      ],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { zod } from './zod.js'
 
 // Test run
@@ -41,14 +41,14 @@ describe('zod', () => {
           ],
           nullable: true,
         },
-        'z.union([z.object({kind:z.literal("A")}),z.object({kind:z.literal("B")})]).nullable()',
+        'z.xor([z.object({kind:z.literal("A")}),z.object({kind:z.literal("B")})]).nullable()',
       ],
       [
         {
           type: 'object',
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'z.union([ASchema,BSchema])',
+        'z.xor([ASchema,BSchema])',
       ],
       [
         {
@@ -56,14 +56,14 @@ describe('zod', () => {
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
           nullable: true,
         },
-        'z.union([ASchema,BSchema]).nullable()',
+        'z.xor([ASchema,BSchema]).nullable()',
       ],
       [
         {
           type: ['object', 'null'],
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'z.union([ASchema,BSchema]).nullable()',
+        'z.xor([ASchema,BSchema]).nullable()',
       ],
     ])('zod(%o) → %s', (input, expected) => {
       expect(zod(input)).toBe(expected)
@@ -88,14 +88,14 @@ describe('zod', () => {
             ],
             nullable: true,
           },
-          'z.union([z.object({kind:z.literal("A")}),z.object({kind:z.literal("B")})]).nullable()',
+          'z.xor([z.object({kind:z.literal("A")}),z.object({kind:z.literal("B")})]).nullable()',
         ],
         [
           {
             type: 'object',
             oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
           },
-          'z.union([ASchema,BSchema])',
+          'z.xor([ASchema,BSchema])',
         ],
         [
           {
@@ -103,14 +103,14 @@ describe('zod', () => {
             oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
             nullable: true,
           },
-          'z.union([ASchema,BSchema]).nullable()',
+          'z.xor([ASchema,BSchema]).nullable()',
         ],
         [
           {
             type: ['object', 'null'],
             oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
           },
-          'z.union([ASchema,BSchema]).nullable()',
+          'z.xor([ASchema,BSchema]).nullable()',
         ],
       ])('zod(%o) → %s', (input, expected) => {
         expect(zod(input)).toBe(expected)
@@ -155,7 +155,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({type:z.enum(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])}))',
+          'z.intersection(GeoJsonObjectSchema,z.object({type:z.enum(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])})).meta({description:"Abstract type for all GeoJSon object except Feature and FeatureCollection\\n",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3"}})',
         ],
         [
           {
@@ -199,7 +199,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.union([z.number(),z.string()]).optional()}))',
+          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).optional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
         ],
         [
           {
@@ -285,11 +285,22 @@ describe('zod', () => {
 
     describe('not', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [{ not: { type: 'string' } }, 'z.any()'],
-        [{ not: { type: 'integer' } }, 'z.any()'],
-        [{ not: { type: 'boolean' } }, 'z.any()'],
-        [{ not: { type: 'string' }, nullable: true }, 'z.any().nullable()'],
-        [{ not: { type: 'string' }, type: ['null'] } as JSONSchema, 'z.any().nullable()'],
+        [{ not: { type: 'string' } }, "z.any().refine((v) => typeof v !== 'string')"],
+        [
+          { not: { type: 'integer' } },
+          "z.any().refine((v) => typeof v !== 'number' || !Number.isInteger(v))",
+        ],
+        [{ not: { type: 'boolean' } }, "z.any().refine((v) => typeof v !== 'boolean')"],
+        [
+          { not: { type: 'string' }, nullable: true },
+          "z.any().refine((v) => typeof v !== 'string').nullable()",
+        ],
+        [
+          { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+          "z.any().refine((v) => typeof v !== 'string').nullable()",
+        ],
+        [{ not: { const: 42 } }, 'z.any().refine((v) => v !== 42)'],
+        [{ not: { enum: ['a', 'b'] } }, 'z.any().refine((v) => !["a","b"].includes(v))'],
       ])('zod(%o) → %s', (input, expected) => {
         expect(zod(input)).toBe(expected)
       })
@@ -1147,9 +1158,7 @@ describe('zod', () => {
         const schema: JSONSchema = {
           oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
-        expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
-          'z.union([CatSchema,DogSchema])',
-        )
+        expect(zod(schema, 'Schema', false, { openapi: true })).toBe('z.xor([CatSchema,DogSchema])')
       })
     })
 
