@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
+
 import type { JSONSchema } from '../parser/index.js'
 import {
   arktypeWrap,
@@ -96,9 +97,7 @@ describe('valibotWrap with metadata', () => {
         examples: ['abc'],
         'x-brand': 'Id',
       } satisfies JSONSchema),
-    ).toBe(
-      'v.pipe(v.string(),v.description("an id"),v.metadata({examples:["abc"]}),v.brand("Id"))',
-    )
+    ).toBe('v.pipe(v.string(),v.description("an id"),v.metadata({examples:["abc"]}),v.brand("Id"))')
   })
 })
 

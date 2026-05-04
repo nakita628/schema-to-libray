@@ -191,8 +191,7 @@ export function zod(
     )
   }
   if (schema.enum) return zodWrap(_enum(schema), schema)
-  if (schema.properties)
-    return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
+  if (schema.properties) return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return zodWrap(string(schema), schema)

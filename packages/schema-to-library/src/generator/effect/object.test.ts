@@ -52,9 +52,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=2))',
-      )
+      ).toBe('Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=2))')
     })
 
     it('emits both with x-minimum-message / x-maximum-message', () => {

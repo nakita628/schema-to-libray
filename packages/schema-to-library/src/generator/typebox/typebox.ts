@@ -110,9 +110,7 @@ export function typebox(
       .map((s) => typebox(s, rootName, isTypebox, options))
     if (!schemas.length) return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
     const baseResult =
-      schemas.length === 1
-        ? schemas[0]
-        : tbComp('Type.Intersect', `[${schemas.join(',')}]`, schema)
+      schemas.length === 1 ? schemas[0] : tbComp('Type.Intersect', `[${schemas.join(',')}]`, schema)
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`
@@ -150,9 +148,7 @@ export function typebox(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
-      return readonly(
-        typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema), schema),
-      )
+      return readonly(typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema), schema))
     }
     const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
     const arrayOpts = [

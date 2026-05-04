@@ -30,8 +30,7 @@ export function valibotWrap(valibotStr: string, schema: JSONSchema): string {
       : valibotStr
   const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
 
-  const examples =
-    schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const actions: string[] = []
   if (schema.description !== undefined) {
     actions.push(`v.description(${JSON.stringify(schema.description)})`)

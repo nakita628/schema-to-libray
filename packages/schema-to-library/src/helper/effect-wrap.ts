@@ -33,8 +33,7 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   const withBrand =
     typeof brand === 'string' ? `${withNullable}.pipe(Schema.brand("${brand}"))` : withNullable
 
-  const examples =
-    schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
   if (schema.description !== undefined) ann.description = schema.description
   if (examples !== undefined) ann.examples = examples

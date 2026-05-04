@@ -13,7 +13,9 @@ const ensureRuntime = (s: string) => (isQuoted(s) ? `type(${s})` : s)
  * - Without message: `(o) => predicate`
  */
 const narrowPredicate = (predicate: string, message?: string): string =>
-  message ? `(o, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})` : `(o) => ${predicate}`
+  message
+    ? `(o, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})`
+    : `(o) => ${predicate}`
 
 /**
  * Generate an Arktype object schema for a JSON Schema object node.
@@ -74,9 +76,7 @@ export function object(
   // ── additionalProperties: schema → type({"[string]": ...}) + propertyNames + patternProperties ──
   if (typeof schema.additionalProperties === 'object') {
     const innerLiteral = `{"[string]":${arktype(schema.additionalProperties, rootName, isArktype, options)}}`
-    const narrows = [propertyNamesNarrow(), ...patternPropertiesNarrows()].filter(
-      (a) => a !== '',
-    )
+    const narrows = [propertyNamesNarrow(), ...patternPropertiesNarrows()].filter((a) => a !== '')
     if (narrows.length > 0) {
       return composeNarrows(`type(${innerLiteral})`, narrows)
     }

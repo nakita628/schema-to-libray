@@ -61,9 +61,7 @@ export function object(
   // ── additionalProperties: schema → v.record(...) + propertyNames + patternProperties ──
   if (typeof schema.additionalProperties === 'object') {
     const record = `v.record(v.string(),${valibot(schema.additionalProperties, rootName, isValibot, options)})`
-    const actions = [propertyNamesCheck(), ...patternPropertiesChecks()].filter(
-      (a) => a !== '',
-    )
+    const actions = [propertyNamesCheck(), ...patternPropertiesChecks()].filter((a) => a !== '')
     return actions.length > 0 ? `v.pipe(${record},${actions.join(',')})` : record
   }
 

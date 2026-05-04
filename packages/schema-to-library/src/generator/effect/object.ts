@@ -30,9 +30,7 @@ export function object(
   const patternMessage = schema['x-pattern-message']
   const patternErrorArg = patternMessage ? `,${effectError(patternMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage
-    ? `,${effectError(propNamesMessage)}`
-    : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${effectError(propNamesMessage)}` : patternErrorArg
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${effectError(depReqMessage)}` : errorArg
 
@@ -57,9 +55,7 @@ export function object(
   // ── additionalProperties: schema → Schema.Record(...) + propertyNames + patternProperties ──
   if (typeof schema.additionalProperties === 'object') {
     const record = `Schema.Record({key:Schema.String,value:${effect(schema.additionalProperties, rootName, isEffect, options)}})`
-    const actions = [propertyNamesFilter(), ...patternPropertiesFilters()].filter(
-      (a) => a !== '',
-    )
+    const actions = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
     return actions.length > 0 ? `${record}.pipe(${actions.join(',')})` : record
   }
 

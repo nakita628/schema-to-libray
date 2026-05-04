@@ -88,9 +88,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe(
-        'Type.Object({a:Type.String()},{propertyNames:Type.String({pattern:"^[a-z]+$"})})',
-      )
+      ).toBe('Type.Object({a:Type.String()},{propertyNames:Type.String({pattern:"^[a-z]+$"})})')
     })
   })
 
@@ -107,9 +105,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe(
-        'Type.Object({a:Type.String()},{patternProperties:{"^x-":Type.String()}})',
-      )
+      ).toBe('Type.Object({a:Type.String()},{patternProperties:{"^x-":Type.String()}})')
     })
 
     it('combines on Type.Record (additionalProperties: schema)', () => {

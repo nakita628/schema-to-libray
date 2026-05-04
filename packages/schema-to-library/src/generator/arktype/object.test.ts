@@ -175,7 +175,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "type({card:\"string\",\"billing?\":\"string\"}).narrow((o) => !('card' in o) || ('billing' in o))",
+        'type({card:"string","billing?":"string"}).narrow((o) => !(\'card\' in o) || (\'billing\' in o))',
       )
     })
 
@@ -196,7 +196,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "type({\"a?\":\"string\",\"b?\":\"string\",\"c?\":\"string\"}).narrow((o, ctx) => !('a' in o) || ('b' in o && 'c' in o) || ctx.mustBe(\"a needs b and c\"))",
+        'type({"a?":"string","b?":"string","c?":"string"}).narrow((o, ctx) => !(\'a\' in o) || (\'b\' in o && \'c\' in o) || ctx.mustBe("a needs b and c"))',
       )
     })
   })

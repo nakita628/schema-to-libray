@@ -34,11 +34,9 @@ export function zodWrap(zodStr: string, schema: JSONSchema): string {
     schema.default !== undefined ? `${zodStr}.default(${formatLiteral(schema.default)})` : zodStr
   const withNullable = isNullable ? `${withDefault}.nullable()` : withDefault
   const brand = schema['x-brand']
-  const withBrand =
-    typeof brand === 'string' ? `${withNullable}.brand<"${brand}">()` : withNullable
+  const withBrand = typeof brand === 'string' ? `${withNullable}.brand<"${brand}">()` : withNullable
 
-  const examples =
-    schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const metaObj: Record<string, unknown> = {}
   if (schema.description !== undefined) metaObj.description = schema.description
   if (examples !== undefined) metaObj.examples = examples

@@ -9,8 +9,7 @@ import { makeSafeKey } from '../utils/index.js'
  * `Type.X(payload, options)` constructor call.
  */
 export function typeboxMetaOpts(schema: JSONSchema): readonly string[] {
-  const examples =
-    schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   return [
     schema.description !== undefined
       ? `description:${JSON.stringify(schema.description)}`
@@ -22,7 +21,7 @@ export function typeboxMetaOpts(schema: JSONSchema): readonly string[] {
       : undefined,
     schema.readOnly !== undefined ? `readOnly:${schema.readOnly}` : undefined,
     schema.writeOnly !== undefined ? `writeOnly:${schema.writeOnly}` : undefined,
-  ].filter((v)=> v !== undefined)
+  ].filter((v) => v !== undefined)
 }
 
 /**

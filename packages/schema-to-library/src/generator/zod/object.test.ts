@@ -139,7 +139,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))')
+      ).toBe(
+        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))',
+      )
     })
 
     it('uses x-propertyNames-message', () => {
