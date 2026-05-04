@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { makeSafeKey } from '../utils/index.js'
 
 /**
  * Returns OpenAPI/JSON Schema metadata fields as a list of TypeBox option
@@ -41,9 +42,6 @@ export function serializeJSValue(value: unknown): string {
   }
   const entries = Object.entries(value).filter(([, v]) => v !== undefined)
   if (entries.length === 0) return '{}'
-  const parts = entries.map(([k, v]) => {
-    const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k) ? k : JSON.stringify(k)
-    return `${key}:${serializeJSValue(v)}`
-  })
+  const parts = entries.map(([k, v]) => `${makeSafeKey(k)}:${serializeJSValue(v)}`)
   return `{${parts.join(',')}}`
 }

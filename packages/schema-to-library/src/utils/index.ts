@@ -149,3 +149,18 @@ export function resolveOpenAPIRef($ref: string) {
   }
   return null
 }
+
+/**
+ * Encode a property key safely for object literal output.
+ * Bare identifiers stay unquoted; everything else is JSON-encoded.
+ *
+ * @example
+ * ```ts
+ * makeSafeKey('foo')      // 'foo'
+ * makeSafeKey('foo-bar')  // '"foo-bar"'
+ * makeSafeKey('123')      // '"123"'
+ * ```
+ */
+export function makeSafeKey(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
+}

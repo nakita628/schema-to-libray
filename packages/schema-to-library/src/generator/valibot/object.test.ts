@@ -4,14 +4,14 @@ import type { JSONSchema } from '../../parser/index.js'
 import { object } from './object.js'
 
 // Test run
-// pnpm vitest run ./src/zod/object.test.ts
+// pnpm vitest run ./src/generator/valibot/object.test.ts
 
 describe('object', () => {
   it.concurrent.each<[JSONSchema, string]>([
-    [{ type: 'object' }, 'z.object({})'],
+    [{ type: 'object' }, 'v.object({})'],
     [
       { type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] },
-      'z.object({foo:z.string()})',
+      'v.object({foo:v.string()})',
     ],
     [
       {
@@ -19,14 +19,14 @@ describe('object', () => {
         properties: { foo: { type: 'string' }, bar: { type: 'number' } },
         required: ['foo'],
       },
-      'z.object({foo:z.string(),bar:z.number().optional()})',
+      'v.object({foo:v.string(),bar:v.optional(v.number())})',
     ],
     [
       {
         type: 'object',
         properties: { foo: { type: 'string' } },
       },
-      'z.object({foo:z.string()}).partial()',
+      'v.partial(v.object({foo:v.string()}))',
     ],
     [
       {
@@ -35,7 +35,7 @@ describe('object', () => {
         required: ['test'],
         additionalProperties: false,
       },
-      'z.strictObject({test:z.string()})',
+      'v.strictObject({test:v.string()})',
     ],
     [
       {
@@ -44,21 +44,21 @@ describe('object', () => {
         required: ['test'],
         additionalProperties: true,
       },
-      'z.looseObject({test:z.string()})',
+      'v.looseObject({test:v.string()})',
     ],
     [
       {
         type: 'object',
         additionalProperties: { type: 'string' },
       },
-      'z.record(z.string(),z.string())',
+      'v.record(v.string(),v.string())',
     ],
   ])('object(%o) → %s', (input, expected) => {
     expect(object(input, 'Schema', false)).toBe(expected)
   })
 
   describe('minProperties / maxProperties', () => {
-    it('emits .refine for minProperties', () => {
+    it('emits v.pipe with v.check for minProperties', () => {
       expect(
         object(
           {
@@ -70,22 +70,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=2)')
-    })
-
-    it('emits .refine for maxProperties', () => {
-      expect(
-        object(
-          {
-            type: 'object',
-            properties: { a: { type: 'string' } },
-            required: ['a'],
-            maxProperties: 5,
-          },
-          'Schema',
-          false,
-        ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
+      ).toBe('v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).length>=2))')
     })
 
     it('emits both with x-minimum-message / x-maximum-message', () => {
@@ -104,13 +89,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=1,{error:"too few"}).refine((o)=>Object.keys(o).length<=3,{error:"too many"})',
+        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).length>=1,"too few"),v.check((o)=>Object.keys(o).length<=3,"too many"))',
       )
     })
   })
 
   describe('propertyNames', () => {
-    it('emits pattern-based refine', () => {
+    it('emits pattern-based check', () => {
       expect(
         object(
           {
@@ -123,11 +108,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)))',
+        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
       )
     })
 
-    it('emits enum-based refine', () => {
+    it('emits enum-based check', () => {
       expect(
         object(
           {
@@ -139,7 +124,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))')
+      ).toBe(
+        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
+      )
     })
 
     it('uses x-propertyNames-message', () => {
@@ -156,13 +143,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{error:"lowercase only"})',
+        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),"lowercase only"))',
       )
     })
   })
 
   describe('patternProperties', () => {
-    it('emits per-pattern refine', () => {
+    it('emits per-pattern v.check', () => {
       expect(
         object(
           {
@@ -175,7 +162,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^x-").test(k)||z.string().safeParse(v).success))',
+        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||v.safeParse(v.string(),val).success)))',
       )
     })
 
@@ -191,13 +178,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.record(z.string(),z.string()).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^id_").test(k)||z.number().safeParse(v).success))',
+        'v.pipe(v.record(v.string(),v.string()),v.check((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||v.safeParse(v.number(),val).success)))',
       )
     })
   })
 
   describe('dependentRequired', () => {
-    it('emits .refine per key', () => {
+    it('emits v.check per key', () => {
       expect(
         object(
           {
@@ -213,11 +200,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({card:z.string(),billing:z.string().optional()}).refine((o)=>!('card' in o)||('billing' in o))",
+        "v.pipe(v.object({card:v.string(),billing:v.optional(v.string())}),v.check((o)=>!('card' in o)||('billing' in o)))",
       )
     })
 
-    it('combines multiple dependent keys', () => {
+    it('combines multiple dependent keys with x-dependentRequired-message', () => {
       expect(
         object(
           {
@@ -234,12 +221,8 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({a:z.string(),b:z.string(),c:z.string()}).partial().refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+        "v.pipe(v.partial(v.object({a:v.string(),b:v.string(),c:v.string()})),v.check((o)=>!('a' in o)||('b' in o&&'c' in o),\"a needs b and c\"))",
       )
     })
   })
-
-  // Note: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
-  // not by `object()`. End-to-end readonly behavior is covered by zod.test.ts /
-  // index.test.ts.
 })

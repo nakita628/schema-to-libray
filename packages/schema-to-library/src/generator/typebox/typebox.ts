@@ -43,7 +43,7 @@ export function typebox(
   isTypebox: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const withReadonly = (s: string) => (options?.readonly ? `Type.Readonly(${s})` : s)
+  const readonly = (v: string) => (options?.readonly ? `Type.Readonly(${v})` : v)
 
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
@@ -139,7 +139,7 @@ export function typebox(
     return typeboxWrap(tbComp('Type.Literal', JSON.stringify(schema.const), schema), schema)
   if (schema.enum) return typeboxWrap(_enum(schema), schema)
   if (schema.properties)
-    return withReadonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
+    return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return typeboxWrap(string(schema), schema)
@@ -150,7 +150,7 @@ export function typebox(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
-      return withReadonly(
+      return readonly(
         typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema), schema),
       )
     }
@@ -159,12 +159,12 @@ export function typebox(
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
       schema.uniqueItems === true ? `uniqueItems:true` : undefined,
-    ].filter((v): v is string => v !== undefined)
-    return withReadonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
+    ].filter((v) => v !== undefined)
+    return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
   }
 
   if (types.includes('object'))
-    return withReadonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
+    return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
   if (types.includes('date')) return typeboxWrap(tbPrim('Type.Date', schema), schema)
   if (types.length === 1 && types[0] === 'null')
     return typeboxWrap(tbPrim('Type.Null', schema), schema)

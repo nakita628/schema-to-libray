@@ -4,14 +4,14 @@ import type { JSONSchema } from '../../parser/index.js'
 import { object } from './object.js'
 
 // Test run
-// pnpm vitest run ./src/zod/object.test.ts
+// pnpm vitest run ./src/generator/arktype/object.test.ts
 
 describe('object', () => {
   it.concurrent.each<[JSONSchema, string]>([
-    [{ type: 'object' }, 'z.object({})'],
+    [{ type: 'object' }, 'type({})'],
     [
       { type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] },
-      'z.object({foo:z.string()})',
+      'type({foo:"string"})',
     ],
     [
       {
@@ -19,46 +19,21 @@ describe('object', () => {
         properties: { foo: { type: 'string' }, bar: { type: 'number' } },
         required: ['foo'],
       },
-      'z.object({foo:z.string(),bar:z.number().optional()})',
-    ],
-    [
-      {
-        type: 'object',
-        properties: { foo: { type: 'string' } },
-      },
-      'z.object({foo:z.string()}).partial()',
-    ],
-    [
-      {
-        type: 'object',
-        properties: { test: { type: 'string' } },
-        required: ['test'],
-        additionalProperties: false,
-      },
-      'z.strictObject({test:z.string()})',
-    ],
-    [
-      {
-        type: 'object',
-        properties: { test: { type: 'string' } },
-        required: ['test'],
-        additionalProperties: true,
-      },
-      'z.looseObject({test:z.string()})',
+      'type({foo:"string","bar?":"number"})',
     ],
     [
       {
         type: 'object',
         additionalProperties: { type: 'string' },
       },
-      'z.record(z.string(),z.string())',
+      'type({"[string]":"string"})',
     ],
   ])('object(%o) → %s', (input, expected) => {
     expect(object(input, 'Schema', false)).toBe(expected)
   })
 
   describe('minProperties / maxProperties', () => {
-    it('emits .refine for minProperties', () => {
+    it('emits .narrow for minProperties', () => {
       expect(
         object(
           {
@@ -70,25 +45,10 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=2)')
+      ).toBe('type({a:"string"}).narrow((o) => Object.keys(o).length >= 2)')
     })
 
-    it('emits .refine for maxProperties', () => {
-      expect(
-        object(
-          {
-            type: 'object',
-            properties: { a: { type: 'string' } },
-            required: ['a'],
-            maxProperties: 5,
-          },
-          'Schema',
-          false,
-        ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
-    })
-
-    it('emits both with x-minimum-message / x-maximum-message', () => {
+    it('emits both with x-minimum-message / x-maximum-message via ctx.mustBe', () => {
       expect(
         object(
           {
@@ -104,13 +64,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=1,{error:"too few"}).refine((o)=>Object.keys(o).length<=3,{error:"too many"})',
+        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).length >= 1 || ctx.mustBe("too few")).narrow((o, ctx) => Object.keys(o).length <= 3 || ctx.mustBe("too many"))',
       )
     })
   })
 
   describe('propertyNames', () => {
-    it('emits pattern-based refine', () => {
+    it('emits pattern-based narrow', () => {
       expect(
         object(
           {
@@ -123,11 +83,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)))',
+        'type({a:"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)))',
       )
     })
 
-    it('emits enum-based refine', () => {
+    it('emits enum-based narrow', () => {
       expect(
         object(
           {
@@ -139,7 +99,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))')
+      ).toBe(
+        'type({a:"string"}).narrow((o) => Object.keys(o).every((k) => ["a","b","c"].includes(k)))',
+      )
     })
 
     it('uses x-propertyNames-message', () => {
@@ -156,13 +118,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{error:"lowercase only"})',
+        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)) || ctx.mustBe("lowercase only"))',
       )
     })
   })
 
   describe('patternProperties', () => {
-    it('emits per-pattern refine', () => {
+    it('emits per-pattern narrow with .allows()', () => {
       expect(
         object(
           {
@@ -175,7 +137,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^x-").test(k)||z.string().safeParse(v).success))',
+        'type({a:"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^x-").test(k) || type("string").allows(val)))',
       )
     })
 
@@ -191,13 +153,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.record(z.string(),z.string()).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^id_").test(k)||z.number().safeParse(v).success))',
+        'type({"[string]":"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^id_").test(k) || type("number").allows(val)))',
       )
     })
   })
 
   describe('dependentRequired', () => {
-    it('emits .refine per key', () => {
+    it('emits narrow per key', () => {
       expect(
         object(
           {
@@ -213,11 +175,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({card:z.string(),billing:z.string().optional()}).refine((o)=>!('card' in o)||('billing' in o))",
+        "type({card:\"string\",\"billing?\":\"string\"}).narrow((o) => !('card' in o) || ('billing' in o))",
       )
     })
 
-    it('combines multiple dependent keys', () => {
+    it('combines multiple dependent keys with x-dependentRequired-message', () => {
       expect(
         object(
           {
@@ -234,12 +196,8 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({a:z.string(),b:z.string(),c:z.string()}).partial().refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+        "type({\"a?\":\"string\",\"b?\":\"string\",\"c?\":\"string\"}).narrow((o, ctx) => !('a' in o) || ('b' in o && 'c' in o) || ctx.mustBe(\"a needs b and c\"))",
       )
     })
   })
-
-  // Note: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
-  // not by `object()`. End-to-end readonly behavior is covered by zod.test.ts /
-  // index.test.ts.
 })

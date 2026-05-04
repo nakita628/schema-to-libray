@@ -30,7 +30,7 @@ export function arktype(
   isArktype: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const withReadonly = (s: string) => (options?.readonly ? `${s}.readonly()` : s)
+  const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
 
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
@@ -108,7 +108,7 @@ export function arktype(
     if (Array.isArray(inner.type)) {
       const bodies = inner.type
         .map((t) => typePredicates[t])
-        .filter((p): p is string => p !== undefined)
+        .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(v: unknown\) => /, '')})`)
       if (bodies.length > 0) return narrow(`(v: unknown) => ${bodies.join(' && ')}`)
     }
@@ -128,7 +128,7 @@ export function arktype(
   }
   if (schema.enum) return arktypeWrap(_enum(schema), schema)
   if (schema.properties)
-    return withReadonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
+    return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
@@ -168,7 +168,7 @@ export function arktype(
   }
 
   if (types.includes('object'))
-    return withReadonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
+    return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
   if (types.includes('date')) return arktypeWrap('"Date"', schema)
   if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 

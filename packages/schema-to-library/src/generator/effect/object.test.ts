@@ -4,14 +4,14 @@ import type { JSONSchema } from '../../parser/index.js'
 import { object } from './object.js'
 
 // Test run
-// pnpm vitest run ./src/zod/object.test.ts
+// pnpm vitest run ./src/generator/effect/object.test.ts
 
 describe('object', () => {
   it.concurrent.each<[JSONSchema, string]>([
-    [{ type: 'object' }, 'z.object({})'],
+    [{ type: 'object' }, 'Schema.Struct({})'],
     [
       { type: 'object', properties: { foo: { type: 'string' } }, required: ['foo'] },
-      'z.object({foo:z.string()})',
+      'Schema.Struct({foo:Schema.String})',
     ],
     [
       {
@@ -19,46 +19,28 @@ describe('object', () => {
         properties: { foo: { type: 'string' }, bar: { type: 'number' } },
         required: ['foo'],
       },
-      'z.object({foo:z.string(),bar:z.number().optional()})',
+      'Schema.Struct({foo:Schema.String,bar:Schema.optional(Schema.Number)})',
     ],
     [
       {
         type: 'object',
         properties: { foo: { type: 'string' } },
       },
-      'z.object({foo:z.string()}).partial()',
-    ],
-    [
-      {
-        type: 'object',
-        properties: { test: { type: 'string' } },
-        required: ['test'],
-        additionalProperties: false,
-      },
-      'z.strictObject({test:z.string()})',
-    ],
-    [
-      {
-        type: 'object',
-        properties: { test: { type: 'string' } },
-        required: ['test'],
-        additionalProperties: true,
-      },
-      'z.looseObject({test:z.string()})',
+      'Schema.partial(Schema.Struct({foo:Schema.String}))',
     ],
     [
       {
         type: 'object',
         additionalProperties: { type: 'string' },
       },
-      'z.record(z.string(),z.string())',
+      'Schema.Record({key:Schema.String,value:Schema.String})',
     ],
   ])('object(%o) → %s', (input, expected) => {
     expect(object(input, 'Schema', false)).toBe(expected)
   })
 
   describe('minProperties / maxProperties', () => {
-    it('emits .refine for minProperties', () => {
+    it('emits .pipe with Schema.filter for minProperties', () => {
       expect(
         object(
           {
@@ -70,22 +52,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=2)')
-    })
-
-    it('emits .refine for maxProperties', () => {
-      expect(
-        object(
-          {
-            type: 'object',
-            properties: { a: { type: 'string' } },
-            required: ['a'],
-            maxProperties: 5,
-          },
-          'Schema',
-          false,
-        ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
+      ).toBe(
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=2))',
+      )
     })
 
     it('emits both with x-minimum-message / x-maximum-message', () => {
@@ -104,13 +73,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=1,{error:"too few"}).refine((o)=>Object.keys(o).length<=3,{error:"too many"})',
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=1,{message:()=>"too few"}),Schema.filter((o)=>Object.keys(o).length<=3,{message:()=>"too many"}))',
       )
     })
   })
 
   describe('propertyNames', () => {
-    it('emits pattern-based refine', () => {
+    it('emits pattern-based filter', () => {
       expect(
         object(
           {
@@ -123,11 +92,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)))',
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
       )
     })
 
-    it('emits enum-based refine', () => {
+    it('emits enum-based filter', () => {
       expect(
         object(
           {
@@ -139,7 +108,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))')
+      ).toBe(
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
+      )
     })
 
     it('uses x-propertyNames-message', () => {
@@ -156,13 +127,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{error:"lowercase only"})',
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{message:()=>"lowercase only"}))',
       )
     })
   })
 
   describe('patternProperties', () => {
-    it('emits per-pattern refine', () => {
+    it('emits per-pattern Schema.filter', () => {
       expect(
         object(
           {
@@ -175,7 +146,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^x-").test(k)||z.string().safeParse(v).success))',
+        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||Schema.is(Schema.String)(val))))',
       )
     })
 
@@ -191,13 +162,13 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.record(z.string(),z.string()).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^id_").test(k)||z.number().safeParse(v).success))',
+        'Schema.Record({key:Schema.String,value:Schema.String}).pipe(Schema.filter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||Schema.is(Schema.Number)(val))))',
       )
     })
   })
 
   describe('dependentRequired', () => {
-    it('emits .refine per key', () => {
+    it('emits Schema.filter per key', () => {
       expect(
         object(
           {
@@ -213,11 +184,11 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({card:z.string(),billing:z.string().optional()}).refine((o)=>!('card' in o)||('billing' in o))",
+        "Schema.Struct({card:Schema.String,billing:Schema.optional(Schema.String)}).pipe(Schema.filter((o)=>!('card' in o)||('billing' in o)))",
       )
     })
 
-    it('combines multiple dependent keys', () => {
+    it('combines multiple dependent keys with x-dependentRequired-message', () => {
       expect(
         object(
           {
@@ -234,12 +205,8 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({a:z.string(),b:z.string(),c:z.string()}).partial().refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+        "Schema.partial(Schema.Struct({a:Schema.String,b:Schema.String,c:Schema.String})).pipe(Schema.filter((o)=>!('a' in o)||('b' in o&&'c' in o),{message:()=>\"a needs b and c\"}))",
       )
     })
   })
-
-  // Note: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
-  // not by `object()`. End-to-end readonly behavior is covered by zod.test.ts /
-  // index.test.ts.
 })

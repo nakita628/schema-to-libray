@@ -18,7 +18,7 @@ export function valibot(
   isValibot: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const withReadonly = (s: string) => (options?.readonly ? `v.pipe(${s},v.readonly())` : s)
+  const readonly = (v: string) => (options?.readonly ? `v.pipe(${v},v.readonly())` : v)
 
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
@@ -136,7 +136,7 @@ export function valibot(
     if (Array.isArray(inner.type)) {
       const bodies = inner.type
         .map((t) => typePredicates[t])
-        .filter((p): p is string => p !== undefined)
+        .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
       if (bodies.length > 0) return custom(`(v) => ${bodies.join(' && ')}`)
     }
@@ -151,7 +151,7 @@ export function valibot(
     return valibotWrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
-    return withReadonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
+    return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return valibotWrap(string(schema), schema)
@@ -162,7 +162,7 @@ export function valibot(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
-      return withReadonly(valibotWrap(`v.tuple([${items.join(',')}])`, schema))
+      return readonly(valibotWrap(`v.tuple([${items.join(',')}])`, schema))
     }
     const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
     const base = `v.array(${items})`
@@ -183,11 +183,11 @@ export function valibot(
         : undefined,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `v.pipe(${base},${actions.join(',')})` : base
-    return withReadonly(valibotWrap(arrayExpr, schema))
+    return readonly(valibotWrap(arrayExpr, schema))
   }
 
   if (types.includes('object'))
-    return withReadonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
+    return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
   if (types.includes('date')) return valibotWrap('v.date()', schema)
   if (types.length === 1 && types[0] === 'null') return valibotWrap('v.null()', schema)
 

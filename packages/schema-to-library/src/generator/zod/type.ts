@@ -1,5 +1,5 @@
 import type { JSONSchema } from '../../parser/index.js'
-import { normalizeTypes, toPascalCase } from '../../utils/index.js'
+import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 
 /**
  * Generate TypeScript type definition from JSON Schema
@@ -74,7 +74,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
     const required = Array.isArray(schema.required) ? schema.required : []
     const properties = Object.entries(schema.properties).map(([key, propSchema]) => {
       const propType = type(propSchema, rootName)
-      const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : `"${key}"`
+      const safeKey = makeSafeKey(key)
       return required.includes(key) ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
     })
     return `{${properties.join('; ')}}`

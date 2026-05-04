@@ -1,6 +1,29 @@
 import type { JSONSchema } from '../../parser/index.js'
+import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
+const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
+
+/** Wrap a raw arktype expression with `type(...)` if it's a bare quoted string. */
+const ensureRuntime = (s: string) => (isQuoted(s) ? `type(${s})` : s)
+
+/**
+ * Compose a `.narrow(...)` argument with an optional error message.
+ * - With message: `(o, ctx) => predicate || ctx.mustBe("msg")`
+ * - Without message: `(o) => predicate`
+ */
+const narrowPredicate = (predicate: string, message?: string): string =>
+  message ? `(o, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})` : `(o) => ${predicate}`
+
+/**
+ * Generate an Arktype object schema for a JSON Schema object node.
+ *
+ * Combinators (oneOf/anyOf/allOf/not) delegate to the main `arktype` entry.
+ * JSON Schema 2020-12 keywords (`minProperties`, `maxProperties`,
+ * `propertyNames`, `patternProperties`, `dependentRequired`) are emitted as
+ * `.narrow(...)` chains. When narrows are applied, the result is always in
+ * wrapped form (`type({...}).narrow(...)`) regardless of `isArktype`.
+ */
 export function object(
   schema: JSONSchema,
   rootName: string,
@@ -10,14 +33,61 @@ export function object(
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return arktype(schema, rootName, isArktype, options)
   }
-  if (typeof schema.additionalProperties === 'object') {
-    const inner = `{"[string]":${arktype(schema.additionalProperties, rootName, isArktype, options)}}`
-    return isArktype ? inner : `type(${inner})`
+
+  const errorMessage = schema['x-error-message']
+  const minimumMessage = schema['x-minimum-message']
+  const maximumMessage = schema['x-maximum-message']
+  const patternMessage = schema['x-pattern-message']
+  const propNamesMessage = schema['x-propertyNames-message'] ?? patternMessage
+  const depReqMessage = schema['x-dependentRequired-message'] ?? errorMessage
+
+  const propertyNamesNarrow = (): string => {
+    if (schema.propertyNames?.pattern) {
+      return narrowPredicate(
+        `Object.keys(o).every((k) => new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))`,
+        propNamesMessage,
+      )
+    }
+    if (schema.propertyNames?.enum) {
+      return narrowPredicate(
+        `Object.keys(o).every((k) => ${JSON.stringify(schema.propertyNames.enum)}.includes(k))`,
+        propNamesMessage,
+      )
+    }
+    return ''
   }
+
+  const patternPropertiesNarrows = (): readonly string[] =>
+    schema.patternProperties
+      ? Object.entries(schema.patternProperties).map(([pattern, propSchema]) => {
+          const s = ensureRuntime(arktype(propSchema, rootName, isArktype, options))
+          return narrowPredicate(
+            `Object.entries(o).every(([k, val]) => !new RegExp(${JSON.stringify(pattern)}).test(k) || ${s}.allows(val))`,
+            patternMessage,
+          )
+        })
+      : []
+
+  const composeNarrows = (base: string, narrows: readonly string[]): string =>
+    narrows.length === 0 ? base : narrows.reduce((acc, n) => `${acc}.narrow(${n})`, base)
+
+  // ── additionalProperties: schema → type({"[string]": ...}) + propertyNames + patternProperties ──
+  if (typeof schema.additionalProperties === 'object') {
+    const innerLiteral = `{"[string]":${arktype(schema.additionalProperties, rootName, isArktype, options)}}`
+    const narrows = [propertyNamesNarrow(), ...patternPropertiesNarrows()].filter(
+      (a) => a !== '',
+    )
+    if (narrows.length > 0) {
+      return composeNarrows(`type(${innerLiteral})`, narrows)
+    }
+    return isArktype ? innerLiteral : `type(${innerLiteral})`
+  }
+
   if (!schema.properties) {
     if (schema.additionalProperties === true) return '"unknown"'
     return isArktype ? '{}' : 'type({})'
   }
+
   const additionalMode =
     schema.additionalProperties === true
       ? 'delete'
@@ -30,17 +100,45 @@ export function object(
       const parsed = arktype(propSchema, rootName, isArktype, options)
       if (!parsed) return null
       const isRequired = required.includes(key)
-      const safeKey = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
-        ? isRequired
-          ? key
+      const baseSafeKey = makeSafeKey(key)
+      const safeKey = isRequired
+        ? baseSafeKey
+        : baseSafeKey.startsWith('"')
+          ? JSON.stringify(`${key}?`)
           : `"${key}?"`
-        : isRequired
-          ? JSON.stringify(key)
-          : JSON.stringify(`${key}?`)
       return `${safeKey}:${parsed}`
     })
-    .filter((v): v is string => v !== null)
+    .filter((p) => p !== null)
   const additionalProp = additionalMode ? `"+":"${additionalMode}"` : undefined
-  const allProps = [...props, additionalProp].filter((v): v is string => v !== undefined)
-  return isArktype ? `{${allProps.join(',')}}` : `type({${allProps.join(',')}})`
+  const allProps = [...props, additionalProp].filter((p) => p !== undefined)
+
+  const innerLiteral = `{${allProps.join(',')}}`
+
+  const minPropertiesNarrow =
+    typeof schema.minProperties === 'number'
+      ? narrowPredicate(`Object.keys(o).length >= ${schema.minProperties}`, minimumMessage)
+      : ''
+  const maxPropertiesNarrow =
+    typeof schema.maxProperties === 'number'
+      ? narrowPredicate(`Object.keys(o).length <= ${schema.maxProperties}`, maximumMessage)
+      : ''
+  const dependentRequiredNarrows: readonly string[] = schema.dependentRequired
+    ? Object.entries(schema.dependentRequired).map(([key, deps]) => {
+        const depsCheck = deps.map((d) => `'${d}' in o`).join(' && ')
+        return narrowPredicate(`!('${key}' in o) || (${depsCheck})`, depReqMessage)
+      })
+    : []
+
+  const narrows = [
+    minPropertiesNarrow,
+    maxPropertiesNarrow,
+    propertyNamesNarrow(),
+    ...patternPropertiesNarrows(),
+    ...dependentRequiredNarrows,
+  ].filter((a) => a !== '')
+
+  if (narrows.length > 0) {
+    return composeNarrows(`type(${innerLiteral})`, narrows)
+  }
+  return isArktype ? innerLiteral : `type(${innerLiteral})`
 }

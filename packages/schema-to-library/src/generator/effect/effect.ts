@@ -12,6 +12,15 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
+/**
+ * Generate Effect Schema code from a JSON Schema.
+ *
+ * The `options.readonly` flag is accepted for API symmetry with the other
+ * generators but is a no-op for Effect Schema: fields produced by
+ * `Schema.Struct({...})` are already `readonly` at the TypeScript type level,
+ * and `Schema.Array(...)` returns `ReadonlyArray<T>` by default. Effect Schema
+ * has no separate runtime "readonly" wrapper.
+ */
 export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
@@ -130,7 +139,7 @@ export function effect(
     if (Array.isArray(inner.type)) {
       const bodies = inner.type
         .map((t) => typePredicates[t])
-        .filter((p): p is string => p !== undefined)
+        .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
       if (bodies.length > 0) return filtered(`(v) => ${bodies.join(' && ')}`)
     }

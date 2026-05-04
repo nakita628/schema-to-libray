@@ -27,7 +27,7 @@ export function zod(
   isZod: boolean = false,
   options?: { openapi?: boolean; readonly?: boolean },
 ): string {
-  const withReadonly = (s: string) => (options?.readonly ? `${s}.readonly()` : s)
+  const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
     if (s.$ref === '#' || s.$ref === '') {
       return zodWrap(`z.lazy(() => ${rn})`, s)
@@ -161,7 +161,7 @@ export function zod(
     if (Array.isArray(inner.type)) {
       const bodies = inner.type
         .map((t) => typePredicates[t])
-        .filter((p): p is string => p !== undefined)
+        .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
       if (bodies.length > 0) return refine(`(v) => ${bodies.join(' && ')}`)
     }
@@ -192,7 +192,7 @@ export function zod(
   }
   if (schema.enum) return zodWrap(_enum(schema), schema)
   if (schema.properties)
-    return withReadonly(zodWrap(object(schema, rootName, isZod, options), schema))
+    return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return zodWrap(string(schema), schema)
@@ -217,7 +217,7 @@ export function zod(
     const patternError = patternMessage ? `,${zodError(patternMessage)}` : ''
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => zod(s, rootName, isZod, options))
-      return withReadonly(zodWrap(`z.tuple([${items.join(',')}]${baseError})`, schema))
+      return readonly(zodWrap(`z.tuple([${items.join(',')}]${baseError})`, schema))
     }
     const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
     const item = itemSchema ? zod(itemSchema, rootName, isZod, options) : 'z.any()'
@@ -237,11 +237,11 @@ export function zod(
           : typeof maxItems === 'number'
             ? `${base}.max(${maxItems}${maxError})${unique}`
             : `${base}${unique}`
-    return withReadonly(zodWrap(arrayExpr, schema))
+    return readonly(zodWrap(arrayExpr, schema))
   }
 
   if (types.includes('object'))
-    return withReadonly(zodWrap(object(schema, rootName, isZod, options), schema))
+    return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
   if (types.includes('date')) {
     const errorMessage = schema['x-error-message']
     const errorArg = errorMessage ? zodError(errorMessage) : ''

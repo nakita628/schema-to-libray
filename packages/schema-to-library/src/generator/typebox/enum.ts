@@ -13,7 +13,7 @@ export function _enum(schema: JSONSchema) {
   const optsParts = [
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
     ...metaOpts,
-  ].filter((v): v is string => v !== undefined)
+  ].filter((v) => v !== undefined)
   const optsTrailer = optsParts.length > 0 ? `,{${optsParts.join(',')}}` : ''
   if (!schema.enum || schema.enum.length === 0) {
     return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'

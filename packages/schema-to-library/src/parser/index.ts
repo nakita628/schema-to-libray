@@ -286,6 +286,10 @@ export type JSONSchema = {
   readonly 'x-anyOf-message'?: string
   /** not combinator error message */
   readonly 'x-not-message'?: string
+  /** propertyNames constraint error message */
+  readonly 'x-propertyNames-message'?: string
+  /** dependentRequired constraint error message */
+  readonly 'x-dependentRequired-message'?: string
   /** Per-value enum error messages */
   readonly 'x-enum-error-messages'?: { readonly [k: string]: string }
 
