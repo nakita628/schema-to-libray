@@ -6,4 +6,4 @@ export const Config = Schema.Struct({
   count: Schema.optional(Schema.Number.pipe(Schema.int())),
 })
 
-export type ConfigType = typeof Config.Type
+export type ConfigEncoded = typeof Config.Encoded

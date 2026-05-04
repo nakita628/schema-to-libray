@@ -15,4 +15,4 @@ export const User = Schema.Struct({
   tags: Schema.Array(Schema.String).pipe(Schema.minItems(1), Schema.maxItems(5)),
 })
 
-export type UserType = typeof User.Type
+export type UserEncoded = typeof User.Encoded

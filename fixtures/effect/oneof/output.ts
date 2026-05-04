@@ -5,4 +5,4 @@ export const Shape = Schema.Union(
   Schema.Struct({ kind: Schema.Literal('rectangle'), width: Schema.Number, height: Schema.Number }),
 )
 
-export type ShapeType = typeof Shape.Type
+export type ShapeEncoded = typeof Shape.Encoded

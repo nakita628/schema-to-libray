@@ -17,4 +17,4 @@ export const User = Schema.Struct({
   jsonSchema: { externalDocs: { url: 'https://example.com/users' } },
 })
 
-export type UserType = typeof User.Type
+export type UserEncoded = typeof User.Encoded
