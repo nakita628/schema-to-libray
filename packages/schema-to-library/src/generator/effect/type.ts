@@ -7,7 +7,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
   // $ref case
   if (schema.$ref) {
     if (schema.$ref === '#' || schema.$ref === '') {
-      return `typeof ${rootName}.Type`
+      return `typeof ${rootName}.Encoded`
     }
 
     const TABLE = [
@@ -25,7 +25,7 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
 
     if (schema.$ref?.startsWith('#')) {
       const refName = schema.$ref.slice(1)
-      if (refName === '') return `typeof ${rootName}.Type`
+      if (refName === '') return `typeof ${rootName}.Encoded`
       if (!refName.includes('/')) return `_${toPascalCase(refName)}`
     }
 

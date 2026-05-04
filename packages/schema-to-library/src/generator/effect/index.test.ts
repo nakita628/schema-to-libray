@@ -19,7 +19,7 @@ describe('schemaToEffect', () => {
 
 export const Schema_ = Schema.Struct({name:Schema.String,age:Schema.optional(Schema.Number)})
 
-export type Schema_Type = typeof Schema_.Type`
+export type Schema_Encoded = typeof Schema_.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -35,7 +35,7 @@ export type Schema_Type = typeof Schema_.Type`
 
 export const User = Schema.partial(Schema.Struct({name:Schema.String}))
 
-export type UserType = typeof User.Type`
+export type UserEncoded = typeof User.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -61,7 +61,7 @@ type _Node = {readonly children?: readonly _Node[]}
 
 export const Node: Schema.Schema<_Node> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Node))}))
 
-export type NodeType = typeof Node.Type`
+export type NodeEncoded = typeof Node.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -96,7 +96,7 @@ const B: Schema.Schema<_B> = Schema.partial(Schema.Struct({c:Schema.suspend(() =
 
 export const A: Schema.Schema<_A> = Schema.partial(Schema.Struct({b:Schema.suspend(() => B)}))
 
-export type AType = typeof A.Type`
+export type AEncoded = typeof A.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -126,7 +126,7 @@ const Address: Schema.Schema<_Address> = Schema.partial(Schema.Struct({street:Sc
 
 export const User: Schema.Schema<_User> = Schema.partial(Schema.Struct({address:Schema.suspend(() => Address)}))
 
-export type UserType = typeof User.Type`
+export type UserEncoded = typeof User.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -143,11 +143,11 @@ export type UserType = typeof User.Type`
     })
     const expected = `import { Schema } from "effect"
 
-type _Schema_ = {readonly children?: readonly typeof Schema_.Type[]}
+type _Schema_ = {readonly children?: readonly typeof Schema_.Encoded[]}
 
 export const Schema_: Schema.Schema<_Schema_> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Schema_))}))
 
-export type Schema_Type = typeof Schema_.Type`
+export type Schema_Encoded = typeof Schema_.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -165,7 +165,7 @@ export type Schema_Type = typeof Schema_.Type`
 
 export const Union = Schema.partial(Schema.Struct({value:Schema.Union(Schema.String,Schema.Number)}))
 
-export type UnionType = typeof Union.Type`
+export type UnionEncoded = typeof Union.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -186,7 +186,7 @@ export type UnionType = typeof Union.Type`
 
 export const AllOf = Schema.partial(Schema.Struct({value:Schema.extend(Schema.partial(Schema.Struct({name:Schema.String})),Schema.partial(Schema.Struct({age:Schema.Number})))}))
 
-export type AllOfType = typeof AllOf.Type`
+export type AllOfEncoded = typeof AllOf.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -205,7 +205,7 @@ export type AllOfType = typeof AllOf.Type`
 
 export const Enum = Schema.partial(Schema.Struct({status:Schema.Literal("active","inactive")}))
 
-export type EnumType = typeof Enum.Type`
+export type EnumEncoded = typeof Enum.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -223,7 +223,7 @@ export type EnumType = typeof Enum.Type`
 
 export const Const = Schema.partial(Schema.Struct({type:Schema.Literal("user")}))
 
-export type ConstType = typeof Const.Type`
+export type ConstEncoded = typeof Const.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -246,7 +246,7 @@ export type ConstType = typeof Const.Type`
 
 export const Format = Schema.partial(Schema.Struct({email:Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)),uuid:Schema.UUID}))
 
-export type FormatType = typeof Format.Type`
+export type FormatEncoded = typeof Format.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -265,7 +265,7 @@ export type FormatType = typeof Format.Type`
 
 export const Pattern = Schema.partial(Schema.Struct({phone:Schema.String.pipe(Schema.pattern(/^d+$/))}))
 
-export type PatternType = typeof Pattern.Type`
+export type PatternEncoded = typeof Pattern.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -285,7 +285,7 @@ export type PatternType = typeof Pattern.Type`
 
 export const MinMax = Schema.partial(Schema.Struct({age:Schema.Number.pipe(Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(120))}))
 
-export type MinMaxType = typeof MinMax.Type`
+export type MinMaxEncoded = typeof MinMax.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -305,7 +305,7 @@ export type MinMaxType = typeof MinMax.Type`
 
 export const Length = Schema.partial(Schema.Struct({name:Schema.String.pipe(Schema.minLength(1),Schema.maxLength(100))}))
 
-export type LengthType = typeof Length.Type`
+export type LengthEncoded = typeof Length.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -323,7 +323,7 @@ export type LengthType = typeof Length.Type`
 
 export const Required = Schema.Struct({name:Schema.String,age:Schema.Number})
 
-export type RequiredType = typeof Required.Type`
+export type RequiredEncoded = typeof Required.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -337,7 +337,7 @@ export type RequiredType = typeof Required.Type`
 
 export const Additional = Schema.Record({key:Schema.String,value:Schema.String})
 
-export type AdditionalType = typeof Additional.Type`
+export type AdditionalEncoded = typeof Additional.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -355,7 +355,7 @@ export type AdditionalType = typeof Additional.Type`
 
 export const Int = Schema.Struct({count:Schema.Number.pipe(Schema.int()),score:Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))})
 
-export type IntType = typeof Int.Type`
+export type IntEncoded = typeof Int.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -374,7 +374,7 @@ export type IntType = typeof Int.Type`
 
 export const Arr = Schema.partial(Schema.Struct({items:Schema.Array(Schema.String)}))
 
-export type ArrType = typeof Arr.Type`
+export type ArrEncoded = typeof Arr.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -408,7 +408,7 @@ export const Schema_ = Schema.partial(Schema.Struct({name:Schema.String}))`
 
 export const WithDefault = Schema.partial(Schema.Struct({status:Schema.optional(Schema.String,{default:() => "active"})}))
 
-export type WithDefaultType = typeof WithDefault.Type`
+export type WithDefaultEncoded = typeof WithDefault.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -426,7 +426,7 @@ export type WithDefaultType = typeof WithDefault.Type`
 
 export const NullDefault = Schema.partial(Schema.Struct({value:Schema.NullOr(Schema.optional(Schema.String,{default:() => "x"}))}))
 
-export type NullDefaultType = typeof NullDefault.Type`
+export type NullDefaultEncoded = typeof NullDefault.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -444,7 +444,7 @@ export type NullDefaultType = typeof NullDefault.Type`
 
 export const AnyOf = Schema.partial(Schema.Struct({value:Schema.Union(Schema.String,Schema.Number)}))
 
-export type AnyOfType = typeof AnyOf.Type`
+export type AnyOfEncoded = typeof AnyOf.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -461,7 +461,7 @@ export type AnyOfType = typeof AnyOf.Type`
 
 export const Arr = Schema.Struct({tags:Schema.Array(Schema.String).pipe(Schema.minItems(1),Schema.maxItems(10))})
 
-export type ArrType = typeof Arr.Type`
+export type ArrEncoded = typeof Arr.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -478,7 +478,7 @@ export type ArrType = typeof Arr.Type`
 
 export const Fixed = Schema.Struct({pair:Schema.Array(Schema.Number).pipe(Schema.itemsCount(3))})
 
-export type FixedType = typeof Fixed.Type`
+export type FixedEncoded = typeof Fixed.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -495,7 +495,7 @@ export type FixedType = typeof Fixed.Type`
 
 export const Null = Schema.Struct({value:Schema.NullOr(Schema.String)})
 
-export type NullType = typeof Null.Type`
+export type NullEncoded = typeof Null.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -511,7 +511,7 @@ export type NullType = typeof Null.Type`
 
 export const Def = Schema.partial(Schema.Struct({enabled:Schema.optionalWith(Schema.Boolean,{default:() => true})}))
 
-export type DefType = typeof Def.Type`
+export type DefEncoded = typeof Def.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -524,7 +524,7 @@ export type DefType = typeof Def.Type`
 
 export const D = Schema.Date
 
-export type DType = typeof D.Type`
+export type DEncoded = typeof D.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -537,7 +537,7 @@ export type DType = typeof D.Type`
 
 export const N = Schema.NullOr(Schema.Null)
 
-export type NType = typeof N.Type`
+export type NEncoded = typeof N.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -550,7 +550,7 @@ export type NType = typeof N.Type`
 
 export const Empty = Schema.Struct({})
 
-export type EmptyType = typeof Empty.Type`
+export type EmptyEncoded = typeof Empty.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -577,7 +577,7 @@ const Status: Schema.Schema<_Status> = Schema.Union(Schema.String,Schema.Number)
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({status:Schema.suspend(() => Status)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -604,7 +604,7 @@ const Value: Schema.Schema<_Value> = Schema.Union(Schema.Boolean,Schema.String)
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({value:Schema.suspend(() => Value)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -634,7 +634,7 @@ const Combined: Schema.Schema<_Combined> = Schema.extend(Schema.partial(Schema.S
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Combined)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -659,7 +659,7 @@ const Version: Schema.Schema<_Version> = Schema.Literal("v1")
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({version:Schema.suspend(() => Version)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -684,7 +684,7 @@ const Color: Schema.Schema<_Color> = Schema.Literal("red","green","blue")
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({color:Schema.suspend(() => Color)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -709,7 +709,7 @@ const SingleVal: Schema.Schema<_SingleVal> = Schema.Literal("only")
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({val:Schema.suspend(() => SingleVal)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -734,7 +734,7 @@ const Tags: Schema.Schema<_Tags> = Schema.Array(Schema.String)
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({tags:Schema.suspend(() => Tags)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -759,7 +759,7 @@ const Timestamp: Schema.Schema<_Timestamp> = Schema.Date
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({ts:Schema.suspend(() => Timestamp)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -784,7 +784,7 @@ const Nothing: Schema.Schema<_Nothing> = Schema.NullOr(Schema.Null)
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({n:Schema.suspend(() => Nothing)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -809,7 +809,7 @@ const Flag: Schema.Schema<_Flag> = Schema.Boolean
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({flag:Schema.suspend(() => Flag)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -834,7 +834,7 @@ const Count: Schema.Schema<_Count> = Schema.Number.pipe(Schema.int())
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({count:Schema.suspend(() => Count)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -859,7 +859,7 @@ const Loose: Schema.Schema<_Loose> = Schema.Unknown
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({l:Schema.suspend(() => Loose)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -884,7 +884,7 @@ const Dict: Schema.Schema<_Dict> = Schema.Record({key:Schema.String,value:Schema
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({d:Schema.suspend(() => Dict)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -909,7 +909,7 @@ const Neg: Schema.Schema<_Neg> = Schema.Unknown.pipe(Schema.filter((v) => typeof
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({neg:Schema.suspend(() => Neg)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -941,7 +941,7 @@ const Special: Schema.Schema<_Special> = Schema.Struct({"x-value":Schema.String,
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({data:Schema.suspend(() => Special)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -959,7 +959,7 @@ export type RootType = typeof Root.Type`
 
 export const Loose = Schema.Struct({name:Schema.String})
 
-export type LooseType = typeof Loose.Type`
+export type LooseEncoded = typeof Loose.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -973,7 +973,7 @@ export type LooseType = typeof Loose.Type`
 
 export const AnyObj = Schema.Unknown
 
-export type AnyObjType = typeof AnyObj.Type`
+export type AnyObjEncoded = typeof AnyObj.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -990,7 +990,7 @@ export type AnyObjType = typeof AnyObj.Type`
 
 export const Special = Schema.Struct({"x-value":Schema.String})
 
-export type SpecialType = typeof Special.Type`
+export type SpecialEncoded = typeof Special.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -1025,7 +1025,7 @@ const Wrapper: Schema.Schema<_Wrapper> = Schema.partial(Schema.Struct({inner:Sch
 
 export const Root: Schema.Schema<_Root> = Schema.partial(Schema.Struct({wrap:Schema.suspend(() => Wrapper)}))
 
-export type RootType = typeof Root.Type`
+export type RootEncoded = typeof Root.Encoded`
     expect(result).toBe(expected)
   })
 
@@ -1040,11 +1040,11 @@ export type RootType = typeof Root.Type`
       })
       const expected = `import { Schema } from "effect"
 
-type _Tree = {readonly children?: readonly typeof Tree.Type[]}
+type _Tree = {readonly children?: readonly typeof Tree.Encoded[]}
 
 export const Tree: Schema.Schema<_Tree> = Schema.partial(Schema.Struct({children:Schema.Array(Schema.suspend(() => Tree))}))
 
-export type TreeType = typeof Tree.Type`
+export type TreeEncoded = typeof Tree.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1102,7 +1102,7 @@ export const Node: Schema.Schema<_Node> = Schema.Struct({value:Schema.String,nex
 
 export const User = Schema.Struct({id:Schema.UUID.pipe(Schema.brand("UserId")),name:Schema.String})
 
-export type UserType = typeof User.Type`
+export type UserEncoded = typeof User.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1120,7 +1120,7 @@ export type UserType = typeof User.Type`
 
 export const Product = Schema.Struct({price:Schema.Number.pipe(Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Price")),quantity:Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Quantity"))})
 
-export type ProductType = typeof Product.Type`
+export type ProductEncoded = typeof Product.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1137,7 +1137,7 @@ export type ProductType = typeof Product.Type`
 
 export const TagList = Schema.Array(Schema.String).pipe(Schema.minItems(1),Schema.maxItems(10)).pipe(Schema.brand("Tags"))
 
-export type TagListType = typeof TagList.Type`
+export type TagListEncoded = typeof TagList.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1152,7 +1152,7 @@ export type TagListType = typeof TagList.Type`
 
 export const Email = Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)).pipe(Schema.brand("Email"))
 
-export type EmailType = typeof Email.Type`
+export type EmailEncoded = typeof Email.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1169,7 +1169,7 @@ export type EmailType = typeof Email.Type`
 
 export const NullableId = Schema.Struct({id:Schema.NullOr(Schema.String).pipe(Schema.brand("NullableId"))})
 
-export type NullableIdType = typeof NullableId.Type`
+export type NullableIdEncoded = typeof NullableId.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1186,7 +1186,7 @@ export type NullableIdType = typeof NullableId.Type`
 
 export const Config = Schema.Struct({role:Schema.optionalWith(Schema.String,{default:() => "user"}).pipe(Schema.brand("Role"))})
 
-export type ConfigType = typeof Config.Type`
+export type ConfigEncoded = typeof Config.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1202,7 +1202,7 @@ export type ConfigType = typeof Config.Type`
 
 export const Username = Schema.String.pipe(Schema.minLength(3),Schema.maxLength(20)).pipe(Schema.brand("Username"))
 
-export type UsernameType = typeof Username.Type`
+export type UsernameEncoded = typeof Username.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1216,7 +1216,7 @@ export type UsernameType = typeof Username.Type`
 
 export const Flag = Schema.Boolean.pipe(Schema.brand("Flag"))
 
-export type FlagType = typeof Flag.Type`
+export type FlagEncoded = typeof Flag.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1229,7 +1229,7 @@ export type FlagType = typeof Flag.Type`
 
 export const Plain = Schema.String
 
-export type PlainType = typeof Plain.Type`
+export type PlainEncoded = typeof Plain.Encoded`
       expect(result).toBe(expected)
     })
 
@@ -1239,7 +1239,7 @@ export type PlainType = typeof Plain.Type`
         type: 'string',
         'x-brand': 'Id',
       })
-      expect(result).toContain('typeof Id.Type')
+      expect(result).toContain('typeof Id.Encoded')
     })
   })
 })

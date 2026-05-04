@@ -15,4 +15,4 @@ export const BrandedTypes = Schema.Struct({
   name: Schema.String,
 })
 
-export type BrandedTypesType = typeof BrandedTypes.Type
+export type BrandedTypesEncoded = typeof BrandedTypes.Encoded
