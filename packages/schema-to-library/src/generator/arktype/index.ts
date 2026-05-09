@@ -55,6 +55,25 @@ export function schemaToArktype(
       ? `type(${rootSchema})`
       : rootSchema
 
+  // x-allOf-message at the root: emit a sibling `${rootName}Inner` const so
+  // the strict schema retains type inference, then wrap with `.narrow()` to
+  // override sub-issue messages while preserving paths.
+  const allOfMessage = schema.allOf && schema['x-allOf-message']
+  if (allOfMessage) {
+    const innerName = `${rootName}Inner`
+    const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
+    const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
+    const wrapped = `type('unknown').narrow((v, ctx) => {const valid = ${innerName}(v); if (valid instanceof type.errors) {for (const issue of valid) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
+    return [
+      `import { type } from "arktype"`,
+      `const ${innerName} = ${rootExpr}`,
+      `export const ${rootName} = ${wrapped}`,
+      ...(exportType ? [`export type ${rootName} = typeof ${innerName}.infer`] : []),
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
   return [
     `import { type } from "arktype"`,
     `export const ${rootName} = ${rootExpr}`,
