@@ -36,20 +36,15 @@ describe('valibot enum', () => {
           enum: [1, 2, 3],
           'x-error-message': 'Invalid number',
         },
-        'v.union([v.literal(1,"Invalid number"),v.literal(2,"Invalid number"),v.literal(3,"Invalid number")],"Invalid number")',
-      ],
-      [
-        {
-          enum: ['red', 'green', 'blue'],
-          'x-enum-error-messages': {
-            red: 'Red is not allowed',
-            green: 'Green is not allowed',
-          },
-        },
-        "v.union([v.literal('red',\"Red is not allowed\"),v.literal('green',\"Green is not allowed\"),v.literal('blue')])",
+        'v.union([v.literal(1),v.literal(2),v.literal(3)],"Invalid number")',
       ],
     ])('_enum(%o) → %s', (input, expected) => {
       expect(_enum(input)).toBe(expected)
     })
   })
+
+  // x-enum-error-messages was removed: the extension generated dead code
+  // (per-literal branches that can never match a rejected input).
+  // Whole-enum messages now come from x-error-message; per-value
+  // business rules belong in handler code.
 })

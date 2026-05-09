@@ -292,8 +292,11 @@ export type JSONSchema = {
   readonly 'x-propertyNames-message'?: string
   /** dependentRequired constraint error message */
   readonly 'x-dependentRequired-message'?: string
-  /** Per-value enum error messages */
-  readonly 'x-enum-error-messages'?: { readonly [k: string]: string }
+  // x-enum-error-messages was removed: by design `enum` lists *allowed*
+  // values, so a per-value "cannot be ..." message is dead code — when the
+  // input matches an enum entry, validation passes (no error to display);
+  // when it doesn't match, it's some other value and per-value lookup
+  // can't fire. Use `x-error-message` for the whole-enum message instead.
 
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */

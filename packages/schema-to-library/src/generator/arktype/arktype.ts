@@ -56,16 +56,21 @@ export function arktype(
     return arktypeWrap(ref(schema), schema)
   }
 
+  const describeWithMessage = (expr: string, msg: unknown): string =>
+    typeof msg === 'string'
+      ? `${isQuoted(expr) ? `type(${expr})` : expr}.describe(${JSON.stringify(msg)})`
+      : expr
+
   if (schema.oneOf) {
     if (!schema.oneOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.oneOf.map((s) => arktype(s, rootName, isArktype, options))
-    return arktypeWrap(unionStr(schemas), schema)
+    return arktypeWrap(describeWithMessage(unionStr(schemas), schema['x-oneOf-message']), schema)
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
-    return arktypeWrap(unionStr(schemas), schema)
+    return arktypeWrap(describeWithMessage(unionStr(schemas), schema['x-anyOf-message']), schema)
   }
 
   if (schema.allOf) {
@@ -89,8 +94,12 @@ export function arktype(
   if (schema.not) {
     const inner = schema.not
     if (typeof inner !== 'object' || inner === null) return arktypeWrap('"unknown"', schema)
-    const narrow = (predicate: string) =>
-      arktypeWrap(`type("unknown").narrow(${predicate})`, schema)
+    const notMessage = schema['x-not-message']
+    const narrow = (predicate: string) => {
+      const base = `type("unknown").narrow(${predicate})`
+      const expr = notMessage ? `${base}.describe(${JSON.stringify(notMessage)})` : base
+      return arktypeWrap(expr, schema)
+    }
     const typePredicates: { readonly [k: string]: string } = {
       string: `(v: unknown) => typeof v !== 'string'`,
       number: `(v: unknown) => typeof v !== 'number'`,

@@ -72,15 +72,13 @@ describe('effect enum', () => {
         },
         'Schema.Union(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)),Schema.Tuple(Schema.Literal(3),Schema.Literal(4)))',
       ],
-      [
-        {
-          enum: ['a', 'b'],
-          'x-enum-error-messages': { a: 'is a', b: 'is b' },
-        },
-        'Schema.Union(Schema.Literal("a"),Schema.Literal("b"))',
-      ],
     ])('_enum(%o) → %s', (input, expected) => {
       expect(_enum(input)).toBe(expected)
     })
   })
+
+  // x-enum-error-messages was removed: the extension generated dead code
+  // (per-literal branches that can never match a rejected input).
+  // Whole-enum messages now come from x-error-message; per-value
+  // business rules belong in handler code.
 })

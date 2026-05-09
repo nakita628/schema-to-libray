@@ -5,6 +5,7 @@ import {
   resolveOpenAPIRef,
   toIdentifierPascalCase,
   toPascalCase,
+  valibotError,
 } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
@@ -72,19 +73,23 @@ export function valibot(
   if (schema.oneOf) {
     if (!schema.oneOf.length) return valibotWrap('v.any()', schema)
     const schemas = schema.oneOf.map((s) => valibot(s, rootName, isValibot, options))
+    const oneOfMessage = schema['x-oneOf-message']
+    const errorPart = oneOfMessage ? `,${valibotError(oneOfMessage)}` : ''
     const discriminator = schema.discriminator?.propertyName
     const hasRefOrAllOf = schema.oneOf.some((s) => s.$ref !== undefined || s.allOf !== undefined)
     const expr =
       discriminator && !hasRefOrAllOf
-        ? `v.variant('${discriminator}',[${schemas.join(',')}])`
-        : `v.union([${schemas.join(',')}])`
+        ? `v.variant('${discriminator}',[${schemas.join(',')}]${errorPart})`
+        : `v.union([${schemas.join(',')}]${errorPart})`
     return valibotWrap(expr, schema)
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return valibotWrap('v.any()', schema)
     const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
-    return valibotWrap(`v.union([${schemas.join(',')}])`, schema)
+    const anyOfMessage = schema['x-anyOf-message']
+    const errorPart = anyOfMessage ? `,${valibotError(anyOfMessage)}` : ''
+    return valibotWrap(`v.union([${schemas.join(',')}]${errorPart})`, schema)
   }
 
   if (schema.allOf) {
@@ -126,7 +131,10 @@ export function valibot(
   if (schema.not) {
     const inner = schema.not
     if (typeof inner !== 'object' || inner === null) return valibotWrap('v.any()', schema)
-    const custom = (predicate: string) => valibotWrap(`v.custom<unknown>(${predicate})`, schema)
+    const notMessage = schema['x-not-message']
+    const errorPart = notMessage ? `,${valibotError(notMessage)}` : ''
+    const custom = (predicate: string) =>
+      valibotWrap(`v.custom<unknown>(${predicate}${errorPart})`, schema)
     const typePredicates: { readonly [k: string]: string } = {
       string: `(v) => typeof v !== 'string'`,
       number: `(v) => typeof v !== 'number'`,

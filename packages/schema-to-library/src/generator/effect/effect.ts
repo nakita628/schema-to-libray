@@ -1,6 +1,7 @@
 import { effectWrap } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
+  effectError,
   normalizeTypes,
   resolveOpenAPIRef,
   toIdentifierPascalCase,
@@ -80,13 +81,23 @@ export function effect(
   if (schema.oneOf) {
     if (!schema.oneOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.oneOf.map((s) => effect(s, rootName, isEffect, options))
-    return effectWrap(`Schema.Union(${schemas.join(',')})`, schema)
+    const oneOfMessage = schema['x-oneOf-message']
+    const expr = `Schema.Union(${schemas.join(',')})`
+    return effectWrap(
+      oneOfMessage ? `${expr}.annotations(${effectError(oneOfMessage)})` : expr,
+      schema,
+    )
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
-    return effectWrap(`Schema.Union(${schemas.join(',')})`, schema)
+    const anyOfMessage = schema['x-anyOf-message']
+    const expr = `Schema.Union(${schemas.join(',')})`
+    return effectWrap(
+      anyOfMessage ? `${expr}.annotations(${effectError(anyOfMessage)})` : expr,
+      schema,
+    )
   }
 
   if (schema.allOf) {
@@ -128,8 +139,10 @@ export function effect(
   if (schema.not) {
     const inner = schema.not
     if (typeof inner !== 'object' || inner === null) return effectWrap('Schema.Unknown', schema)
+    const notMessage = schema['x-not-message']
+    const filterOpts = notMessage ? `,{message:()=>${JSON.stringify(notMessage)}}` : ''
     const filtered = (predicate: string) =>
-      effectWrap(`Schema.Unknown.pipe(Schema.filter(${predicate}))`, schema)
+      effectWrap(`Schema.Unknown.pipe(Schema.filter(${predicate}${filterOpts}))`, schema)
     const typePredicates: { readonly [k: string]: string } = {
       string: `(v) => typeof v !== 'string'`,
       number: `(v) => typeof v !== 'number'`,
