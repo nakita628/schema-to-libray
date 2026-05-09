@@ -102,7 +102,15 @@ export function valibot(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => valibot(s, rootName, isValibot, options))
     if (!schemas.length) return valibotWrap('v.any()', { ...schema, nullable })
-    const baseResult = schemas.length === 1 ? schemas[0] : `v.intersect([${schemas.join(',')}])`
+    const intersected = schemas.length === 1 ? schemas[0] : `v.intersect([${schemas.join(',')}])`
+    const allOfMessage = schema['x-allOf-message']
+    const baseResult = allOfMessage
+      ? (() => {
+          const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
+          const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
+          return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const valid=v.safeParse(${intersected},dataset.value);if(!valid.success){for(const issue of valid.issues){addIssue({message:${msgExpr},path:issue.path})}}}))`
+        })()
+      : intersected
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`

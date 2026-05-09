@@ -104,7 +104,15 @@ export function effect(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => effect(s, rootName, isEffect, options))
     if (!schemas.length) return effectWrap('Schema.Unknown', { ...schema, nullable })
-    const baseResult = schemas.length === 1 ? schemas[0] : `Schema.extend(${schemas.join(',')})`
+    const intersected = schemas.length === 1 ? schemas[0] : `Schema.extend(${schemas.join(',')})`
+    const allOfMessage = schema['x-allOf-message']
+    const baseResult = allOfMessage
+      ? (() => {
+          const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
+          const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
+          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const valid=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(valid)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(valid.right)},encode:ParseResult.succeed})`
+        })()
+      : intersected
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`

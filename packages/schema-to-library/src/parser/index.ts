@@ -284,6 +284,8 @@ export type JSONSchema = {
   readonly 'x-oneOf-message'?: string
   /** anyOf combinator error message */
   readonly 'x-anyOf-message'?: string
+  /** allOf combinator error message */
+  readonly 'x-allOf-message'?: string
   /** not combinator error message */
   readonly 'x-not-message'?: string
   /** propertyNames constraint error message */
