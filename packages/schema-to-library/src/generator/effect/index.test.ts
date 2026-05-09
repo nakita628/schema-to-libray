@@ -1239,7 +1239,12 @@ export type PlainEncoded = typeof Plain.Encoded`
         type: 'string',
         'x-brand': 'Id',
       })
-      expect(result).toContain('typeof Id.Encoded')
+      const expected = `import { Schema } from "effect"
+
+export const Id = Schema.String.pipe(Schema.brand("Id"))
+
+export type IdEncoded = typeof Id.Encoded`
+      expect(result).toBe(expected)
     })
   })
 })
