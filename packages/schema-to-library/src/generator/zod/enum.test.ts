@@ -37,24 +37,19 @@ describe('_enum', () => {
       ],
       [
         {
-          enum: ['active', 'inactive'],
-          'x-enum-error-messages': {
-            active: 'Must be active',
-            inactive: 'Must be inactive',
-          },
-        },
-        'z.union([z.literal(\'active\',{error:"Must be active"}),z.literal(\'inactive\',{error:"Must be inactive"})])',
-      ],
-      [
-        {
           type: 'number',
           enum: [1, 2, 3],
           'x-error-message': 'Must be 1, 2, or 3',
         },
-        'z.union([z.literal(1,{error:"Must be 1, 2, or 3"}),z.literal(2,{error:"Must be 1, 2, or 3"}),z.literal(3,{error:"Must be 1, 2, or 3"})],{error:"Must be 1, 2, or 3"})',
+        'z.union([z.literal(1),z.literal(2),z.literal(3)],{error:"Must be 1, 2, or 3"})',
       ],
     ])('_enum(%o) → %s', (input, expected) => {
       expect(_enum(input)).toBe(expected)
     })
   })
+
+  // x-enum-error-messages was removed: the extension generated dead code
+  // (per-literal `value === 'admin'` branches that can never match a
+  // rejected input). Whole-enum messages now come from x-error-message;
+  // per-value business rules belong in handler code.
 })

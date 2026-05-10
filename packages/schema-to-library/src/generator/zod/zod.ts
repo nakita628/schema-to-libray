@@ -117,7 +117,36 @@ export function zod(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => zod(s, rootName, isZod, options))
     if (!schemas.length) return zodWrap('z.any()', { ...schema, nullable })
-    const baseResult = schemas.length === 1 ? schemas[0] : `z.intersection(${schemas.join(',')})`
+    const intersected = schemas.length === 1 ? schemas[0] : `z.intersection(${schemas.join(',')})`
+    const allOfMessage = schema['x-allOf-message']
+    const baseResult = allOfMessage
+      ? (() => {
+          const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
+          const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
+          // Issue code order follows Zod v4's official source declaration order
+          // (zod/v4/core/errors.d.ts).
+          const codes = [
+            'invalid_type',
+            'too_big',
+            'too_small',
+            'invalid_format',
+            'not_multiple_of',
+            'unrecognized_keys',
+            'invalid_union',
+            'invalid_key',
+            'invalid_element',
+            'invalid_value',
+            'custom',
+          ] as const
+          const branches = codes
+            .map(
+              (c, i) =>
+                `${i === 0 ? '' : 'else '}if(issue.code==='${c}'){ctx.issues.push({...issue,input:issue.input,message:${msgExpr}})}`,
+            )
+            .join('')
+          return `(()=>{const Schema=${intersected};return z.unknown().check((ctx)=>{const valid=Schema.safeParse(ctx.value);if(!valid.success){for(const issue of valid.error.issues){${branches}}}}).pipe(Schema)})()`
+        })()
+      : intersected
     const merged = { ...schema, nullable }
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {

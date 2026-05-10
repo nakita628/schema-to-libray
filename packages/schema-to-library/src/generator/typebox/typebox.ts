@@ -82,16 +82,25 @@ export function typebox(
     return typeboxWrap(ref(schema), schema)
   }
 
+  const messageOpt = (msg: unknown): readonly string[] =>
+    typeof msg === 'string' ? [`errorMessage:${JSON.stringify(msg)}`] : []
+
   if (schema.oneOf) {
     if (!schema.oneOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, options))
-    return typeboxWrap(tbComp('Type.Union', `[${schemas.join(',')}]`, schema), schema)
+    return typeboxWrap(
+      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(schema['x-oneOf-message'])),
+      schema,
+    )
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, options))
-    return typeboxWrap(tbComp('Type.Union', `[${schemas.join(',')}]`, schema), schema)
+    return typeboxWrap(
+      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(schema['x-anyOf-message'])),
+      schema,
+    )
   }
 
   if (schema.allOf) {
@@ -110,7 +119,14 @@ export function typebox(
       .map((s) => typebox(s, rootName, isTypebox, options))
     if (!schemas.length) return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
     const baseResult =
-      schemas.length === 1 ? schemas[0] : tbComp('Type.Intersect', `[${schemas.join(',')}]`, schema)
+      schemas.length === 1
+        ? schemas[0]
+        : tbComp(
+            'Type.Intersect',
+            `[${schemas.join(',')}]`,
+            schema,
+            messageOpt(schema['x-allOf-message']),
+          )
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`
@@ -128,7 +144,12 @@ export function typebox(
     if (typeof inner !== 'object' || inner === null)
       return typeboxWrap(tbPrim('Type.Any', schema), schema)
     return typeboxWrap(
-      tbComp('Type.Not', typebox(inner, rootName, isTypebox, options), schema),
+      tbComp(
+        'Type.Not',
+        typebox(inner, rootName, isTypebox, options),
+        schema,
+        messageOpt(schema['x-not-message']),
+      ),
       schema,
     )
   }

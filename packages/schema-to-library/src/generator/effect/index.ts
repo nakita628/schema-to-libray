@@ -98,9 +98,17 @@ export function schemaToEffect(
     ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
+  // Detect if x-allOf-message wrap is used (introduces Either and ParseResult usage)
+  const usesTransformWrap =
+    rootSchema.includes('ParseResult.') &&
+    (rootSchema.includes('Either.isLeft') || schemaDefsCode.includes('Either.isLeft'))
+  const importLine = usesTransformWrap
+    ? `import { Either, ParseResult, Schema } from "effect"`
+    : `import { Schema } from "effect"`
+
   // Assemble output
   return [
-    `import { Schema } from "effect"`,
+    importLine,
     typeDefsCode,
     schemaDefsCode,
     rootExport,
