@@ -43,9 +43,7 @@ export function _enum(schema: JSONSchema) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
       return outerTuple(schema.enum[0])
     }
-    const parts = schema.enum.map((v: unknown) =>
-      Array.isArray(v) ? innerTuple(v) : innerLit(v),
-    )
+    const parts = schema.enum.map((v: unknown) => (Array.isArray(v) ? innerTuple(v) : innerLit(v)))
     return `v.union([${parts.join(',')}]${errorArg})`
   }
   if (schema.enum.every((v: unknown) => typeof v === 'string')) {
