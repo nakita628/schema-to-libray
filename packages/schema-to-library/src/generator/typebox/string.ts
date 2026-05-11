@@ -13,28 +13,39 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema) {
-  // v3.0: TypeBox uses ajv-errors–compatible `errorMessage` annotation —
-  // a single object whose keys are JSON-Schema keyword names (or `_` for
-  // generic fallback). Aggregate all relevant x-*-message extensions.
+  // ajv-errors `errorMessage` accepts two shapes:
+  //   - string  → used as a single message for any validation failure
+  //   - object  → per-keyword messages keyed by JSON Schema keyword
+  // When only `x-error-message` is set we emit the string form (the
+  // common case). Per-keyword messages flip us into object form, with
+  // `x-error-message` joining as the catch-all under the ajv-errors `_`
+  // convention.
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
   const sizeMessage = schema['x-size-message']
   const minLengthMessage = schema['x-minLength-message']
   const maxLengthMessage = schema['x-maxLength-message']
-  const errMsgEntries: string[] = []
-  if (errorMessage) errMsgEntries.push(`type:${JSON.stringify(errorMessage)}`)
-  if (requiredMessage) errMsgEntries.push(`required:${JSON.stringify(requiredMessage)}`)
-  if (patternMessage) errMsgEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
-  if (minLengthMessage) errMsgEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
-  if (maxLengthMessage) errMsgEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
+  const perKeywordEntries: string[] = []
+  if (requiredMessage) perKeywordEntries.push(`required:${JSON.stringify(requiredMessage)}`)
+  if (patternMessage) perKeywordEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
+  if (minLengthMessage)
+    perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
+  if (maxLengthMessage)
+    perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
   if (sizeMessage) {
     // exact length → both minLength and maxLength constraints
-    errMsgEntries.push(`minLength:${JSON.stringify(sizeMessage)}`)
-    errMsgEntries.push(`maxLength:${JSON.stringify(sizeMessage)}`)
+    perKeywordEntries.push(`minLength:${JSON.stringify(sizeMessage)}`)
+    perKeywordEntries.push(`maxLength:${JSON.stringify(sizeMessage)}`)
   }
   const errMsg =
-    errMsgEntries.length > 0 ? `errorMessage:{${errMsgEntries.join(',')}}` : undefined
+    perKeywordEntries.length === 0
+      ? errorMessage
+        ? `errorMessage:${JSON.stringify(errorMessage)}`
+        : undefined
+      : `errorMessage:{${perKeywordEntries.join(',')}${
+          errorMessage ? `,_:${JSON.stringify(errorMessage)}` : ''
+        }}`
 
   const isFixedLength =
     schema.minLength !== undefined &&
