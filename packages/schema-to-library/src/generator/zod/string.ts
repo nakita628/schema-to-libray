@@ -1,5 +1,5 @@
 import type { JSONSchema } from '../../parser/index.js'
-import { zodError } from '../../utils/index.js'
+import { zodBaseError, zodError } from '../../utils/index.js'
 
 const FORMAT_STRING: { readonly [k: string]: string } = {
   email: 'email()',
@@ -32,15 +32,19 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
 
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
-  const baseErrorArg = errorMessage ? zodError(errorMessage) : ''
+  const requiredMessage = schema['x-required-message']
+  const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
   const sizeMessage = schema['x-size-message']
   const sizeErrorPart = sizeMessage ? `,${zodError(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
-  const minErrorPart = minimumMessage ? `,${zodError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
-  const maxErrorPart = maximumMessage ? `,${zodError(maximumMessage)}` : ''
+  // v3.0: string length uses x-minLength-message / x-maxLength-message
+  // (split from the previous shared x-minimum-message / x-maximum-message
+  // numeric-only slots).
+  const minLengthMessage = schema['x-minLength-message']
+  const minErrorPart = minLengthMessage ? `,${zodError(minLengthMessage)}` : ''
+  const maxLengthMessage = schema['x-maxLength-message']
+  const maxErrorPart = maxLengthMessage ? `,${zodError(maxLengthMessage)}` : ''
   const format = schema.format && FORMAT_STRING[schema.format]
   const base = format
     ? `z.${format.replace(/\(\)$/, `(${baseErrorArg})`)}`

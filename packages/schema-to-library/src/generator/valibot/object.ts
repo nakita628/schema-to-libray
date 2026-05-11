@@ -27,18 +27,21 @@ export function object(
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minProperties-message']
   const minErrorArg = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxProperties-message']
   const maxErrorArg = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
-  const patternMessage = schema['x-pattern-message']
-  const patternErrorArg = patternMessage ? `,${valibotError(patternMessage)}` : ''
+  // v3.0: 1 keyword = 1 message
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const patternErrorArg = patternPropsMessage ? `,${valibotError(patternPropsMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage
-    ? `,${valibotError(propNamesMessage)}`
-    : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${valibotError(propNamesMessage)}` : ''
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${valibotError(depReqMessage)}` : errorArg
+  const depSchMessage = schema['x-dependentSchemas-message']
+  const depSchErrorArg = depSchMessage ? `,${valibotError(depSchMessage)}` : errorArg
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const addlPropsErrorArg = addlPropsMessage ? `,${valibotError(addlPropsMessage)}` : ''
 
   const propertyNamesCheck = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -108,6 +111,18 @@ export function object(
         return `v.check((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
       })
     : []
+  // v3.0: dependentSchemas
+  const dependentSchemasChecks: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = valibot(subSchema, rootName, isValibot, options)
+        return `v.check((o)=>!('${key}' in o)||v.safeParse(${s},o).success${depSchErrorArg})`
+      })
+    : []
+  // v3.0: x-additionalProperties-message
+  const additionalPropertiesCheck =
+    schema.additionalProperties === false && addlPropsMessage
+      ? `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
+      : ''
 
   const actions = [
     minPropertiesCheck,
@@ -115,6 +130,8 @@ export function object(
     propertyNamesCheck(),
     ...patternPropertiesChecks(),
     ...dependentRequiredChecks,
+    ...dependentSchemasChecks,
+    additionalPropertiesCheck,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase

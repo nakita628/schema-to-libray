@@ -3,13 +3,29 @@ import type { JSONSchema } from '../../parser/index.js'
 
 export function integer(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
+  const requiredMessage = schema['x-required-message']
+  const minMessage = schema['x-minimum-message']
+  const maxMessage = schema['x-maximum-message']
+  const exMinMessage = schema['x-exclusiveMinimum-message']
+  const exMaxMessage = schema['x-exclusiveMaximum-message']
+  const multipleOfMessage = schema['x-multipleOf-message']
+  const errMsgEntries: string[] = []
+  if (errorMessage) errMsgEntries.push(`type:${JSON.stringify(errorMessage)}`)
+  if (requiredMessage) errMsgEntries.push(`required:${JSON.stringify(requiredMessage)}`)
+  if (minMessage) errMsgEntries.push(`minimum:${JSON.stringify(minMessage)}`)
+  if (maxMessage) errMsgEntries.push(`maximum:${JSON.stringify(maxMessage)}`)
+  if (exMinMessage) errMsgEntries.push(`exclusiveMinimum:${JSON.stringify(exMinMessage)}`)
+  if (exMaxMessage) errMsgEntries.push(`exclusiveMaximum:${JSON.stringify(exMaxMessage)}`)
+  if (multipleOfMessage) errMsgEntries.push(`multipleOf:${JSON.stringify(multipleOfMessage)}`)
+  const errMsg =
+    errMsgEntries.length > 0 ? `errorMessage:{${errMsgEntries.join(',')}}` : undefined
   const metaOpts = typeboxMetaOpts(schema)
 
   if (schema.format === 'bigint') {
     const opts = [
       schema.minimum !== undefined ? `minimum:BigInt(${schema.minimum})` : undefined,
       schema.maximum !== undefined ? `maximum:BigInt(${schema.maximum})` : undefined,
-      errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+      errMsg,
       ...metaOpts,
     ].filter((v) => v !== undefined)
 
@@ -27,7 +43,7 @@ export function integer(schema: JSONSchema) {
       ? `exclusiveMaximum:${schema.exclusiveMaximum}`
       : undefined,
     schema.multipleOf !== undefined ? `multipleOf:${schema.multipleOf}` : undefined,
-    errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
+    errMsg,
     ...metaOpts,
   ].filter((v) => v !== undefined)
 

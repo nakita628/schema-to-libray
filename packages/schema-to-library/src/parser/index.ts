@@ -267,36 +267,73 @@ export type JSONSchema = {
     readonly description?: string
   }
 
-  // ── Vendor Extensions (x-*) ──────────────────────────────────────
-  /** General error message */
+  // ── Vendor Extensions (x-*) — v3.0: 1 keyword = 1 message ─────────
+  // Common (any schema type)
+  /** General error / type-mismatch fallback */
   readonly 'x-error-message'?: string
-  /** Pattern validation error message */
-  readonly 'x-pattern-message'?: string
-  /** Minimum constraint error message */
+  /** Missing required (`issue.input === undefined`) */
+  readonly 'x-required-message'?: string
+  /** `const` literal mismatch */
+  readonly 'x-const-message'?: string
+  /** `enum` value not in allowed list */
+  readonly 'x-enum-message'?: string
+  // Numeric
+  /** `minimum` (inclusive) */
   readonly 'x-minimum-message'?: string
-  /** Maximum constraint error message */
+  /** `maximum` (inclusive) */
   readonly 'x-maximum-message'?: string
-  /** Size constraint error message */
-  readonly 'x-size-message'?: string
-  /** MultipleOf constraint error message */
+  /** `exclusiveMinimum` (`>`) */
+  readonly 'x-exclusiveMinimum-message'?: string
+  /** `exclusiveMaximum` (`<`) */
+  readonly 'x-exclusiveMaximum-message'?: string
+  /** `multipleOf` */
   'x-multipleOf-message'?: string
-  /** oneOf combinator error message */
-  readonly 'x-oneOf-message'?: string
-  /** anyOf combinator error message */
-  readonly 'x-anyOf-message'?: string
-  /** allOf combinator error message */
-  readonly 'x-allOf-message'?: string
-  /** not combinator error message */
-  readonly 'x-not-message'?: string
-  /** propertyNames constraint error message */
+  // String
+  /** `minLength` */
+  readonly 'x-minLength-message'?: string
+  /** `maxLength` */
+  readonly 'x-maxLength-message'?: string
+  /** `pattern` (`.regex()`) */
+  readonly 'x-pattern-message'?: string
+  /** Exact length (`minLength === maxLength`) */
+  readonly 'x-size-message'?: string
+  // Array
+  /** `minItems` */
+  readonly 'x-minItems-message'?: string
+  /** `maxItems` */
+  readonly 'x-maxItems-message'?: string
+  /** `uniqueItems` */
+  readonly 'x-uniqueItems-message'?: string
+  /** `contains` alone (at least 1 type-match) */
+  readonly 'x-contains-message'?: string
+  /** `minContains` (count lower bound) */
+  readonly 'x-minContains-message'?: string
+  /** `maxContains` (count upper bound) */
+  readonly 'x-maxContains-message'?: string
+  // Object
+  /** `minProperties` */
+  readonly 'x-minProperties-message'?: string
+  /** `maxProperties` */
+  readonly 'x-maxProperties-message'?: string
+  /** `additionalProperties: false` (`unrecognized_keys`) */
+  readonly 'x-additionalProperties-message'?: string
+  /** `propertyNames` pattern / enum check */
   readonly 'x-propertyNames-message'?: string
-  /** dependentRequired constraint error message */
+  /** `patternProperties` value check */
+  readonly 'x-patternProperties-message'?: string
+  /** `dependentRequired` (key A ⇒ key B required) */
   readonly 'x-dependentRequired-message'?: string
-  // x-enum-error-messages was removed: by design `enum` lists *allowed*
-  // values, so a per-value "cannot be ..." message is dead code — when the
-  // input matches an enum entry, validation passes (no error to display);
-  // when it doesn't match, it's some other value and per-value lookup
-  // can't fire. Use `x-error-message` for the whole-enum message instead.
+  /** `dependentSchemas` (key A ⇒ sub-schema applies) */
+  readonly 'x-dependentSchemas-message'?: string
+  // Combinators
+  /** `oneOf` (`z.xor` / `z.discriminatedUnion`) */
+  readonly 'x-oneOf-message'?: string
+  /** `anyOf` (`z.union`) */
+  readonly 'x-anyOf-message'?: string
+  /** `allOf` composition */
+  readonly 'x-allOf-message'?: string
+  /** `not` predicate */
+  readonly 'x-not-message'?: string
 
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */

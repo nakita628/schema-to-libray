@@ -16,14 +16,22 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
-  const baseErrorArg = errorMessage ? valibotError(errorMessage) : ''
+  // v3.0: x-required-message — for valibot, the base v.string(msg) covers both
+  // type mismatch and missing-input semantics (v.optional handles undefined).
+  // When only x-required-message is set, use it as the base error.
+  const requiredMessage = schema['x-required-message']
+  const baseErrorArg = errorMessage
+    ? valibotError(errorMessage)
+    : requiredMessage
+      ? valibotError(requiredMessage)
+      : ''
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${valibotError(patternMessage)}` : ''
   const sizeMessage = schema['x-size-message']
   const sizeErrorPart = sizeMessage ? `,${valibotError(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
   const format = schema.format && FORMAT_PIPE[schema.format]
   const formatAction = format

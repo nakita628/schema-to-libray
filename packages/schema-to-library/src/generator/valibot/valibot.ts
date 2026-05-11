@@ -163,8 +163,12 @@ export function valibot(
     return custom(`(v) => !v.safeParse(${innerExpr},v).success`)
   }
 
-  if (schema.const !== undefined)
-    return valibotWrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.const !== undefined) {
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const errorPart = constMessage ? `,${valibotError(constMessage)}` : ''
+    return valibotWrap(`v.literal(${JSON.stringify(schema.const)}${errorPart})`, schema)
+  }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
@@ -186,17 +190,61 @@ export function valibot(
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
+    // v3.0: per-keyword messages
+    const sizeMsg = schema['x-size-message']
+    const sizeArg = sizeMsg ? `,${valibotError(sizeMsg)}` : ''
+    const minItemsMsg = schema['x-minItems-message']
+    const minArg = minItemsMsg ? `,${valibotError(minItemsMsg)}` : ''
+    const maxItemsMsg = schema['x-maxItems-message']
+    const maxArg = maxItemsMsg ? `,${valibotError(maxItemsMsg)}` : ''
+    const uniqueMsg = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueMsg ? `,${valibotError(uniqueMsg)}` : ''
+    // v3.0: contains / minContains / maxContains as separate checks
+    const containsActions = (() => {
+      const c = schema.contains
+      if (!c) return [] as readonly string[]
+      const containsSchema = valibot(c, rootName, isValibot, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const errorMsg = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMsg
+      const out: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const msg = fallback ? `,${valibotError(fallback)}` : ''
+        out.push(
+          `v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${msg})`,
+        )
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minMsg = schema['x-minContains-message'] ?? fallback
+          const minMsgArg = minMsg ? `,${valibotError(minMsg)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minMsgArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxMsg = schema['x-maxContains-message'] ?? fallback
+          const maxMsgArg = maxMsg ? `,${valibotError(maxMsg)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxMsgArg})`,
+          )
+        }
+      }
+      return out
+    })()
     const actions = [
-      isFixedLength ? `v.length(${schema.minItems})` : undefined,
+      isFixedLength ? `v.length(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `v.minLength(${schema.minItems})`
+        ? `v.minLength(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `v.maxLength(${schema.maxItems})`
+        ? `v.maxLength(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `v.check((items) => new Set(items).size === items.length)`
+        ? `v.check((items) => new Set(items).size === items.length${uniqueArg})`
         : undefined,
+      ...containsActions,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `v.pipe(${base},${actions.join(',')})` : base
     return readonly(valibotWrap(arrayExpr, schema))

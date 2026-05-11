@@ -24,16 +24,19 @@ export function object(
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
-  const minErrorArg = minimumMessage ? `,${zodError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
-  const maxErrorArg = maximumMessage ? `,${zodError(maximumMessage)}` : ''
-  const patternMessage = schema['x-pattern-message']
-  const patternErrorArg = patternMessage ? `,${zodError(patternMessage)}` : ''
+  // v3.0: 1 keyword = 1 message
+  const minPropsMessage = schema['x-minProperties-message']
+  const minErrorArg = minPropsMessage ? `,${zodError(minPropsMessage)}` : ''
+  const maxPropsMessage = schema['x-maxProperties-message']
+  const maxErrorArg = maxPropsMessage ? `,${zodError(maxPropsMessage)}` : ''
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const patternErrorArg = patternPropsMessage ? `,${zodError(patternPropsMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage ? `,${zodError(propNamesMessage)}` : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${zodError(propNamesMessage)}` : ''
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${zodError(depReqMessage)}` : errorArg
+  const depSchMessage = schema['x-dependentSchemas-message']
+  const depSchErrorArg = depSchMessage ? `,${zodError(depSchMessage)}` : errorArg
 
   // ── additionalProperties: schema → z.record(...) + propertyNames + patternProperties ──
   // NOTE: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
@@ -76,11 +79,18 @@ export function object(
       return `${safeKey}:${parsed}${required.includes(key) ? '' : '.optional()'}`
     })
     .filter((v) => v !== null)
+  // v3.0: x-additionalProperties-message attaches a custom message to the
+  // `unrecognized_keys` issue (only meaningful for strictObject).
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const objectParams =
+    objectType === 'strictObject' && addlPropsMessage
+      ? `,{error:(issue)=>issue.code==='unrecognized_keys'?${JSON.stringify(addlPropsMessage)}:${errorMessage ? JSON.stringify(errorMessage) : 'undefined'}}`
+      : ''
 
   const partialBase =
     required.length === 0 && props.every((p) => p.includes('.optional()'))
-      ? `z.${objectType}({${props.map((p) => p.replace('.optional()', '')).join(',')}}).partial()`
-      : `z.${objectType}({${props.join(',')}})`
+      ? `z.${objectType}({${props.map((p) => p.replace('.optional()', '')).join(',')}}${objectParams}).partial()`
+      : `z.${objectType}({${props.join(',')}}${objectParams})`
 
   const minProperties =
     typeof schema.minProperties === 'number'
@@ -111,6 +121,16 @@ export function object(
         })
         .join('')
     : ''
+  // v3.0: dependentSchemas — sub-schema validation when dependency key present.
+  // Uses its own x-dependentSchemas-message (distinct from x-dependentRequired-message).
+  const dependentSchemas = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas)
+        .map(([key, subSchema]) => {
+          const subZod = zod(subSchema, rootName, isZod, options)
+          return `.refine((o)=>!('${key}' in o)||${subZod}.safeParse(o).success${depSchErrorArg})`
+        })
+        .join('')
+    : ''
 
-  return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}`
+  return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}`
 }

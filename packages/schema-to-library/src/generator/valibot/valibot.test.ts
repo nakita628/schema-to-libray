@@ -450,8 +450,8 @@ describe('valibot', () => {
         [{ type: 'number', minimum: 100 }, 'v.pipe(v.number(),v.minValue(100))'],
         [{ type: 'number', maximum: 100 }, 'v.pipe(v.number(),v.maxValue(100))'],
         [{ type: 'number', maximum: 0 }, 'v.pipe(v.number(),v.maxValue(0))'],
-        [{ type: 'number', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.minValue(10))'],
-        [{ type: 'number', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.maxValue(10))'],
+        [{ type: 'number', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.gtValue(10))'],
+        [{ type: 'number', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.ltValue(10))'],
         [{ type: 'number', multipleOf: 2 }, 'v.pipe(v.number(),v.multipleOf(2))'],
         [{ type: 'number', default: 100 }, 'v.optional(v.number(),100)'],
         [
@@ -477,11 +477,11 @@ describe('valibot', () => {
         [{ type: 'integer', maximum: 0 }, 'v.pipe(v.number(),v.integer(),v.maxValue(0))'],
         [
           { type: 'integer', exclusiveMinimum: 10 },
-          'v.pipe(v.number(),v.integer(),v.minValue(10))',
+          'v.pipe(v.number(),v.integer(),v.gtValue(10))',
         ],
         [
           { type: 'integer', exclusiveMaximum: 10 },
-          'v.pipe(v.number(),v.integer(),v.maxValue(10))',
+          'v.pipe(v.number(),v.integer(),v.ltValue(10))',
         ],
         [{ type: 'integer', multipleOf: 2 }, 'v.pipe(v.number(),v.integer(),v.multipleOf(2))'],
         [{ type: 'integer', default: 100 }, 'v.optional(v.pipe(v.number(),v.integer()),100)'],

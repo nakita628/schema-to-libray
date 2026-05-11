@@ -59,9 +59,35 @@ export function object(
     })
     .filter((p) => p !== null)
 
+  // v3.0: aggregate all v3.0 object-related x-*-message extensions
+  // into a single ajv-errors–compatible `errorMessage` annotation.
+  const objErrMsgEntries: string[] = []
+  const objErrorMsg = schema['x-error-message']
+  if (objErrorMsg) objErrMsgEntries.push(`type:${JSON.stringify(objErrorMsg)}`)
+  const objMinPropsMsg = schema['x-minProperties-message']
+  if (objMinPropsMsg) objErrMsgEntries.push(`minProperties:${JSON.stringify(objMinPropsMsg)}`)
+  const objMaxPropsMsg = schema['x-maxProperties-message']
+  if (objMaxPropsMsg) objErrMsgEntries.push(`maxProperties:${JSON.stringify(objMaxPropsMsg)}`)
+  const objAddlPropsMsg = schema['x-additionalProperties-message']
+  if (objAddlPropsMsg)
+    objErrMsgEntries.push(`additionalProperties:${JSON.stringify(objAddlPropsMsg)}`)
+  const objPropNamesMsg = schema['x-propertyNames-message']
+  if (objPropNamesMsg) objErrMsgEntries.push(`propertyNames:${JSON.stringify(objPropNamesMsg)}`)
+  const objPatternPropsMsg = schema['x-patternProperties-message']
+  if (objPatternPropsMsg)
+    objErrMsgEntries.push(`patternProperties:${JSON.stringify(objPatternPropsMsg)}`)
+  const objDepReqMsg = schema['x-dependentRequired-message']
+  if (objDepReqMsg) objErrMsgEntries.push(`dependentRequired:${JSON.stringify(objDepReqMsg)}`)
+  const objDepSchMsg = schema['x-dependentSchemas-message']
+  if (objDepSchMsg) objErrMsgEntries.push(`dependentSchemas:${JSON.stringify(objDepSchMsg)}`)
+  const objReqMsg = schema['x-required-message']
+  if (objReqMsg) objErrMsgEntries.push(`required:${JSON.stringify(objReqMsg)}`)
+  const objErrMsg =
+    objErrMsgEntries.length > 0 ? `errorMessage:{${objErrMsgEntries.join(',')}}` : undefined
   const optParts = [
     schema.additionalProperties === false ? 'additionalProperties:false' : undefined,
     ...buildAdvancedOpts(schema, rootName, isTypebox, options),
+    objErrMsg,
     ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
   const opts = optParts.length > 0 ? `,{${optParts.join(',')}}` : ''

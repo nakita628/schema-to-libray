@@ -135,6 +135,92 @@ export type User = Static<typeof User>
 export type User = typeof User.infer
 ```
 
+## Custom Validation Error Messages (`x-*-message`)
+
+Each generator wires JSON Schema-style validation error messages into the target validator's native error API. Coverage varies per validator due to API differences.
+
+### Coverage Matrix (30 extensions)
+
+| Category | Extension | zod | valibot | effect | arktype | typebox |
+| --- | --- | :-: | :-: | :-: | :-: | :-: |
+| Common | `x-error-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Common | `x-required-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Common | `x-const-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Common | `x-enum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Numeric | `x-minimum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Numeric | `x-maximum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Numeric | `x-exclusiveMinimum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Numeric | `x-exclusiveMaximum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Numeric | `x-multipleOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| String | `x-minLength-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| String | `x-maxLength-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| String | `x-pattern-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| String | `x-size-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-minItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-maxItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-uniqueItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-contains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-minContains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Array | `x-maxContains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-minProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-maxProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-additionalProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-propertyNames-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-patternProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-dependentRequired-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Object | `x-dependentSchemas-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Combinators | `x-allOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Combinators | `x-anyOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Combinators | `x-oneOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Combinators | `x-not-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Total** | | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** |
+
+All 5 generators reach **full 30/30 v3.0 parity**. The translation strategy per generator:
+
+- **Zod** — native `z.<type>({error: 'msg'})` arguments and `.refine((v, ctx) => ctx.addIssue(...))`-style hooks
+- **Valibot** — `v.minLength(n, 'msg')` style action arguments and `v.check((v) => ..., 'msg')` for advanced keywords
+- **Effect** — `Schema.minLength(n, { message: () => 'msg' })` and `Schema.filter((v) => ..., { message: ... })`
+- **Arktype** — DSL constraints + `.describe('msg')` for type-level messages, and `.narrow((v, ctx) => check || ctx.mustBe('msg'))` for per-keyword messages
+- **TypeBox** — ajv-errors–compatible `errorMessage: { type: 'msg', minLength: 'msg', ... }` annotation aggregating all keyword messages
+
+### Quick Example (Zod)
+
+```yaml
+# input.yaml
+type: object
+required: [name, age]
+properties:
+  name:
+    type: string
+    minLength: 1
+    maxLength: 50
+    x-error-message: 'Name must be a string'
+    x-minLength-message: 'Name cannot be empty'
+    x-maxLength-message: 'Name must be at most 50 characters'
+  age:
+    type: integer
+    minimum: 0
+    maximum: 120
+    x-minimum-message: 'Age must be >= 0'
+    x-maximum-message: 'Age must be <= 120'
+```
+
+```ts
+// schema-to-zod -i input.yaml -o output.ts
+import { z } from 'zod'
+
+export const Root = z.object({
+  name: z
+    .string({ error: 'Name must be a string' })
+    .min(1, { error: 'Name cannot be empty' })
+    .max(50, { error: 'Name must be at most 50 characters' }),
+  age: z
+    .int()
+    .min(0, { error: 'Age must be >= 0' })
+    .max(120, { error: 'Age must be <= 120' }),
+})
+```
+
 ## License
 
 Distributed under the MIT License. See [LICENSE](https://github.com/nakita628/schema-to-libray?tab=MIT-1-ov-file) for more information.

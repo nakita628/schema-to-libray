@@ -67,6 +67,23 @@ export function zodError(message: string) {
 }
 
 /**
+ * Build the base `{error:...}` argument for a Zod v4 schema constructor when
+ * `x-error-message` (type / generic) and/or `x-required-message`
+ * (`issue.input === undefined`) are present.
+ */
+export function zodBaseError(
+  typeMessage: string | undefined,
+  requiredMessage: string | undefined,
+): string {
+  if (typeMessage === undefined && requiredMessage === undefined) return ''
+  if (requiredMessage === undefined && typeMessage !== undefined) return zodError(typeMessage)
+  if (requiredMessage !== undefined && typeMessage === undefined) {
+    return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:undefined}`
+  }
+  return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:${JSON.stringify(typeMessage as string)}}`
+}
+
+/**
  * Format an error message argument for Valibot.
  *
  * @example

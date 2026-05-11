@@ -42,8 +42,8 @@ const schemaWithGranularMessages = {
       type: 'string',
       minLength: 1,
       maxLength: 100,
-      'x-minimum-message': 'Name cannot be empty',
-      'x-maximum-message': 'Name too long',
+      'x-minLength-message': 'Name cannot be empty',
+      'x-maxLength-message': 'Name too long',
     },
     sku: {
       type: 'string',

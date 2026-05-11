@@ -17,14 +17,16 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema) {
-  const errorMessage = schema['x-error-message']
+  // v3.0: x-required-message falls back to base annotation when no
+  // x-error-message; Effect Schema has no native required dispatch.
+  const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${effectError(patternMessage)}` : ''
   const sizeMessage = schema['x-size-message']
   const sizeErrorPart = sizeMessage ? `,${effectError(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
   const isFixedLength =
     schema.minLength !== undefined &&

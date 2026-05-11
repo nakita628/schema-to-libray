@@ -210,8 +210,9 @@ export function zod(
       typeof value === 'string' ||
       typeof value === 'number' ||
       typeof value === 'boolean'
-    const errorMessage = schema['x-error-message']
-    const errorPart = errorMessage ? `,${zodError(errorMessage)}` : ''
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const errorPart = constMessage ? `,${zodError(constMessage)}` : ''
     return zodWrap(
       isPrimitive
         ? `z.literal(${JSON.stringify(value)}${errorPart})`
@@ -237,12 +238,13 @@ export function zod(
     const baseError = errorMessage ? `,${zodError(errorMessage)}` : ''
     const sizeMessage = schema['x-size-message']
     const sizeError = sizeMessage ? `,${zodError(sizeMessage)}` : ''
-    const minimumMessage = schema['x-minimum-message']
-    const minError = minimumMessage ? `,${zodError(minimumMessage)}` : ''
-    const maximumMessage = schema['x-maximum-message']
-    const maxError = maximumMessage ? `,${zodError(maximumMessage)}` : ''
-    const patternMessage = schema['x-pattern-message']
-    const patternError = patternMessage ? `,${zodError(patternMessage)}` : ''
+    // v3.0: 1 keyword = 1 message — split array length / uniqueItems / contains
+    const minItemsMessage = schema['x-minItems-message']
+    const minError = minItemsMessage ? `,${zodError(minItemsMessage)}` : ''
+    const maxItemsMessage = schema['x-maxItems-message']
+    const maxError = maxItemsMessage ? `,${zodError(maxItemsMessage)}` : ''
+    const uniqueMessage = schema['x-uniqueItems-message']
+    const uniqueError = uniqueMessage ? `,${zodError(uniqueMessage)}` : ''
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => zod(s, rootName, isZod, options))
       return readonly(zodWrap(`z.tuple([${items.join(',')}]${baseError})`, schema))
@@ -252,19 +254,53 @@ export function zod(
     const base = `z.array(${item}${baseError})`
     const unique =
       schema.uniqueItems === true
-        ? `.refine((items)=>new Set(items).size===items.length${patternError})`
+        ? `.refine((items)=>new Set(items).size===items.length${uniqueError})`
         : ''
+    // v3.0: contains / minContains / maxContains as separate refines for
+    // independent error messages (silent-bug fix).
+    const containsChain = (() => {
+      const c = schema.contains
+      if (!c) return ''
+      const containsZod = zod(c, rootName, isZod, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const fallback = schema['x-contains-message'] ?? errorMessage
+      const parts: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const msg = fallback ? `,${zodError(fallback)}` : ''
+        parts.push(
+          `.refine((arr)=>{const Schema=${containsZod};return arr.some((i)=>Schema.safeParse(i).success)}${msg})`,
+        )
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minMsg = schema['x-minContains-message'] ?? fallback
+          const minMsgArg = minMsg ? `,${zodError(minMsg)}` : ''
+          parts.push(
+            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length>=${effectiveMin}}${minMsgArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxMsg = schema['x-maxContains-message'] ?? fallback
+          const maxMsgArg = maxMsg ? `,${zodError(maxMsg)}` : ''
+          parts.push(
+            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length<=${maxC}}${maxMsgArg})`,
+          )
+        }
+      }
+      return parts.join('')
+    })()
     const { minItems, maxItems } = schema
     const arrayExpr =
       typeof minItems === 'number' && typeof maxItems === 'number'
         ? minItems === maxItems
-          ? `${base}.length(${minItems}${sizeError})${unique}`
-          : `${base}.min(${minItems}${minError}).max(${maxItems}${maxError})${unique}`
+          ? `${base}.length(${minItems}${sizeError})${unique}${containsChain}`
+          : `${base}.min(${minItems}${minError}).max(${maxItems}${maxError})${unique}${containsChain}`
         : typeof minItems === 'number'
-          ? `${base}.min(${minItems}${minError})${unique}`
+          ? `${base}.min(${minItems}${minError})${unique}${containsChain}`
           : typeof maxItems === 'number'
-            ? `${base}.max(${maxItems}${maxError})${unique}`
-            : `${base}${unique}`
+            ? `${base}.max(${maxItems}${maxError})${unique}${containsChain}`
+            : `${base}${unique}${containsChain}`
     return readonly(zodWrap(arrayExpr, schema))
   }
 

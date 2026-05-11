@@ -88,7 +88,7 @@ describe('object', () => {
       ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
     })
 
-    it('emits both with x-minimum-message / x-maximum-message', () => {
+    it('emits both with x-minProperties-message / x-maxProperties-message', () => {
       expect(
         object(
           {
@@ -97,8 +97,8 @@ describe('object', () => {
             required: ['a'],
             minProperties: 1,
             maxProperties: 3,
-            'x-minimum-message': 'too few',
-            'x-maximum-message': 'too many',
+            'x-minProperties-message': 'too few',
+            'x-maxProperties-message': 'too many',
           },
           'Schema',
           false,

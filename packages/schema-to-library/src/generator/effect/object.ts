@@ -23,16 +23,21 @@ export function object(
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${effectError(errorMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minProperties-message']
   const minErrorArg = minimumMessage ? `,${effectError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxProperties-message']
   const maxErrorArg = maximumMessage ? `,${effectError(maximumMessage)}` : ''
-  const patternMessage = schema['x-pattern-message']
-  const patternErrorArg = patternMessage ? `,${effectError(patternMessage)}` : ''
+  // v3.0: 1 keyword = 1 message
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const patternErrorArg = patternPropsMessage ? `,${effectError(patternPropsMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage ? `,${effectError(propNamesMessage)}` : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${effectError(propNamesMessage)}` : ''
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${effectError(depReqMessage)}` : errorArg
+  const depSchMessage = schema['x-dependentSchemas-message']
+  const depSchErrorArg = depSchMessage ? `,${effectError(depSchMessage)}` : errorArg
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const addlPropsErrorArg = addlPropsMessage ? `,${effectError(addlPropsMessage)}` : ''
 
   const propertyNamesFilter = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -96,6 +101,20 @@ export function object(
         return `Schema.filter((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
       })
     : []
+  // v3.0: dependentSchemas — when key present, the whole object must
+  // additionally satisfy the named sub-schema.
+  const dependentSchemasFilters: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = effect(subSchema, rootName, isEffect, options)
+        return `Schema.filter((o)=>!('${key}' in o)||Schema.is(${s})(o)${depSchErrorArg})`
+      })
+    : []
+  // v3.0: x-additionalProperties-message rejects extras when
+  // additionalProperties: false.
+  const additionalPropertiesFilter =
+    schema.additionalProperties === false && addlPropsMessage
+      ? `Schema.filter((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
+      : ''
 
   const actions = [
     minPropertiesFilter,
@@ -103,6 +122,8 @@ export function object(
     propertyNamesFilter(),
     ...patternPropertiesFilters(),
     ...dependentRequiredFilters,
+    ...dependentSchemasFilters,
+    additionalPropertiesFilter,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `${partialBase}.pipe(${actions.join(',')})` : partialBase

@@ -170,8 +170,15 @@ export function effect(
     return effectWrap('Schema.Unknown', schema)
   }
 
-  if (schema.const !== undefined)
-    return effectWrap(`Schema.Literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.const !== undefined) {
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const literalCode = `Schema.Literal(${JSON.stringify(schema.const)})`
+    const withMsg = constMessage
+      ? `${literalCode}.annotations(${effectError(constMessage)})`
+      : literalCode
+    return effectWrap(withMsg, schema)
+  }
   if (schema.enum) return effectWrap(_enum(schema), schema)
   if (schema.properties) return effectWrap(object(schema, rootName, isEffect, options), schema)
 
@@ -194,17 +201,61 @@ export function effect(
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
+    // v3.0: per-keyword array messages
+    const sizeMsg = schema['x-size-message']
+    const sizeArg = sizeMsg ? `,${effectError(sizeMsg)}` : ''
+    const minItemsMsg = schema['x-minItems-message']
+    const minArg = minItemsMsg ? `,${effectError(minItemsMsg)}` : ''
+    const maxItemsMsg = schema['x-maxItems-message']
+    const maxArg = maxItemsMsg ? `,${effectError(maxItemsMsg)}` : ''
+    const uniqueMsg = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueMsg ? `,${effectError(uniqueMsg)}` : ''
+    // v3.0: contains / minContains / maxContains as separate filters
+    const containsActions = (() => {
+      const c = schema.contains
+      if (!c) return [] as readonly string[]
+      const containsSchema = effect(c, rootName, isEffect, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const errorMsg = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMsg
+      const out: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const msg = fallback ? `,${effectError(fallback)}` : ''
+        out.push(
+          `Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${msg})`,
+        )
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minMsg = schema['x-minContains-message'] ?? fallback
+          const minMsgArg = minMsg ? `,${effectError(minMsg)}` : ''
+          out.push(
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minMsgArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxMsg = schema['x-maxContains-message'] ?? fallback
+          const maxMsgArg = maxMsg ? `,${effectError(maxMsg)}` : ''
+          out.push(
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxMsgArg})`,
+          )
+        }
+      }
+      return out
+    })()
     const actions = [
-      isFixedLength ? `Schema.itemsCount(${schema.minItems})` : undefined,
+      isFixedLength ? `Schema.itemsCount(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `Schema.minItems(${schema.minItems})`
+        ? `Schema.minItems(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `Schema.maxItems(${schema.maxItems})`
+        ? `Schema.maxItems(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `Schema.filter((items) => new Set(items).size === items.length)`
+        ? `Schema.filter((items) => new Set(items).size === items.length${uniqueArg})`
         : undefined,
+      ...containsActions,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `${base}.pipe(${actions.join(',')})` : base
     return effectWrap(arrayExpr, schema)
