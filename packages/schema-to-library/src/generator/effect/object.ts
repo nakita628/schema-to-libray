@@ -65,6 +65,12 @@ export function object(
   }
 
   if (!schema.properties) {
+    // v3.2: patternProperties without properties → unknown-typed Record + filter.
+    if (schema.patternProperties) {
+      const record = 'Schema.Record({key:Schema.String,value:Schema.Unknown})'
+      const actions = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
+      return actions.length > 0 ? `${record}.pipe(${actions.join(',')})` : record
+    }
     if (schema.additionalProperties === true) return 'Schema.Unknown'
     return 'Schema.Struct({})'
   }
@@ -76,12 +82,21 @@ export function object(
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
       const isRequired = required.includes(key)
-      return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:Schema.optional(${parsed})`
+      // Schema.optionalWith already returns a PropertySignature; do not double-wrap.
+      const isAlreadyPropertySignature = parsed.startsWith('Schema.optionalWith(')
+      return isRequired || isAlreadyPropertySignature
+        ? `${safeKey}:${parsed}`
+        : `${safeKey}:Schema.optional(${parsed})`
     })
     .filter((p) => p !== null)
 
+  // Schema.partial cannot wrap a Struct that already contains transformation-bearing
+  // PropertySignatures (e.g. Schema.optionalWith with default), so only use the
+  // partial shorthand when every prop is a plain Schema.optional(Schema) wrapper.
   const partialBase =
-    required.length === 0 && props.every((p) => p.includes('Schema.optional('))
+    required.length === 0 &&
+    props.length > 0 &&
+    props.every((p) => /:Schema\.optional\(/.test(p) && !/Schema\.optionalWith\(/.test(p))
       ? `Schema.partial(Schema.Struct({${props
           .map((p) => p.replace(/^(.+?):Schema\.optional\((.+)\)$/, '$1:$2'))
           .join(',')}}))`
@@ -116,6 +131,19 @@ export function object(
       ? `Schema.filter((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
       : ''
 
+  // v3.2: if/then/else conditional schema. Routed through Schema.filter:
+  // when `if` matches, the object must also satisfy `then`; otherwise `else`.
+  const ifThenElseFilter = (() => {
+    if (!schema.if) return ''
+    const ifSchema = effect(schema.if, rootName, isEffect, options)
+    const thenSchema = schema.then ? effect(schema.then, rootName, isEffect, options) : ''
+    const elseSchema = schema.else ? effect(schema.else, rootName, isEffect, options) : ''
+    if (!thenSchema && !elseSchema) return ''
+    const thenCheck = thenSchema ? `Schema.is(${thenSchema})(o)` : 'true'
+    const elseCheck = elseSchema ? `Schema.is(${elseSchema})(o)` : 'true'
+    return `Schema.filter((o)=>Schema.is(${ifSchema})(o)?${thenCheck}:${elseCheck}${errorArg})`
+  })()
+
   const actions = [
     minPropertiesFilter,
     maxPropertiesFilter,
@@ -124,6 +152,7 @@ export function object(
     ...dependentRequiredFilters,
     ...dependentSchemasFilters,
     additionalPropertiesFilter,
+    ifThenElseFilter,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `${partialBase}.pipe(${actions.join(',')})` : partialBase

@@ -211,9 +211,7 @@ export function valibot(
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
         const msg = fallback ? `,${valibotError(fallback)}` : ''
-        out.push(
-          `v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${msg})`,
-        )
+        out.push(`v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${msg})`)
       } else {
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {

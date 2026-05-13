@@ -6,7 +6,7 @@ export const Merged = v.pipe(
     if (!dataset.typed) return
     const valid = v.safeParse(
       v.intersect([
-        v.object({ name: v.pipe(v.string(), v.minLength(3, 'name must be at least 3 chars')) }),
+        v.object({ name: v.pipe(v.string(), v.minLength(3)) }),
         v.object({ age: v.pipe(v.number(), v.integer(), v.minValue(0, 'age must be >= 0')) }),
       ]),
       dataset.value,

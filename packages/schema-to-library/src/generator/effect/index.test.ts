@@ -406,7 +406,7 @@ export const Schema_ = Schema.partial(Schema.Struct({name:Schema.String}))`
     })
     const expected = `import { Schema } from "effect"
 
-export const WithDefault = Schema.partial(Schema.Struct({status:Schema.optional(Schema.String,{default:() => "active"})}))
+export const WithDefault = Schema.Struct({status:Schema.optionalWith(Schema.String,{default:() => "active"})})
 
 export type WithDefaultEncoded = typeof WithDefault.Encoded`
     expect(result).toBe(expected)
@@ -424,7 +424,7 @@ export type WithDefaultEncoded = typeof WithDefault.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-export const NullDefault = Schema.partial(Schema.Struct({value:Schema.NullOr(Schema.optional(Schema.String,{default:() => "x"}))}))
+export const NullDefault = Schema.Struct({value:Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "x"})})
 
 export type NullDefaultEncoded = typeof NullDefault.Encoded`
     expect(result).toBe(expected)
@@ -509,7 +509,7 @@ export type NullEncoded = typeof Null.Encoded`
     })
     const expected = `import { Schema } from "effect"
 
-export const Def = Schema.partial(Schema.Struct({enabled:Schema.optionalWith(Schema.Boolean,{default:() => true})}))
+export const Def = Schema.Struct({enabled:Schema.optionalWith(Schema.Boolean,{default:() => true})})
 
 export type DefEncoded = typeof Def.Encoded`
     expect(result).toBe(expected)
@@ -1184,7 +1184,7 @@ export type NullableIdEncoded = typeof NullableId.Encoded`
       })
       const expected = `import { Schema } from "effect"
 
-export const Config = Schema.Struct({role:Schema.optionalWith(Schema.String,{default:() => "user"}).pipe(Schema.brand("Role"))})
+export const Config = Schema.Struct({role:Schema.optionalWith(Schema.String.pipe(Schema.brand("Role")),{default:() => "user"})})
 
 export type ConfigEncoded = typeof Config.Encoded`
       expect(result).toBe(expected)

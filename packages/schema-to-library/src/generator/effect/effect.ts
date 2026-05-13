@@ -130,8 +130,11 @@ export function effect(
         if (typeof value === 'number') return `${value}`
         return JSON.stringify(value)
       }
-      const withDefault = `Schema.optional(${baseResult},{default:() => ${formatLiteral(defaultValue)}})`
-      return nullable ? `Schema.NullOr(${withDefault})` : withDefault
+      // NullOr must wrap a Schema; optionalWith returns PropertySignature, so it
+      // must be the outermost wrap. Use Schema.optionalWith (Schema.optional with
+      // options is deprecated in Effect Schema 3.x).
+      const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
+      return `Schema.optionalWith(${withNullable},{default:() => ${formatLiteral(defaultValue)}})`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
@@ -222,9 +225,7 @@ export function effect(
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
         const msg = fallback ? `,${effectError(fallback)}` : ''
-        out.push(
-          `Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${msg})`,
-        )
+        out.push(`Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${msg})`)
       } else {
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {

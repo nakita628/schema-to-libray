@@ -200,9 +200,7 @@ export function typebox(
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
       schema.uniqueItems === true ? `uniqueItems:true` : undefined,
-      arrayErrMsgEntries.length > 0
-        ? `errorMessage:{${arrayErrMsgEntries.join(',')}}`
-        : undefined,
+      arrayErrMsgEntries.length > 0 ? `errorMessage:{${arrayErrMsgEntries.join(',')}}` : undefined,
     ].filter((v) => v !== undefined)
     return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
   }

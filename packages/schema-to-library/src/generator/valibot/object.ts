@@ -69,6 +69,11 @@ export function object(
   }
 
   if (!schema.properties) {
+    if (schema.patternProperties) {
+      const record = `v.record(v.string(),v.unknown())`
+      const actions = [propertyNamesCheck(), ...patternPropertiesChecks()].filter((a) => a !== '')
+      return actions.length > 0 ? `v.pipe(${record},${actions.join(',')})` : record
+    }
     if (schema.additionalProperties === true) return 'v.any()'
     return 'v.object({})'
   }
@@ -123,6 +128,18 @@ export function object(
     schema.additionalProperties === false && addlPropsMessage
       ? `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
       : ''
+  // v3.0: if/then/else (Draft-07+)
+  const ifThenElseCheck = (() => {
+    if (!schema.if) return ''
+    const ifSchema = valibot(schema.if, rootName, isValibot, options)
+    const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
+    const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
+    if (!thenSchema && !elseSchema) return ''
+    const branchCheck = (s: string) => `const r=v.safeParse(${s},o);if(!r.success)return false;`
+    const thenBranch = thenSchema ? branchCheck(thenSchema) : ''
+    const elseBranch = elseSchema ? branchCheck(elseSchema) : ''
+    return `v.check((o)=>{const m=v.safeParse(${ifSchema},o).success;if(m){${thenBranch}}else{${elseBranch}}return true;})`
+  })()
 
   const actions = [
     minPropertiesCheck,
@@ -132,6 +149,7 @@ export function object(
     ...dependentRequiredChecks,
     ...dependentSchemasChecks,
     additionalPropertiesCheck,
+    ifThenElseCheck,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase

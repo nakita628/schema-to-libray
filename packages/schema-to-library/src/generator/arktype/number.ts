@@ -10,18 +10,21 @@ export function number(schema: JSONSchema) {
   const exMinMessage = schema['x-exclusiveMinimum-message']
   const exMaxMessage = schema['x-exclusiveMaximum-message']
   const mofMessage = schema['x-multipleOf-message']
-  const hasPerKeywordMsg =
-    minMessage || maxMessage || exMinMessage || exMaxMessage || mofMessage
+  const hasPerKeywordMsg = minMessage || maxMessage || exMinMessage || exMaxMessage || mofMessage
 
   if (hasPerKeywordMsg) {
     const narrows: string[] = []
     if (schema.minimum !== undefined && schema.exclusiveMinimum !== true) {
       const msg = minMessage ?? errorMessage ?? `must be >= ${schema.minimum}`
-      narrows.push(`.narrow((n, ctx) => n >= ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`)
+      narrows.push(
+        `.narrow((n, ctx) => n >= ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`,
+      )
     }
     if (schema.exclusiveMinimum === true && schema.minimum !== undefined) {
       const msg = exMinMessage ?? errorMessage ?? `must be > ${schema.minimum}`
-      narrows.push(`.narrow((n, ctx) => n > ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`)
+      narrows.push(
+        `.narrow((n, ctx) => n > ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`,
+      )
     }
     if (typeof schema.exclusiveMinimum === 'number') {
       const msg = exMinMessage ?? errorMessage ?? `must be > ${schema.exclusiveMinimum}`
@@ -31,11 +34,15 @@ export function number(schema: JSONSchema) {
     }
     if (schema.maximum !== undefined && schema.exclusiveMaximum !== true) {
       const msg = maxMessage ?? errorMessage ?? `must be <= ${schema.maximum}`
-      narrows.push(`.narrow((n, ctx) => n <= ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`)
+      narrows.push(
+        `.narrow((n, ctx) => n <= ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`,
+      )
     }
     if (schema.exclusiveMaximum === true && schema.maximum !== undefined) {
       const msg = exMaxMessage ?? errorMessage ?? `must be < ${schema.maximum}`
-      narrows.push(`.narrow((n, ctx) => n < ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`)
+      narrows.push(
+        `.narrow((n, ctx) => n < ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`,
+      )
     }
     if (typeof schema.exclusiveMaximum === 'number') {
       const msg = exMaxMessage ?? errorMessage ?? `must be < ${schema.exclusiveMaximum}`

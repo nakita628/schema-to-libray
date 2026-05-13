@@ -24,14 +24,18 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  const withDefault =
-    schema.default !== undefined
-      ? `Schema.optionalWith(${effectStr},{default:() => ${formatLiteral(schema.default)}})`
-      : effectStr
-  const withNullable = isNullable ? `Schema.NullOr(${withDefault})` : withDefault
+  // NullOr must wrap a Schema, not a PropertySignature. When both nullable and
+  // default are present, NullOr goes inside optionalWith so the inner argument
+  // is still a Schema and the outer optionalWith yields a valid PropertySignature.
+  const withNullable = isNullable ? `Schema.NullOr(${effectStr})` : effectStr
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string' ? `${withNullable}.pipe(Schema.brand("${brand}"))` : withNullable
+  // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
+  const withDefault =
+    schema.default !== undefined
+      ? `Schema.optionalWith(${withBrand},{default:() => ${formatLiteral(schema.default)}})`
+      : withBrand
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
@@ -45,6 +49,6 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   if (Object.keys(jsonSchemaAnn).length > 0) {
     ann.jsonSchema = jsonSchemaAnn
   }
-  if (Object.keys(ann).length === 0) return withBrand
-  return `${withBrand}.annotations(${serializeJSValue(ann)})`
+  if (Object.keys(ann).length === 0) return withDefault
+  return `${withDefault}.annotations(${serializeJSValue(ann)})`
 }

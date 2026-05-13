@@ -141,39 +141,39 @@ Each generator wires JSON Schema-style validation error messages into the target
 
 ### Coverage Matrix (30 extensions)
 
-| Category | Extension | zod | valibot | effect | arktype | typebox |
-| --- | --- | :-: | :-: | :-: | :-: | :-: |
-| Common | `x-error-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Common | `x-required-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Common | `x-const-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Common | `x-enum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Numeric | `x-minimum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Numeric | `x-maximum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Numeric | `x-exclusiveMinimum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Numeric | `x-exclusiveMaximum-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Numeric | `x-multipleOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| String | `x-minLength-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| String | `x-maxLength-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| String | `x-pattern-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| String | `x-size-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-minItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-maxItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-uniqueItems-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-contains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-minContains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Array | `x-maxContains-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-minProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-maxProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-additionalProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-propertyNames-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-patternProperties-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-dependentRequired-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Object | `x-dependentSchemas-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Combinators | `x-allOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Combinators | `x-anyOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Combinators | `x-oneOf-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Combinators | `x-not-message` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Total** | | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** |
+| Category    | Extension                        |     zod     |   valibot   |   effect    |   arktype   |   typebox   |
+| ----------- | -------------------------------- | :---------: | :---------: | :---------: | :---------: | :---------: |
+| Common      | `x-error-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-required-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-const-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-enum-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-minimum-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-maximum-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-exclusiveMinimum-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-exclusiveMaximum-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-multipleOf-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-minLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-maxLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-pattern-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-size-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-minItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-maxItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-uniqueItems-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-contains-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-minContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-maxContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-minProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-maxProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-additionalProperties-message` |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-propertyNames-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-patternProperties-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-dependentRequired-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-dependentSchemas-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-allOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-anyOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-oneOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-not-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| **Total**   |                                  | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** |
 
 All 5 generators reach **full 30/30 v3.0 parity**. The translation strategy per generator:
 
@@ -214,10 +214,7 @@ export const Root = z.object({
     .string({ error: 'Name must be a string' })
     .min(1, { error: 'Name cannot be empty' })
     .max(50, { error: 'Name must be at most 50 characters' }),
-  age: z
-    .int()
-    .min(0, { error: 'Age must be >= 0' })
-    .max(120, { error: 'Age must be <= 120' }),
+  age: z.int().min(0, { error: 'Age must be >= 0' }).max(120, { error: 'Age must be <= 120' }),
 })
 ```
 

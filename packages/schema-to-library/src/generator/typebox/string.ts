@@ -29,10 +29,8 @@ export function string(schema: JSONSchema) {
   const perKeywordEntries: string[] = []
   if (requiredMessage) perKeywordEntries.push(`required:${JSON.stringify(requiredMessage)}`)
   if (patternMessage) perKeywordEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
-  if (minLengthMessage)
-    perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
-  if (maxLengthMessage)
-    perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
+  if (minLengthMessage) perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
+  if (maxLengthMessage) perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
   if (sizeMessage) {
     // exact length → both minLength and maxLength constraints
     perKeywordEntries.push(`minLength:${JSON.stringify(sizeMessage)}`)

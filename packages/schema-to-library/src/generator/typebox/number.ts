@@ -17,12 +17,9 @@ export function number(schema: JSONSchema) {
   if (requiredMessage) perKeywordEntries.push(`required:${JSON.stringify(requiredMessage)}`)
   if (minMessage) perKeywordEntries.push(`minimum:${JSON.stringify(minMessage)}`)
   if (maxMessage) perKeywordEntries.push(`maximum:${JSON.stringify(maxMessage)}`)
-  if (exMinMessage)
-    perKeywordEntries.push(`exclusiveMinimum:${JSON.stringify(exMinMessage)}`)
-  if (exMaxMessage)
-    perKeywordEntries.push(`exclusiveMaximum:${JSON.stringify(exMaxMessage)}`)
-  if (multipleOfMessage)
-    perKeywordEntries.push(`multipleOf:${JSON.stringify(multipleOfMessage)}`)
+  if (exMinMessage) perKeywordEntries.push(`exclusiveMinimum:${JSON.stringify(exMinMessage)}`)
+  if (exMaxMessage) perKeywordEntries.push(`exclusiveMaximum:${JSON.stringify(exMaxMessage)}`)
+  if (multipleOfMessage) perKeywordEntries.push(`multipleOf:${JSON.stringify(multipleOfMessage)}`)
   const errMsg =
     perKeywordEntries.length === 0
       ? errorMessage

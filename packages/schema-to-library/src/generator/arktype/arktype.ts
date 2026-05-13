@@ -137,10 +137,7 @@ export function arktype(
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const constExpr = formatConst(schema.const)
     if (constMessage) {
-      return arktypeWrap(
-        `type(${constExpr}).describe(${JSON.stringify(constMessage)})`,
-        schema,
-      )
+      return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)
     }
     return arktypeWrap(constExpr, schema)
   }
@@ -157,9 +154,7 @@ export function arktype(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => arktype(s, rootName, isArktype, options))
-      const tupleExpr = items.every(isQuoted)
-        ? `"[${items.map((s) => s.slice(1, -1)).join(', ')}]"`
-        : `type([${items.join(',')}])`
+      const tupleExpr = `type([${items.join(',')}])`
       return arktypeWrap(tupleExpr, schema)
     }
     const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'

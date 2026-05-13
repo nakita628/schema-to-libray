@@ -52,13 +52,15 @@ export function string(schema: JSONSchema) {
     if (minLengthMessage || maxLengthMessage) {
       const narrows: string[] = []
       if (hasMin) {
-        const minMsg = minLengthMessage ?? errorMessage ?? `must be at least ${schema.minLength} chars`
+        const minMsg =
+          minLengthMessage ?? errorMessage ?? `must be at least ${schema.minLength} chars`
         narrows.push(
           `.narrow((s, ctx) => s.length >= ${schema.minLength} || ctx.mustBe(${JSON.stringify(minMsg)}))`,
         )
       }
       if (hasMax) {
-        const maxMsg = maxLengthMessage ?? errorMessage ?? `must be at most ${schema.maxLength} chars`
+        const maxMsg =
+          maxLengthMessage ?? errorMessage ?? `must be at most ${schema.maxLength} chars`
         narrows.push(
           `.narrow((s, ctx) => s.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxMsg)}))`,
         )
