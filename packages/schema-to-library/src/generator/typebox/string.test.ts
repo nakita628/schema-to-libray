@@ -62,4 +62,42 @@ describe('typebox string', () => {
       expect(string(input)).toBe(expected)
     })
   })
+
+  describe('Phase 1A declarative behavior extensions', () => {
+    it('wraps Type.String with Type.Transform for x-trim', () => {
+      expect(string({ type: 'string', 'x-trim': true })).toBe(
+        'Type.Transform(Type.String()).Decode((val: string) => val.trim()).Encode((val: string) => val)',
+      )
+    })
+
+    it('chains multiple string transforms', () => {
+      expect(string({ type: 'string', 'x-trim': true, 'x-toLowerCase': true })).toBe(
+        'Type.Transform(Type.String()).Decode((val: string) => val.trim().toLowerCase()).Encode((val: string) => val)',
+      )
+    })
+
+    it('emits x-normalize via Transform.Decode', () => {
+      expect(string({ type: 'string', 'x-normalize': 'NFC' })).toBe(
+        'Type.Transform(Type.String()).Decode((val: string) => val.normalize("NFC")).Encode((val: string) => val)',
+      )
+    })
+
+    it('emits x-startsWith as ajv-runtime pattern annotation', () => {
+      expect(string({ type: 'string', 'x-startsWith': 'https://' })).toBe(
+        'Type.String({pattern:"^https://"})',
+      )
+    })
+
+    it('emits x-includes as ajv-runtime pattern annotation', () => {
+      expect(string({ type: 'string', 'x-includes': '/api/' })).toBe(
+        'Type.String({pattern:"/api/"})',
+      )
+    })
+
+    it('escapes regex metacharacters in x-startsWith / x-endsWith', () => {
+      expect(string({ type: 'string', 'x-endsWith': '.com' })).toBe(
+        'Type.String({pattern:"\\\\.com$"})',
+      )
+    })
+  })
 })

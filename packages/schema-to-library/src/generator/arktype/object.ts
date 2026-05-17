@@ -37,11 +37,14 @@ export function object(
   }
 
   const errorMessage = schema['x-error-message']
-  const minimumMessage = schema['x-minimum-message']
-  const maximumMessage = schema['x-maximum-message']
-  const patternMessage = schema['x-pattern-message']
-  const propNamesMessage = schema['x-propertyNames-message'] ?? patternMessage
+  const minimumMessage = schema['x-minProperties-message']
+  const maximumMessage = schema['x-maxProperties-message']
+  // v3.0: dedicated x-patternProperties-message (split from x-pattern-message)
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const propNamesMessage = schema['x-propertyNames-message']
   const depReqMessage = schema['x-dependentRequired-message'] ?? errorMessage
+  const depSchMessage = schema['x-dependentSchemas-message'] ?? errorMessage
+  const addlPropsMessage = schema['x-additionalProperties-message']
 
   const propertyNamesNarrow = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -65,7 +68,7 @@ export function object(
           const s = ensureRuntime(arktype(propSchema, rootName, isArktype, options))
           return narrowPredicate(
             `Object.entries(o).every(([k, val]) => !new RegExp(${JSON.stringify(pattern)}).test(k) || ${s}.allows(val))`,
-            patternMessage,
+            patternPropsMessage,
           )
         })
       : []
@@ -128,6 +131,23 @@ export function object(
         return narrowPredicate(`!('${key}' in o) || (${depsCheck})`, depReqMessage)
       })
     : []
+  // v3.0: dependentSchemas — when key present, the whole object must
+  // additionally satisfy the named sub-schema.
+  const dependentSchemasNarrows: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = ensureRuntime(arktype(subSchema, rootName, isArktype, options))
+        return narrowPredicate(`!('${key}' in o) || ${s}.allows(o)`, depSchMessage)
+      })
+    : []
+  // v3.0: x-additionalProperties-message narrows extras-rejection
+  // when additionalProperties: false.
+  const additionalPropertiesNarrow =
+    schema.additionalProperties === false && addlPropsMessage
+      ? narrowPredicate(
+          `Object.keys(o).every((k) => ${JSON.stringify(Object.keys(schema.properties))}.includes(k))`,
+          addlPropsMessage,
+        )
+      : ''
 
   const narrows = [
     minPropertiesNarrow,
@@ -135,10 +155,18 @@ export function object(
     propertyNamesNarrow(),
     ...patternPropertiesNarrows(),
     ...dependentRequiredNarrows,
+    ...dependentSchemasNarrows,
+    additionalPropertiesNarrow,
   ].filter((a) => a !== '')
 
-  if (narrows.length > 0) {
-    return composeNarrows(`type(${innerLiteral})`, narrows)
-  }
-  return isArktype ? innerLiteral : `type(${innerLiteral})`
+  const baseExpr =
+    narrows.length > 0
+      ? composeNarrows(`type(${innerLiteral})`, narrows)
+      : isArktype
+        ? innerLiteral
+        : `type(${innerLiteral})`
+  const propsMessage = schema['x-properties-message']
+  if (typeof propsMessage !== 'string') return baseExpr
+  const wrapped = baseExpr.startsWith('{') ? `type(${baseExpr})` : baseExpr
+  return `${wrapped}.describe(${JSON.stringify(propsMessage)})`
 }

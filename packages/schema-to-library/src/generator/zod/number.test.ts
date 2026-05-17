@@ -50,7 +50,7 @@ describe('number', () => {
           type: 'number',
           minimum: 0,
           exclusiveMinimum: true,
-          'x-minimum-message': 'Must be positive',
+          'x-exclusiveMinimum-message': 'Must be positive',
         },
         'z.number().positive({error:"Must be positive"})',
       ],

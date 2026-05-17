@@ -17,24 +17,41 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema) {
-  const errorMessage = schema['x-error-message']
+  // v3.0: x-required-message falls back to base annotation when no
+  // x-error-message; Effect Schema has no native required dispatch.
+  const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${effectError(patternMessage)}` : ''
-  const sizeMessage = schema['x-size-message']
-  const sizeErrorPart = sizeMessage ? `,${effectError(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
+  const lengthErrorPart = lengthMessage ? `,${effectError(lengthMessage)}` : ''
+  const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
   const isFixedLength =
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
+  const startsWith =
+    typeof schema['x-startsWith'] === 'string'
+      ? `Schema.startsWith(${JSON.stringify(schema['x-startsWith'])})`
+      : undefined
+  const endsWith =
+    typeof schema['x-endsWith'] === 'string'
+      ? `Schema.endsWith(${JSON.stringify(schema['x-endsWith'])})`
+      : undefined
+  const includes =
+    typeof schema['x-includes'] === 'string'
+      ? `Schema.includes(${JSON.stringify(schema['x-includes'])})`
+      : undefined
   const lengthActions = [
+    startsWith,
+    endsWith,
+    includes,
     schema.pattern
       ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
       : undefined,
-    isFixedLength ? `Schema.length(${schema.minLength}${sizeErrorPart})` : undefined,
+    isFixedLength ? `Schema.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `Schema.minLength(${schema.minLength}${minErrorPart})`
       : undefined,
@@ -42,6 +59,14 @@ export function string(schema: JSONSchema) {
       ? `Schema.maxLength(${schema.maxLength}${maxErrorPart})`
       : undefined,
   ].filter((v) => v !== undefined)
+  const stringBase =
+    schema['x-trim'] === true
+      ? 'Schema.Trim'
+      : schema['x-toLowerCase'] === true
+        ? 'Schema.Lowercase'
+        : schema['x-toUpperCase'] === true
+          ? 'Schema.Uppercase'
+          : 'Schema.String'
   if (schema.format && FORMAT_MAP[schema.format]) {
     const base = FORMAT_MAP[schema.format]
     if (lengthActions.length > 0) {
@@ -58,8 +83,8 @@ export function string(schema: JSONSchema) {
     : undefined
   const actions = [formatAction, ...lengthActions].filter((v) => v !== undefined)
   if (actions.length > 0) {
-    const result = `Schema.String.pipe(${actions.join(',')})`
+    const result = `${stringBase}.pipe(${actions.join(',')})`
     return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
   }
-  return errorMessage ? `Schema.String.annotations(${effectError(errorMessage)})` : 'Schema.String'
+  return errorMessage ? `${stringBase}.annotations(${effectError(errorMessage)})` : stringBase
 }

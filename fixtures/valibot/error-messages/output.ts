@@ -14,7 +14,11 @@ export const User = v.object({
     v.maxValue(120, 'Age too large'),
     v.multipleOf(1, 'Age must be integer'),
   ),
-  tags: v.pipe(v.array(v.string()), v.minLength(1), v.maxLength(5)),
+  tags: v.pipe(
+    v.array(v.string()),
+    v.minLength(1, 'Need at least one tag'),
+    v.maxLength(5, 'Too many tags'),
+  ),
 })
 
 export type UserOutput = v.InferOutput<typeof User>

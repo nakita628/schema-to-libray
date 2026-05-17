@@ -88,7 +88,7 @@ describe('object', () => {
       ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
     })
 
-    it('emits both with x-minimum-message / x-maximum-message', () => {
+    it('emits both with x-minProperties-message / x-maxProperties-message', () => {
       expect(
         object(
           {
@@ -97,8 +97,8 @@ describe('object', () => {
             required: ['a'],
             minProperties: 1,
             maxProperties: 3,
-            'x-minimum-message': 'too few',
-            'x-maximum-message': 'too many',
+            'x-minProperties-message': 'too few',
+            'x-maxProperties-message': 'too many',
           },
           'Schema',
           false,
@@ -237,6 +237,60 @@ describe('object', () => {
         ),
       ).toBe(
         "z.object({a:z.string(),b:z.string(),c:z.string()}).partial().refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+      )
+    })
+  })
+
+  describe('x-properties-message', () => {
+    it('wraps object with a check that rewrites property-level messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('accepts arrow expression message', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': '(issue) => `bad ${issue.path[0]}`',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:((issue) => `bad ${issue.path[0]}`)(issue)})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('composes with refines for minProperties / maxProperties', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            minProperties: 1,
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})().refine((o)=>Object.keys(o).length>=1)',
       )
     })
   })

@@ -113,7 +113,7 @@ export function valibot(
       ? (() => {
           const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
           const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-          return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const valid=v.safeParse(${intersected},dataset.value);if(!valid.success){for(const issue of valid.issues){addIssue({message:${msgExpr},path:issue.path})}}}))`
+          return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${intersected},dataset.value);if(!result.success){for(const issue of result.issues){addIssue({message:${msgExpr},path:issue.path})}}}))`
         })()
       : intersected
     if (defaultValue !== undefined) {
@@ -136,15 +136,15 @@ export function valibot(
     const custom = (predicate: string) =>
       valibotWrap(`v.custom<unknown>(${predicate}${errorPart})`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v) => typeof v !== 'string'`,
-      number: `(v) => typeof v !== 'number'`,
-      integer: `(v) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v) => typeof v !== 'boolean'`,
-      array: '(v) => !Array.isArray(v)',
-      object: `(v) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v) => v !== null',
+      string: `(val) => typeof val !== 'string'`,
+      number: `(val) => typeof val !== 'number'`,
+      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val) => typeof val !== 'boolean'`,
+      array: '(val) => !Array.isArray(val)',
+      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val) => val !== null',
     }
-    if ('const' in inner) return custom(`(v) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return custom(`(val) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return custom(predicate)
@@ -153,18 +153,22 @@ export function valibot(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
-      if (bodies.length > 0) return custom(`(v) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
+      if (bodies.length > 0) return custom(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return custom(`(v) => !${JSON.stringify(inner.enum)}.includes(v)`)
+      return custom(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
     }
     const innerExpr = valibot(inner, rootName, isValibot, options)
-    return custom(`(v) => !v.safeParse(${innerExpr},v).success`)
+    return custom(`(val) => !v.safeParse(${innerExpr},val).success`)
   }
 
-  if (schema.const !== undefined)
-    return valibotWrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.const !== undefined) {
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const errorPart = constMessage ? `,${valibotError(constMessage)}` : ''
+    return valibotWrap(`v.literal(${JSON.stringify(schema.const)}${errorPart})`, schema)
+  }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
@@ -176,27 +180,79 @@ export function valibot(
   if (types.includes('boolean')) return valibotWrap('v.boolean()', schema)
 
   if (types.includes('array')) {
+    const elementMessageWrap = (inner: string, msg: string) => {
+      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+      return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${inner},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
-      return readonly(valibotWrap(`v.tuple([${items.join(',')}])`, schema))
+      const tupleExpr = `v.tuple([${items.join(',')}])`
+      const prefixMsg = schema['x-prefixItems-message']
+      const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
+      return readonly(valibotWrap(wrapped, schema))
     }
     const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
-    const base = `v.array(${items})`
+    const itemsMsg = schema['x-items-message']
+    const arrayBase = `v.array(${items})`
+    const base = itemsMsg ? elementMessageWrap(arrayBase, itemsMsg) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
+    // Per-keyword messages
+    const minItemsMsg = schema['x-minItems-message']
+    const minArg = minItemsMsg ? `,${valibotError(minItemsMsg)}` : ''
+    const maxItemsMsg = schema['x-maxItems-message']
+    const maxArg = maxItemsMsg ? `,${valibotError(maxItemsMsg)}` : ''
+    const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
+    const sizeArg = fixedItemsMsg ? `,${valibotError(fixedItemsMsg)}` : ''
+    const uniqueMsg = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueMsg ? `,${valibotError(uniqueMsg)}` : ''
+    // v3.0: contains / minContains / maxContains as separate checks
+    const containsActions = (() => {
+      const c = schema.contains
+      if (!c) return [] as readonly string[]
+      const containsSchema = valibot(c, rootName, isValibot, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const errorMsg = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMsg
+      const out: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const msg = fallback ? `,${valibotError(fallback)}` : ''
+        out.push(`v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${msg})`)
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minMsg = schema['x-minContains-message'] ?? fallback
+          const minMsgArg = minMsg ? `,${valibotError(minMsg)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minMsgArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxMsg = schema['x-maxContains-message'] ?? fallback
+          const maxMsgArg = maxMsg ? `,${valibotError(maxMsg)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxMsgArg})`,
+          )
+        }
+      }
+      return out
+    })()
     const actions = [
-      isFixedLength ? `v.length(${schema.minItems})` : undefined,
+      isFixedLength ? `v.length(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `v.minLength(${schema.minItems})`
+        ? `v.minLength(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `v.maxLength(${schema.maxItems})`
+        ? `v.maxLength(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `v.check((items) => new Set(items).size === items.length)`
+        ? `v.check((items) => new Set(items).size === items.length${uniqueArg})`
         : undefined,
+      ...containsActions,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `v.pipe(${base},${actions.join(',')})` : base
     return readonly(valibotWrap(arrayExpr, schema))

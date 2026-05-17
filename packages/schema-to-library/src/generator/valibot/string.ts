@@ -16,14 +16,22 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
 
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
-  const baseErrorArg = errorMessage ? valibotError(errorMessage) : ''
+  // v3.0: x-required-message — for valibot, the base v.string(msg) covers both
+  // type mismatch and missing-input semantics (v.optional handles undefined).
+  // When only x-required-message is set, use it as the base error.
+  const requiredMessage = schema['x-required-message']
+  const baseErrorArg = errorMessage
+    ? valibotError(errorMessage)
+    : requiredMessage
+      ? valibotError(requiredMessage)
+      : ''
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${valibotError(patternMessage)}` : ''
-  const sizeMessage = schema['x-size-message']
-  const sizeErrorPart = sizeMessage ? `,${valibotError(sizeMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
+  const lengthErrorPart = lengthMessage ? `,${valibotError(lengthMessage)}` : ''
+  const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
   const format = schema.format && FORMAT_PIPE[schema.format]
   const formatAction = format
@@ -35,12 +43,38 @@ export function string(schema: JSONSchema) {
     schema.minLength !== undefined &&
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
+  const trim = schema['x-trim'] === true ? 'v.trim()' : undefined
+  const toLowerCase = schema['x-toLowerCase'] === true ? 'v.toLowerCase()' : undefined
+  const toUpperCase = schema['x-toUpperCase'] === true ? 'v.toUpperCase()' : undefined
+  const normalize =
+    typeof schema['x-normalize'] === 'string'
+      ? `v.normalize(${JSON.stringify(schema['x-normalize'])})`
+      : undefined
+  const startsWith =
+    typeof schema['x-startsWith'] === 'string'
+      ? `v.startsWith(${JSON.stringify(schema['x-startsWith'])})`
+      : undefined
+  const endsWith =
+    typeof schema['x-endsWith'] === 'string'
+      ? `v.endsWith(${JSON.stringify(schema['x-endsWith'])})`
+      : undefined
+  const includes =
+    typeof schema['x-includes'] === 'string'
+      ? `v.includes(${JSON.stringify(schema['x-includes'])})`
+      : undefined
   const actions = [
+    trim,
+    toLowerCase,
+    toUpperCase,
+    normalize,
+    startsWith,
+    endsWith,
+    includes,
     formatAction,
     schema.pattern
       ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
       : undefined,
-    isFixedLength ? `v.length(${schema.minLength}${sizeErrorPart})` : undefined,
+    isFixedLength ? `v.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `v.minLength(${schema.minLength}${minErrorPart})`
       : undefined,

@@ -101,15 +101,15 @@ export function arktype(
       return arktypeWrap(expr, schema)
     }
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v: unknown) => typeof v !== 'string'`,
-      number: `(v: unknown) => typeof v !== 'number'`,
-      integer: `(v: unknown) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v: unknown) => typeof v !== 'boolean'`,
-      array: '(v: unknown) => !Array.isArray(v)',
-      object: `(v: unknown) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v: unknown) => v !== null',
+      string: `(val: unknown) => typeof val !== 'string'`,
+      number: `(val: unknown) => typeof val !== 'number'`,
+      integer: `(val: unknown) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val: unknown) => typeof val !== 'boolean'`,
+      array: '(val: unknown) => !Array.isArray(val)',
+      object: `(val: unknown) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val: unknown) => val !== null',
     }
-    if ('const' in inner) return narrow(`(v: unknown) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return narrow(`(val: unknown) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return narrow(predicate)
@@ -118,11 +118,11 @@ export function arktype(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v: unknown\) => /, '')})`)
-      if (bodies.length > 0) return narrow(`(v: unknown) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val: unknown\) => /, '')})`)
+      if (bodies.length > 0) return narrow(`(val: unknown) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return narrow(`(v: unknown) => !${JSON.stringify(inner.enum)}.includes(v as never)`)
+      return narrow(`(val: unknown) => !${JSON.stringify(inner.enum)}.includes(val as never)`)
     }
     return arktypeWrap('"unknown"', schema)
   }
@@ -133,7 +133,13 @@ export function arktype(
       if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
       return `"${JSON.stringify(value) ?? 'null'}"`
     }
-    return arktypeWrap(formatConst(schema.const), schema)
+    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const constExpr = formatConst(schema.const)
+    if (constMessage) {
+      return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)
+    }
+    return arktypeWrap(constExpr, schema)
   }
   if (schema.enum) return arktypeWrap(_enum(schema), schema)
   if (schema.properties)
@@ -148,10 +154,8 @@ export function arktype(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => arktype(s, rootName, isArktype, options))
-      const tupleExpr = items.every(isQuoted)
-        ? `"[${items.map((s) => s.slice(1, -1)).join(', ')}]"`
-        : `type([${items.join(',')}])`
-      return arktypeWrap(tupleExpr, schema)
+      const tupleExpr = `type([${items.join(',')}])`
+      return arktypeWrap(describeWithMessage(tupleExpr, schema['x-prefixItems-message']), schema)
     }
     const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
     if (!isQuoted(items)) return arktypeWrap(`type(${items}).array()`, schema)
@@ -160,20 +164,65 @@ export function arktype(
     const { minItems, maxItems } = schema
     const isFixedLength =
       typeof minItems === 'number' && typeof maxItems === 'number' && minItems === maxItems
+    // Per-keyword array messages via .narrow() with ctx.mustBe.
+    const minItemsMessage = schema['x-minItems-message']
+    const maxItemsMessage = schema['x-maxItems-message']
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const containsMessage = schema['x-contains-message']
+    const minContainsMessage = schema['x-minContains-message']
+    const maxContainsMessage = schema['x-maxContains-message']
+    const fixedItemsMessage = minItemsMessage ?? maxItemsMessage
+    const hasArrayMsg =
+      minItemsMessage ||
+      maxItemsMessage ||
+      uniqueItemsMessage ||
+      containsMessage ||
+      minContainsMessage ||
+      maxContainsMessage
     const lengthExpr = isFixedLength
-      ? `type(${base}).and(type("unknown[] == ${minItems}"))`
+      ? hasArrayMsg
+        ? `type(${base}).narrow((items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)}))`
+        : `type(${base}).and(type("unknown[] == ${minItems}"))`
       : typeof minItems === 'number' && typeof maxItems === 'number'
-        ? `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
+        ? hasArrayMsg
+          ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
+          : `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
         : typeof minItems === 'number'
-          ? `type(${base}).and(type("unknown[] >= ${minItems}"))`
+          ? hasArrayMsg
+            ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)}))`
+            : `type(${base}).and(type("unknown[] >= ${minItems}"))`
           : typeof maxItems === 'number'
-            ? `type(${base}).and(type("unknown[] <= ${maxItems}"))`
+            ? hasArrayMsg
+              ? `type(${base}).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
+              : `type(${base}).and(type("unknown[] <= ${maxItems}"))`
             : base
-    const arrayExpr =
+    let arrayExpr =
       schema.uniqueItems === true
-        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[]) => new Set(items).size === items.length)`
+        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''})`
         : lengthExpr
-    return arktypeWrap(arrayExpr, schema)
+    // contains / minContains / maxContains as narrows
+    if (schema.contains) {
+      const containsSchema = arktype(schema.contains, rootName, isArktype, options)
+      const containsRt = isQuoted(containsSchema) ? `type(${containsSchema})` : containsSchema
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
+      if (minC === undefined && maxC === undefined) {
+        const msg = containsMessage ?? 'must contain at least one matching item'
+        arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.some((i) => ${containsRt}.allows(i)) || ctx.mustBe(${JSON.stringify(msg)}))`
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const msg = minContainsMessage ?? `must contain at least ${effectiveMin} matching items`
+          arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(msg)}))`
+        }
+        if (maxC !== undefined) {
+          const msg = maxContainsMessage ?? `must contain at most ${maxC} matching items`
+          arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(msg)}))`
+        }
+      }
+    }
+    return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }
 
   if (types.includes('object'))

@@ -82,8 +82,8 @@ describe('object', () => {
             required: ['a'],
             minProperties: 1,
             maxProperties: 3,
-            'x-minimum-message': 'too few',
-            'x-maximum-message': 'too many',
+            'x-minProperties-message': 'too few',
+            'x-maxProperties-message': 'too many',
           },
           'Schema',
           false,
@@ -222,6 +222,42 @@ describe('object', () => {
         ),
       ).toBe(
         "v.pipe(v.partial(v.object({a:v.string(),b:v.string(),c:v.string()})),v.check((o)=>!('a' in o)||('b' in o&&'c' in o),\"a needs b and c\"))",
+      )
+    })
+  })
+
+  describe('x-properties-message', () => {
+    it('wraps object with rawCheck that rewrites property-level messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.object({a:v.string()}),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:"bad props",path:issue.path})}else{addIssue(issue)}}}}))',
+      )
+    })
+
+    it('accepts arrow expression message', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': '(issue) => `bad ${issue.path[0].key}`',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.object({a:v.string()}),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:((issue) => `bad ${issue.path[0].key}`)(issue),path:issue.path})}else{addIssue(issue)}}}}))',
       )
     })
   })

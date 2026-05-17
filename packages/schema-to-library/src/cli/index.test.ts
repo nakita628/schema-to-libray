@@ -42,8 +42,8 @@ const schemaWithGranularMessages = {
       type: 'string',
       minLength: 1,
       maxLength: 100,
-      'x-minimum-message': 'Name cannot be empty',
-      'x-maximum-message': 'Name too long',
+      'x-minLength-message': 'Name cannot be empty',
+      'x-maxLength-message': 'Name too long',
     },
     sku: {
       type: 'string',
@@ -768,9 +768,9 @@ describe('array/nullable/default: schema-to-effect', () => {
 
 export const Config = Schema.Struct({
   tags: Schema.Array(Schema.String).pipe(Schema.minItems(1)),
-  enabled: Schema.optional(Schema.optionalWith(Schema.Boolean, { default: () => true })),
+  enabled: Schema.optionalWith(Schema.Boolean, { default: () => true }),
   count: Schema.optional(Schema.NullOr(Schema.Number.pipe(Schema.int()))),
-  label: Schema.optional(Schema.optionalWith(Schema.String, { default: () => 'untitled' })),
+  label: Schema.optionalWith(Schema.String, { default: () => 'untitled' }),
 })
 `
     expect(generatedCode).toBe(expectedCode)

@@ -242,7 +242,7 @@ describe('effect', () => {
             { default: 'hello' },
           ],
         },
-        'Schema.optional(Schema.Struct({a:Schema.String}),{default:() => "hello"})',
+        'Schema.optionalWith(Schema.Struct({a:Schema.String}),{default:() => "hello"})',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -253,28 +253,28 @@ describe('effect', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { not: { type: 'string' } },
-        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string'))",
+        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string'))",
       ],
       [
         { not: { type: 'integer' } },
-        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'number' || !Number.isInteger(v)))",
+        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'number' || !Number.isInteger(val)))",
       ],
       [
         { not: { type: 'boolean' } },
-        "Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'boolean'))",
+        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'boolean'))",
       ],
       [
         { not: { type: 'string' }, nullable: true },
-        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string')))",
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((v) => typeof v !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string')))",
       ],
-      [{ not: { const: 42 } }, 'Schema.Unknown.pipe(Schema.filter((v) => v !== 42))'],
+      [{ not: { const: 42 } }, 'Schema.Unknown.pipe(Schema.filter((val) => val !== 42))'],
       [
         { not: { enum: ['a', 'b'] } },
-        'Schema.Unknown.pipe(Schema.filter((v) => !["a","b"].includes(v)))',
+        'Schema.Unknown.pipe(Schema.filter((val) => !["a","b"].includes(val)))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -378,11 +378,11 @@ describe('effect', () => {
       ],
       [
         { type: 'string', default: 'test', nullable: true },
-        'Schema.NullOr(Schema.optionalWith(Schema.String,{default:() => "test"}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
       ],
       [
         { type: ['string', 'null'], default: 'test' },
-        'Schema.NullOr(Schema.optionalWith(Schema.String,{default:() => "test"}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
       ],
       [
         { type: 'string', format: 'email' },
@@ -434,11 +434,11 @@ describe('effect', () => {
       [{ type: 'number', default: 100 }, 'Schema.optionalWith(Schema.Number,{default:() => 100})'],
       [
         { type: 'number', default: 100, nullable: true },
-        'Schema.NullOr(Schema.optionalWith(Schema.Number,{default:() => 100}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.Number),{default:() => 100})',
       ],
       [
         { type: ['number', 'null'], default: 100 },
-        'Schema.NullOr(Schema.optionalWith(Schema.Number,{default:() => 100}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.Number),{default:() => 100})',
       ],
       [{ type: 'number', exclusiveMinimum: 5 }, 'Schema.Number.pipe(Schema.greaterThan(5))'],
       [{ type: 'number', exclusiveMaximum: 10 }, 'Schema.Number.pipe(Schema.lessThan(10))'],
@@ -475,11 +475,11 @@ describe('effect', () => {
       ],
       [
         { type: 'integer', default: 100, nullable: true },
-        'Schema.NullOr(Schema.optionalWith(Schema.Number.pipe(Schema.int()),{default:() => 100}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.Number.pipe(Schema.int())),{default:() => 100})',
       ],
       [
         { type: ['integer', 'null'], default: 100 },
-        'Schema.NullOr(Schema.optionalWith(Schema.Number.pipe(Schema.int()),{default:() => 100}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.Number.pipe(Schema.int())),{default:() => 100})',
       ],
       [
         { type: 'integer', exclusiveMinimum: 5 },
@@ -818,7 +818,7 @@ describe('effect', () => {
 
     it('should handle default with nullable', () => {
       expect(effect({ type: 'string', nullable: true, default: 'x' })).toBe(
-        'Schema.NullOr(Schema.optionalWith(Schema.String,{default:() => "x"}))',
+        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "x"})',
       )
     })
   })
@@ -842,9 +842,11 @@ describe('effect', () => {
       )
     })
 
-    it('should add Schema.brand() after Schema.optionalWith()', () => {
+    it('should add Schema.brand() inside Schema.optionalWith()', () => {
+      // Schema.brand requires a Schema; optionalWith returns a PropertySignature.
+      // Brand must wrap the inner Schema before optionalWith makes it optional.
       expect(effect({ type: 'string', default: 'foo', 'x-brand': 'Name' })).toBe(
-        'Schema.optionalWith(Schema.String,{default:() => "foo"}).pipe(Schema.brand("Name"))',
+        'Schema.optionalWith(Schema.String.pipe(Schema.brand("Name")),{default:() => "foo"})',
       )
     })
 
@@ -858,6 +860,30 @@ describe('effect', () => {
       expect(
         effect({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
       ).toBe('Schema.Array(Schema.String).pipe(Schema.minItems(1)).pipe(Schema.brand("Tags"))')
+    })
+  })
+
+  describe('x-prefixItems-message', () => {
+    it('wraps tuple with transformOrFail that rewrites element-level messages', () => {
+      expect(
+        effect({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe(
+        'Schema.transformOrFail(Schema.Unknown,Schema.Tuple(Schema.String,Schema.Number),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Tuple(Schema.String,Schema.Number))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad tuple")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
+      )
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('wraps array with transformOrFail that rewrites element-level messages', () => {
+      expect(
+        effect({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe(
+        'Schema.transformOrFail(Schema.Unknown,Schema.Array(Schema.String),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Array(Schema.String))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad items")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
+      )
     })
   })
 })

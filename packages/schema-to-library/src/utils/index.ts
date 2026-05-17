@@ -58,12 +58,29 @@ export function normalizeTypes(t?: string | readonly string[]) {
  * @example
  * ```ts
  * zodError('Name must be 3-20 characters') // '{error:"Name must be 3-20 characters"}'
- * zodError('(v) => `Expected ${v}`')        // '{error:(v) => `Expected ${v}`}'
+ * zodError('(val) => `Expected ${val}`')   // '{error:(val) => `Expected ${val}`}'
  * ```
  */
 export function zodError(message: string) {
   const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
   return isArrowExpression(message) ? `{error:${message}}` : `{error:${JSON.stringify(message)}}`
+}
+
+/**
+ * Build the base `{error:...}` argument for a Zod v4 schema constructor when
+ * `x-error-message` (type / generic) and/or `x-required-message`
+ * (`issue.input === undefined`) are present.
+ */
+export function zodBaseError(
+  typeMessage: string | undefined,
+  requiredMessage: string | undefined,
+): string {
+  if (typeMessage === undefined && requiredMessage === undefined) return ''
+  if (requiredMessage === undefined && typeMessage !== undefined) return zodError(typeMessage)
+  if (requiredMessage !== undefined && typeMessage === undefined) {
+    return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:undefined}`
+  }
+  return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:${JSON.stringify(typeMessage as string)}}`
 }
 
 /**

@@ -2,7 +2,7 @@ import * as z from 'zod'
 
 export const Merged = (() => {
   const Schema = z.intersection(
-    z.object({ name: z.string().min(3, { error: 'name must be at least 3 chars' }) }),
+    z.object({ name: z.string().min(3) }),
     z.object({ age: z.int().min(0, { error: 'age must be >= 0' }) }),
   )
   return z

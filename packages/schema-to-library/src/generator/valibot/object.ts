@@ -27,18 +27,21 @@ export function object(
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minProperties-message']
   const minErrorArg = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxProperties-message']
   const maxErrorArg = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
-  const patternMessage = schema['x-pattern-message']
-  const patternErrorArg = patternMessage ? `,${valibotError(patternMessage)}` : ''
+  // v3.0: 1 keyword = 1 message
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const patternErrorArg = patternPropsMessage ? `,${valibotError(patternPropsMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage
-    ? `,${valibotError(propNamesMessage)}`
-    : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${valibotError(propNamesMessage)}` : ''
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${valibotError(depReqMessage)}` : errorArg
+  const depSchMessage = schema['x-dependentSchemas-message']
+  const depSchErrorArg = depSchMessage ? `,${valibotError(depSchMessage)}` : errorArg
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const addlPropsErrorArg = addlPropsMessage ? `,${valibotError(addlPropsMessage)}` : ''
 
   const propertyNamesCheck = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -66,6 +69,11 @@ export function object(
   }
 
   if (!schema.properties) {
+    if (schema.patternProperties) {
+      const record = `v.record(v.string(),v.unknown())`
+      const actions = [propertyNamesCheck(), ...patternPropertiesChecks()].filter((a) => a !== '')
+      return actions.length > 0 ? `v.pipe(${record},${actions.join(',')})` : record
+    }
     if (schema.additionalProperties === true) return 'v.any()'
     return 'v.object({})'
   }
@@ -87,12 +95,20 @@ export function object(
     })
     .filter((p) => p !== null)
 
-  const partialBase =
+  const rawBase =
     required.length === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
           .join(',')}}))`
       : `v.${objectKind}({${props.join(',')}})`
+  const propsMessage = schema['x-properties-message']
+  const partialBase = propsMessage
+    ? (() => {
+        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
+        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${rawBase},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+      })()
+    : rawBase
 
   const minPropertiesCheck =
     typeof schema.minProperties === 'number'
@@ -108,6 +124,30 @@ export function object(
         return `v.check((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
       })
     : []
+  // v3.0: dependentSchemas
+  const dependentSchemasChecks: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = valibot(subSchema, rootName, isValibot, options)
+        return `v.check((o)=>!('${key}' in o)||v.safeParse(${s},o).success${depSchErrorArg})`
+      })
+    : []
+  // v3.0: x-additionalProperties-message
+  const additionalPropertiesCheck =
+    schema.additionalProperties === false && addlPropsMessage
+      ? `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
+      : ''
+  // v3.0: if/then/else (Draft-07+)
+  const ifThenElseCheck = (() => {
+    if (!schema.if) return ''
+    const ifSchema = valibot(schema.if, rootName, isValibot, options)
+    const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
+    const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
+    if (!thenSchema && !elseSchema) return ''
+    const branchCheck = (s: string) => `const r=v.safeParse(${s},o);if(!r.success)return false;`
+    const thenBranch = thenSchema ? branchCheck(thenSchema) : ''
+    const elseBranch = elseSchema ? branchCheck(elseSchema) : ''
+    return `v.check((o)=>{const m=v.safeParse(${ifSchema},o).success;if(m){${thenBranch}}else{${elseBranch}}return true;})`
+  })()
 
   const actions = [
     minPropertiesCheck,
@@ -115,6 +155,9 @@ export function object(
     propertyNamesCheck(),
     ...patternPropertiesChecks(),
     ...dependentRequiredChecks,
+    ...dependentSchemasChecks,
+    additionalPropertiesCheck,
+    ifThenElseCheck,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase

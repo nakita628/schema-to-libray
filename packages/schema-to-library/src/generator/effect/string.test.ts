@@ -55,8 +55,8 @@ describe('effect string', () => {
           type: 'string',
           minLength: 3,
           maxLength: 20,
-          'x-minimum-message': 'Min 3 chars',
-          'x-maximum-message': 'Max 20 chars',
+          'x-minLength-message': 'Min 3 chars',
+          'x-maxLength-message': 'Max 20 chars',
         },
         'Schema.String.pipe(Schema.minLength(3,{message:()=>"Min 3 chars"}),Schema.maxLength(20,{message:()=>"Max 20 chars"}))',
       ],
@@ -65,7 +65,8 @@ describe('effect string', () => {
           type: 'string',
           minLength: 10,
           maxLength: 10,
-          'x-size-message': 'Must be exactly 10 characters',
+          'x-minLength-message': 'Must be exactly 10 characters',
+          'x-maxLength-message': 'Must be exactly 10 characters',
         },
         'Schema.String.pipe(Schema.length(10,{message:()=>"Must be exactly 10 characters"}))',
       ],
@@ -74,7 +75,7 @@ describe('effect string', () => {
           type: 'string',
           minLength: 3,
           'x-error-message': 'Invalid string',
-          'x-minimum-message': 'Min 3 chars',
+          'x-minLength-message': 'Min 3 chars',
         },
         'Schema.String.pipe(Schema.minLength(3,{message:()=>"Min 3 chars"})).annotations({message:()=>"Invalid string"})',
       ],
@@ -121,6 +122,48 @@ describe('effect string', () => {
     it('should handle email with length constraints', () => {
       expect(string({ type: 'string', format: 'email', minLength: 5, maxLength: 100 })).toBe(
         'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),Schema.minLength(5),Schema.maxLength(100))',
+      )
+    })
+  })
+
+  describe('Phase 1A declarative behavior extensions', () => {
+    it('emits Schema.Trim for x-trim', () => {
+      expect(string({ type: 'string', 'x-trim': true })).toBe('Schema.Trim')
+    })
+
+    it('emits Schema.Lowercase for x-toLowerCase', () => {
+      expect(string({ type: 'string', 'x-toLowerCase': true })).toBe('Schema.Lowercase')
+    })
+
+    it('emits Schema.Uppercase for x-toUpperCase', () => {
+      expect(string({ type: 'string', 'x-toUpperCase': true })).toBe('Schema.Uppercase')
+    })
+
+    it('falls back to Schema.String for x-normalize (no native Effect API)', () => {
+      expect(string({ type: 'string', 'x-normalize': 'NFC' })).toBe('Schema.String')
+    })
+
+    it('emits Schema.startsWith filter for x-startsWith', () => {
+      expect(string({ type: 'string', 'x-startsWith': 'https://' })).toBe(
+        'Schema.String.pipe(Schema.startsWith("https://"))',
+      )
+    })
+
+    it('emits Schema.endsWith filter for x-endsWith', () => {
+      expect(string({ type: 'string', 'x-endsWith': '.com' })).toBe(
+        'Schema.String.pipe(Schema.endsWith(".com"))',
+      )
+    })
+
+    it('emits Schema.includes filter for x-includes', () => {
+      expect(string({ type: 'string', 'x-includes': '/api/' })).toBe(
+        'Schema.String.pipe(Schema.includes("/api/"))',
+      )
+    })
+
+    it('combines transform base with content filters', () => {
+      expect(string({ type: 'string', 'x-trim': true, 'x-startsWith': 'http' })).toBe(
+        'Schema.Trim.pipe(Schema.startsWith("http"))',
       )
     })
   })
