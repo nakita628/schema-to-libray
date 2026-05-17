@@ -10,12 +10,13 @@ export function number(schema: JSONSchema): string {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
+  const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
   const base =
     schema.format === 'float' || schema.format === 'float32'
-      ? `z.float32(${baseErrorArg})`
+      ? `z.${coercePrefix}float32(${baseErrorArg})`
       : schema.format === 'float64'
-        ? `z.float64(${baseErrorArg})`
-        : `z.number(${baseErrorArg})`
+        ? `z.${coercePrefix}float64(${baseErrorArg})`
+        : `z.${coercePrefix}number(${baseErrorArg})`
   // v3.0: separate inclusive (.min()) / exclusive (.gt() / .positive()) slots
   const minimumMessage = schema['x-minimum-message']
   const exclusiveMinMessage = schema['x-exclusiveMinimum-message']

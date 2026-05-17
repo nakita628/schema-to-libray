@@ -631,4 +631,40 @@ describe('typebox', () => {
       expect(typebox({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('Type.String()')
     })
   })
+
+  describe('x-prefixItems-message', () => {
+    it('emits errorMessage.prefixItems and errorMessage.items for ajv-errors compatibility', () => {
+      expect(
+        typebox({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe(
+        'Type.Tuple([Type.String(),Type.Number()],{errorMessage:{prefixItems:"bad tuple",items:"bad tuple"}})',
+      )
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('emits errorMessage.items for ajv-errors compatibility', () => {
+      expect(
+        typebox({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe('Type.Array(Type.String(),{errorMessage:{items:"bad items"}})')
+    })
+
+    it('coexists with other array errorMessage entries', () => {
+      expect(
+        typebox({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-items-message': 'bad items',
+          'x-minItems-message': 'too few',
+        }),
+      ).toBe(
+        'Type.Array(Type.String(),{minItems:1,errorMessage:{minItems:"too few",items:"bad items"}})',
+      )
+    })
+  })
 })

@@ -45,6 +45,10 @@ export function valibotWrap(valibotStr: string, schema: JSONSchema): string {
     actions.push(`v.metadata(${serializeJSValue(metaObj)})`)
   }
 
+  if (schema['x-readonly'] === true) {
+    actions.push('v.readonly()')
+  }
+
   const brand = schema['x-brand']
   if (typeof brand === 'string') {
     actions.push(`v.brand("${brand}")`)

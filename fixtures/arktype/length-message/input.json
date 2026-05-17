@@ -6,7 +6,8 @@
       "type": "string",
       "minLength": 6,
       "maxLength": 6,
-      "x-length-message": "Code must be exactly 6 characters"
+      "x-minLength-message": "Code must be exactly 6 characters",
+      "x-maxLength-message": "Code must be exactly 6 characters"
     }
   },
   "required": ["code"]

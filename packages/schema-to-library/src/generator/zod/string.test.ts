@@ -73,9 +73,37 @@ describe('string', () => {
           type: 'string',
           minLength: 10,
           maxLength: 10,
-          'x-size-message': 'Must be exactly 10 characters',
+          'x-minLength-message': 'Must be exactly 10 characters',
+          'x-maxLength-message': 'Must be exactly 10 characters',
         },
         'z.string().length(10,{error:"Must be exactly 10 characters"})',
+      ],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('Phase 1A declarative behavior extensions', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'string', 'x-trim': true }, 'z.string().trim()'],
+      [{ type: 'string', 'x-toLowerCase': true }, 'z.string().toLowerCase()'],
+      [{ type: 'string', 'x-toUpperCase': true }, 'z.string().toUpperCase()'],
+      [{ type: 'string', 'x-normalize': 'NFC' }, 'z.string().normalize("NFC")'],
+      [{ type: 'string', 'x-normalize': 'NFKC' }, 'z.string().normalize("NFKC")'],
+      [{ type: 'string', 'x-startsWith': 'https://' }, 'z.string().startsWith("https://")'],
+      [{ type: 'string', 'x-endsWith': '.com' }, 'z.string().endsWith(".com")'],
+      [{ type: 'string', 'x-includes': '/api/' }, 'z.string().includes("/api/")'],
+      [
+        { type: 'string', 'x-trim': true, 'x-toLowerCase': true },
+        'z.string().trim().toLowerCase()',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-toLowerCase': true },
+        'z.email().toLowerCase()',
+      ],
+      [
+        { type: 'string', 'x-startsWith': 'https://', 'x-endsWith': '.com' },
+        'z.string().startsWith("https://").endsWith(".com")',
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)

@@ -23,7 +23,6 @@ export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
-  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
   const minLengthMessage = schema['x-minLength-message']
   const maxLengthMessage = schema['x-maxLength-message']
   const perKeywordEntries: string[] = []
@@ -31,10 +30,6 @@ export function string(schema: JSONSchema) {
   if (patternMessage) perKeywordEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
   if (minLengthMessage) perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
   if (maxLengthMessage) perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
-  if (lengthMessage) {
-    perKeywordEntries.push(`minLength:${JSON.stringify(lengthMessage)}`)
-    perKeywordEntries.push(`maxLength:${JSON.stringify(lengthMessage)}`)
-  }
   const errMsg =
     perKeywordEntries.length === 0
       ? errorMessage
@@ -49,11 +44,35 @@ export function string(schema: JSONSchema) {
     schema.maxLength !== undefined &&
     schema.minLength === schema.maxLength
 
+  // Content-check extensions emit as `pattern` annotation (ajv runtime check).
+  // When the schema's own `pattern` is set, that wins (existing behavior);
+  // x-startsWith/x-endsWith/x-includes are ignored to avoid silent regex
+  // override.
+  const contentPattern = (() => {
+    if (schema.pattern) return undefined
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const parts: string[] = []
+    if (typeof schema['x-startsWith'] === 'string') {
+      parts.push(`^${escapeRegex(schema['x-startsWith'])}`)
+    }
+    if (typeof schema['x-endsWith'] === 'string') {
+      parts.push(`${escapeRegex(schema['x-endsWith'])}$`)
+    }
+    if (typeof schema['x-includes'] === 'string') {
+      parts.push(escapeRegex(schema['x-includes']))
+    }
+    return parts.length > 0 ? parts.join('|') : undefined
+  })()
+
   const opts = [
     schema.format && FORMAT_MAP[schema.format]
       ? `format:${JSON.stringify(FORMAT_MAP[schema.format])}`
       : undefined,
-    schema.pattern ? `pattern:${JSON.stringify(schema.pattern)}` : undefined,
+    schema.pattern
+      ? `pattern:${JSON.stringify(schema.pattern)}`
+      : contentPattern
+        ? `pattern:${JSON.stringify(contentPattern)}`
+        : undefined,
     isFixedLength ? `minLength:${schema.minLength}` : undefined,
     isFixedLength ? `maxLength:${schema.maxLength}` : undefined,
     !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
@@ -62,8 +81,18 @@ export function string(schema: JSONSchema) {
     ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
 
-  if (opts.length > 0) {
-    return `Type.String({${opts.join(',')}})`
+  const stringExpr = opts.length > 0 ? `Type.String({${opts.join(',')}})` : 'Type.String()'
+
+  // String pre-validation transforms via Type.Transform.Decode.Encode.
+  const transforms: string[] = []
+  if (schema['x-trim'] === true) transforms.push('.trim()')
+  if (schema['x-toLowerCase'] === true) transforms.push('.toLowerCase()')
+  if (schema['x-toUpperCase'] === true) transforms.push('.toUpperCase()')
+  if (typeof schema['x-normalize'] === 'string') {
+    transforms.push(`.normalize(${JSON.stringify(schema['x-normalize'])})`)
   }
-  return 'Type.String()'
+  if (transforms.length > 0) {
+    return `Type.Transform(${stringExpr}).Decode((val: string) => val${transforms.join('')}).Encode((val: string) => val)`
+  }
+  return stringExpr
 }

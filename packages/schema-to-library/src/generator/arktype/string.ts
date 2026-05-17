@@ -12,13 +12,9 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
 }
 
 export function string(schema: JSONSchema) {
-  // v3.0: arktype consumes type/required/pattern/length messages via
-  // `.describe()` (single annotation per type) or `.narrow()` (per-keyword).
-  // When a per-keyword message is present, we switch to narrow form for
-  // that constraint; the others continue to use DSL.
   const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
-  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
+  const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
   const minLengthMessage = schema['x-minLength-message']
   const maxLengthMessage = schema['x-maxLength-message']
   const patternMessage = schema['x-pattern-message']
@@ -26,11 +22,51 @@ export function string(schema: JSONSchema) {
   const format = schema.format && FORMAT_MAP[schema.format]
   const base = format ? `"${format}"` : '"string"'
 
+  const behaviorChain = (() => {
+    const chains: string[] = []
+    if (schema['x-trim'] === true) chains.push('.pipe((val: string) => val.trim())')
+    if (schema['x-toLowerCase'] === true) chains.push('.pipe((val: string) => val.toLowerCase())')
+    if (schema['x-toUpperCase'] === true) chains.push('.pipe((val: string) => val.toUpperCase())')
+    if (typeof schema['x-normalize'] === 'string') {
+      chains.push(
+        `.pipe((val: string) => val.normalize(${JSON.stringify(schema['x-normalize'])}))`,
+      )
+    }
+    if (typeof schema['x-startsWith'] === 'string') {
+      const prefix = schema['x-startsWith']
+      chains.push(
+        `.narrow((val: string, ctx) => val.startsWith(${JSON.stringify(prefix)}) || ctx.mustBe(${JSON.stringify(`must start with ${JSON.stringify(prefix)}`)}))`,
+      )
+    }
+    if (typeof schema['x-endsWith'] === 'string') {
+      const suffix = schema['x-endsWith']
+      chains.push(
+        `.narrow((val: string, ctx) => val.endsWith(${JSON.stringify(suffix)}) || ctx.mustBe(${JSON.stringify(`must end with ${JSON.stringify(suffix)}`)}))`,
+      )
+    }
+    if (typeof schema['x-includes'] === 'string') {
+      const sub = schema['x-includes']
+      chains.push(
+        `.narrow((val: string, ctx) => val.includes(${JSON.stringify(sub)}) || ctx.mustBe(${JSON.stringify(`must include ${JSON.stringify(sub)}`)}))`,
+      )
+    }
+    return chains.join('')
+  })()
+
+  const finalize = (expr: string) => {
+    if (behaviorChain && expr.startsWith('"')) {
+      return `type(${expr})${behaviorChain}${describe}`
+    }
+    return `${expr}${behaviorChain}${describe}`
+  }
+
   if (schema.pattern) {
     if (patternMessage) {
-      return `type(${base}).narrow((s, ctx) => new RegExp(${JSON.stringify(schema.pattern)}).test(s) || ctx.mustBe(${JSON.stringify(patternMessage)}))${describe}`
+      return finalize(
+        `type(${base}).narrow((s, ctx) => new RegExp(${JSON.stringify(schema.pattern)}).test(s) || ctx.mustBe(${JSON.stringify(patternMessage)}))`,
+      )
     }
-    return `type(${base}).and(/${schema.pattern}/)${describe}`
+    return finalize(`type(${base}).and(/${schema.pattern}/)`)
   }
 
   const isFixedLength =
@@ -40,9 +76,11 @@ export function string(schema: JSONSchema) {
 
   if (isFixedLength) {
     if (lengthMessage) {
-      return `type(${base}).narrow((s, ctx) => s.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(lengthMessage)}))${describe}`
+      return finalize(
+        `type(${base}).narrow((s, ctx) => s.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(lengthMessage)}))`,
+      )
     }
-    return `type("string == ${schema.minLength}")${describe}`
+    return finalize(`type("string == ${schema.minLength}")`)
   }
 
   const hasMin = schema.minLength !== undefined
@@ -65,19 +103,19 @@ export function string(schema: JSONSchema) {
           `.narrow((s, ctx) => s.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxMsg)}))`,
         )
       }
-      return `type(${base})${narrows.join('')}${describe}`
+      return finalize(`type(${base})${narrows.join('')}`)
     }
     if (hasMin && hasMax) {
-      return `type("${schema.minLength} <= string <= ${schema.maxLength}")${describe}`
+      return finalize(`type("${schema.minLength} <= string <= ${schema.maxLength}")`)
     }
     if (hasMin) {
-      return `type("string >= ${schema.minLength}")${describe}`
+      return finalize(`type("string >= ${schema.minLength}")`)
     }
-    return `type("string <= ${schema.maxLength}")${describe}`
+    return finalize(`type("string <= ${schema.maxLength}")`)
   }
 
-  if (errorMessage) {
-    return format ? `type(${base})${describe}` : `type("string")${describe}`
+  if (errorMessage || behaviorChain) {
+    return finalize(format ? `type(${base})` : `type("string")`)
   }
 
   if (format) return base

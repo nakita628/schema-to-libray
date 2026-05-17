@@ -121,7 +121,7 @@ export function effect(
       ? (() => {
           const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
           const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const valid=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(valid)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(valid.right)},encode:ParseResult.succeed})`
+          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
         })()
       : intersected
     if (defaultValue !== undefined) {
@@ -147,15 +147,15 @@ export function effect(
     const filtered = (predicate: string) =>
       effectWrap(`Schema.Unknown.pipe(Schema.filter(${predicate}${filterOpts}))`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v) => typeof v !== 'string'`,
-      number: `(v) => typeof v !== 'number'`,
-      integer: `(v) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v) => typeof v !== 'boolean'`,
-      array: '(v) => !Array.isArray(v)',
-      object: `(v) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v) => v !== null',
+      string: `(val) => typeof val !== 'string'`,
+      number: `(val) => typeof val !== 'number'`,
+      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val) => typeof val !== 'boolean'`,
+      array: '(val) => !Array.isArray(val)',
+      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val) => val !== null',
     }
-    if ('const' in inner) return filtered(`(v) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return filtered(`(val) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return filtered(predicate)
@@ -164,11 +164,11 @@ export function effect(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
-      if (bodies.length > 0) return filtered(`(v) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
+      if (bodies.length > 0) return filtered(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return filtered(`(v) => !${JSON.stringify(inner.enum)}.includes(v)`)
+      return filtered(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
     }
     return effectWrap('Schema.Unknown', schema)
   }
@@ -192,25 +192,35 @@ export function effect(
   if (types.includes('boolean')) return effectWrap('Schema.Boolean', schema)
 
   if (types.includes('array')) {
+    const elementMessageWrap = (inner: string, msg: string) => {
+      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+      return `Schema.transformOrFail(Schema.Unknown,${inner},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${inner})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
+    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => effect(s, rootName, isEffect, options))
-      return effectWrap(`Schema.Tuple(${items.join(',')})`, schema)
+      const tupleExpr = `Schema.Tuple(${items.join(',')})`
+      const prefixMsg = schema['x-prefixItems-message']
+      const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
+      return effectWrap(wrapped, schema)
     }
     const items = schema.items
       ? effect(schema.items, rootName, isEffect, options)
       : 'Schema.Unknown'
-    const base = `Schema.Array(${items})`
+    const itemsMsg = schema['x-items-message']
+    const arrayBase = `Schema.Array(${items})`
+    const base = itemsMsg ? elementMessageWrap(arrayBase, itemsMsg) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
-    // v3.0: per-keyword array messages
-    const sizeMsg = schema['x-size-message']
-    const sizeArg = sizeMsg ? `,${effectError(sizeMsg)}` : ''
+    // Per-keyword array messages
     const minItemsMsg = schema['x-minItems-message']
     const minArg = minItemsMsg ? `,${effectError(minItemsMsg)}` : ''
     const maxItemsMsg = schema['x-maxItems-message']
     const maxArg = maxItemsMsg ? `,${effectError(maxItemsMsg)}` : ''
+    const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
+    const sizeArg = fixedItemsMsg ? `,${effectError(fixedItemsMsg)}` : ''
     const uniqueMsg = schema['x-uniqueItems-message']
     const uniqueArg = uniqueMsg ? `,${effectError(uniqueMsg)}` : ''
     // v3.0: contains / minContains / maxContains as separate filters

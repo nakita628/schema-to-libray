@@ -295,10 +295,6 @@ export type JSONSchema = {
   readonly 'x-maxLength-message'?: string
   /** `pattern` (`.regex()`) */
   readonly 'x-pattern-message'?: string
-  /** Exact length (`minLength === maxLength`) */
-  readonly 'x-length-message'?: string
-  /** Exact length fallback (proprietary, kept for backward compatibility) */
-  readonly 'x-size-message'?: string
   // Array
   /** `minItems` */
   readonly 'x-minItems-message'?: string
@@ -312,6 +308,10 @@ export type JSONSchema = {
   readonly 'x-minContains-message'?: string
   /** `maxContains` (count upper bound) */
   readonly 'x-maxContains-message'?: string
+  /** `prefixItems` (tuple positional schemas) */
+  readonly 'x-prefixItems-message'?: string
+  /** `items` (homogeneous element schema) */
+  readonly 'x-items-message'?: string
   // Object
   /** `minProperties` */
   readonly 'x-minProperties-message'?: string
@@ -327,6 +327,8 @@ export type JSONSchema = {
   readonly 'x-dependentRequired-message'?: string
   /** `dependentSchemas` (key A ⇒ sub-schema applies) */
   readonly 'x-dependentSchemas-message'?: string
+  /** `properties` schema value check (typeless / generic) */
+  readonly 'x-properties-message'?: string
   // Combinators
   /** `oneOf` (`z.xor` / `z.discriminatedUnion`) */
   readonly 'x-oneOf-message'?: string
@@ -336,6 +338,30 @@ export type JSONSchema = {
   readonly 'x-allOf-message'?: string
   /** `not` predicate */
   readonly 'x-not-message'?: string
+
+  // ── Behavior Extensions (declarative, Phase 1A) ───────────────────
+  /** Apply `.trim()` / `v.trim()` etc. before validation (string only) */
+  readonly 'x-trim'?: boolean
+  /** Apply `.toLowerCase()` before validation (string only) */
+  readonly 'x-toLowerCase'?: boolean
+  /** Apply `.toUpperCase()` before validation (string only) */
+  readonly 'x-toUpperCase'?: boolean
+  /** Apply Unicode normalization (string only) */
+  readonly 'x-normalize'?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD'
+  /** Mark schema as readonly (array / object) */
+  readonly 'x-readonly'?: boolean
+  /** Require value to start with a literal prefix (string only) */
+  readonly 'x-startsWith'?: string
+  /** Require value to end with a literal suffix (string only) */
+  readonly 'x-endsWith'?: string
+  /** Require value to contain a literal substring (string only) */
+  readonly 'x-includes'?: string
+  /** Zod-only: enable `z.coerce.<type>` for number / integer / boolean / date */
+  readonly 'x-coerce'?: boolean
+  /** Zod-only: `.prefault(value)` — apply default to input before parse */
+  readonly 'x-prefault'?: unknown
+  /** Zod-only: `.catch(value)` — fall back to value on parse failure */
+  readonly 'x-catch'?: unknown
 
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */

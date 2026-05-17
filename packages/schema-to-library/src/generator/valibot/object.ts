@@ -95,12 +95,20 @@ export function object(
     })
     .filter((p) => p !== null)
 
-  const partialBase =
+  const rawBase =
     required.length === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
           .join(',')}}))`
       : `v.${objectKind}({${props.join(',')}})`
+  const propsMessage = schema['x-properties-message']
+  const partialBase = propsMessage
+    ? (() => {
+        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
+        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${rawBase},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+      })()
+    : rawBase
 
   const minPropertiesCheck =
     typeof schema.minProperties === 'number'

@@ -58,7 +58,7 @@ export function normalizeTypes(t?: string | readonly string[]) {
  * @example
  * ```ts
  * zodError('Name must be 3-20 characters') // '{error:"Name must be 3-20 characters"}'
- * zodError('(v) => `Expected ${v}`')        // '{error:(v) => `Expected ${v}`}'
+ * zodError('(val) => `Expected ${val}`')   // '{error:(val) => `Expected ${val}`}'
  * ```
  */
 export function zodError(message: string) {

@@ -93,7 +93,7 @@ export function object(
   // Schema.partial cannot wrap a Struct that already contains transformation-bearing
   // PropertySignatures (e.g. Schema.optionalWith with default), so only use the
   // partial shorthand when every prop is a plain Schema.optional(Schema) wrapper.
-  const partialBase =
+  const rawBase =
     required.length === 0 &&
     props.length > 0 &&
     props.every((p) => /:Schema\.optional\(/.test(p) && !/Schema\.optionalWith\(/.test(p))
@@ -101,6 +101,14 @@ export function object(
           .map((p) => p.replace(/^(.+?):Schema\.optional\((.+)\)$/, '$1:$2'))
           .join(',')}}))`
       : `Schema.Struct({${props.join(',')}})`
+  const propsMessage = schema['x-properties-message']
+  const partialBase = propsMessage
+    ? (() => {
+        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
+        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        return `Schema.transformOrFail(Schema.Unknown,${rawBase},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${rawBase})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
+      })()
+    : rawBase
 
   const minPropertiesFilter =
     typeof schema.minProperties === 'number'

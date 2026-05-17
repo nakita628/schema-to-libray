@@ -175,7 +175,13 @@ export function typebox(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
-      return readonly(typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema), schema))
+      const prefixMsg = schema['x-prefixItems-message']
+      const tupleOpts = prefixMsg
+        ? [`errorMessage:{prefixItems:${JSON.stringify(prefixMsg)},items:${JSON.stringify(prefixMsg)}}`]
+        : []
+      return readonly(
+        typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema, tupleOpts), schema),
+      )
     }
     const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
     // v3.0: per-keyword array messages aggregated into ajv-errors errorMessage.
@@ -196,6 +202,8 @@ export function typebox(
     const arrMaxContainsMsg = schema['x-maxContains-message']
     if (arrMaxContainsMsg)
       arrayErrMsgEntries.push(`maxContains:${JSON.stringify(arrMaxContainsMsg)}`)
+    const arrItemsMsg = schema['x-items-message']
+    if (arrItemsMsg) arrayErrMsgEntries.push(`items:${JSON.stringify(arrItemsMsg)}`)
     const arrayOpts = [
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,

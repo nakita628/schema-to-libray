@@ -29,10 +29,10 @@ describe('zod fixtures: error-messages runtime', () => {
   })
 
   it('short name returns x-minimum-message', () => {
-    const valid = ErrorMessagesUser.safeParse({ name: 'a', age: 25, tags: ['x'] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = ErrorMessagesUser.safeParse({ name: 'a', age: 25, tags: ['x'] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'too_small',
@@ -46,14 +46,14 @@ describe('zod fixtures: error-messages runtime', () => {
   })
 
   it('name longer than maxLength returns x-maximum-message', () => {
-    const valid = ErrorMessagesUser.safeParse({
+    const result = ErrorMessagesUser.safeParse({
       name: 'a'.repeat(21),
       age: 25,
       tags: ['x'],
     })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'too_big',
@@ -67,10 +67,10 @@ describe('zod fixtures: error-messages runtime', () => {
   })
 
   it('name failing pattern returns x-pattern-message', () => {
-    const valid = ErrorMessagesUser.safeParse({ name: 'abc123', age: 25, tags: ['x'] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = ErrorMessagesUser.safeParse({ name: 'abc123', age: 25, tags: ['x'] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'invalid_format',
@@ -84,10 +84,10 @@ describe('zod fixtures: error-messages runtime', () => {
   })
 
   it('negative age returns x-minimum-message', () => {
-    const valid = ErrorMessagesUser.safeParse({ name: 'taro', age: -1, tags: ['x'] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = ErrorMessagesUser.safeParse({ name: 'taro', age: -1, tags: ['x'] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'number',
           code: 'too_small',
@@ -101,10 +101,10 @@ describe('zod fixtures: error-messages runtime', () => {
   })
 
   it('empty tags returns x-minimum-message', () => {
-    const valid = ErrorMessagesUser.safeParse({ name: 'taro', age: 25, tags: [] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = ErrorMessagesUser.safeParse({ name: 'taro', age: 25, tags: [] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'array',
           code: 'too_small',
@@ -124,10 +124,10 @@ describe('zod fixtures: allof runtime', () => {
   })
 
   it('missing age fails with invalid_type', () => {
-    const valid = Combined.safeParse({ name: 'taro' })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = Combined.safeParse({ name: 'taro' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'number',
           code: 'invalid_type',
@@ -145,10 +145,10 @@ describe('zod fixtures: allof-message runtime', () => {
   })
 
   it('age below minimum rewrites message via x-allOf-message', () => {
-    const valid = Merged.safeParse({ name: 'taro', age: -1 })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = Merged.safeParse({ name: 'taro', age: -1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'number',
           code: 'too_small',
@@ -172,10 +172,10 @@ describe('zod fixtures: anyof runtime', () => {
   })
 
   it('boolean fails with x-anyOf-message', () => {
-    const valid = StringOrNumber.safeParse(true)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = StringOrNumber.safeParse(true)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           code: 'invalid_union',
           errors: [
@@ -214,10 +214,10 @@ describe('zod fixtures: oneof runtime', () => {
   })
 
   it('unknown discriminator returns x-oneOf-message', () => {
-    const valid = Shape.safeParse({ kind: 'triangle', side: 1 })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = Shape.safeParse({ kind: 'triangle', side: 1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           code: 'invalid_union',
           errors: [],
@@ -241,10 +241,10 @@ describe('zod fixtures: not runtime', () => {
   })
 
   it('string fails with x-not-message', () => {
-    const valid = NotString.safeParse('hello')
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = NotString.safeParse('hello')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           code: 'custom',
           path: [],
@@ -261,10 +261,10 @@ describe('zod fixtures: additional-properties runtime', () => {
   })
 
   it('non-string value fails with invalid_type', () => {
-    const valid = AdditionalPropertiesConfig.safeParse({ a: 1 })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = AdditionalPropertiesConfig.safeParse({ a: 1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -289,15 +289,15 @@ describe('zod fixtures: nested runtime', () => {
   })
 
   it('invalid status returns enum invalid_value', () => {
-    const valid = NestedOrder.safeParse({
+    const result = NestedOrder.safeParse({
       id: 1,
       customer: { name: 'taro', email: 'a@b.com' },
       items: [],
       status: 'invalid',
     })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           code: 'invalid_value',
           values: ['pending', 'confirmed', 'shipped', 'delivered'],
@@ -324,7 +324,7 @@ describe('zod fixtures: brand runtime', () => {
   })
 
   it('bad uuid fails with invalid_format', () => {
-    const valid = BrandedTypes.safeParse({
+    const result = BrandedTypes.safeParse({
       userId: 'not-uuid',
       email: 'a@b.com',
       price: 1,
@@ -332,9 +332,9 @@ describe('zod fixtures: brand runtime', () => {
       tags: ['x'],
       name: 'a',
     })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'invalid_format',
@@ -361,10 +361,10 @@ describe('zod fixtures: readonly runtime', () => {
   })
 
   it('missing required name fails', () => {
-    const valid = ReadonlyConfig.safeParse({ tags: ['x'] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = ReadonlyConfig.safeParse({ tags: ['x'] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -382,10 +382,10 @@ describe('zod fixtures: circular runtime', () => {
   })
 
   it('non-object at deep path fails', () => {
-    const valid = CircularA.safeParse({ b: { a: 'bad' } })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = CircularA.safeParse({ b: { a: 'bad' } })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'object',
           code: 'invalid_type',
@@ -403,10 +403,10 @@ describe('zod fixtures: definitions runtime', () => {
   })
 
   it('wrong leaf type fails', () => {
-    const valid = DefinitionsA.safeParse({ b: { c: 123 } })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = DefinitionsA.safeParse({ b: { c: 123 } })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -424,10 +424,10 @@ describe('zod fixtures: simple runtime', () => {
   })
 
   it('missing name fails', () => {
-    const valid = SimpleSchema.safeParse({})
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = SimpleSchema.safeParse({})
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -445,10 +445,10 @@ describe('zod fixtures: title runtime', () => {
   })
 
   it('bad email fails with invalid_format', () => {
-    const valid = TitleUser.safeParse({ name: 'x', email: 'bad' })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = TitleUser.safeParse({ name: 'x', email: 'bad' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'invalid_format',
@@ -469,10 +469,10 @@ describe('zod fixtures: meta runtime', () => {
   })
 
   it('missing required email fails', () => {
-    const valid = MetaUser.safeParse({ id: 1 })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = MetaUser.safeParse({ id: 1 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -490,10 +490,10 @@ describe('zod fixtures: $defs runtime', () => {
   })
 
   it('partial address fails', () => {
-    const valid = DefsUser.safeParse({ name: 'x', address: { street: 'a' } })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = DefsUser.safeParse({ name: 'x', address: { street: 'a' } })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -515,10 +515,10 @@ describe('zod fixtures: self-reference runtime', () => {
   })
 
   it('non-array children at depth fails', () => {
-    const valid = SelfRefSchema.safeParse({ children: [{ children: 'bad' }] })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    const result = SelfRefSchema.safeParse({ children: [{ children: 'bad' }] })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'array',
           code: 'invalid_type',
@@ -541,13 +541,13 @@ describe('zod fixtures: split-refs runtime', () => {
   })
 
   it('wrong-type field in referenced schema fails', () => {
-    const valid = SplitRefsUser.safeParse({
+    const result = SplitRefsUser.safeParse({
       name: 'x',
       address: { street: 1, city: 'b' },
     })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           expected: 'string',
           code: 'invalid_type',
@@ -575,14 +575,14 @@ describe('zod fixtures: split-nested runtime', () => {
   })
 
   it('bad email deep inside customer fails', () => {
-    const valid = SplitNestedOrder.safeParse({
+    const result = SplitNestedOrder.safeParse({
       id: 1,
       customer: { name: 'x', email: 'bad', address: { street: 'a', city: 'b' } },
       status: 'pending',
     })
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.error.issues).toStrictEqual([
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
         {
           origin: 'string',
           code: 'invalid_format',

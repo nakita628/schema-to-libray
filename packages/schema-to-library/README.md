@@ -139,7 +139,7 @@ export type User = typeof User.infer
 
 Each generator wires JSON Schema-style validation error messages into the target validator's native error API. Coverage varies per validator due to API differences.
 
-### Coverage Matrix (30 extensions)
+### Coverage Matrix (32 extensions, v3.1)
 
 | Category    | Extension                        |     zod     |   valibot   |   effect    |   arktype   |   typebox   |
 | ----------- | -------------------------------- | :---------: | :---------: | :---------: | :---------: | :---------: |
@@ -155,13 +155,14 @@ Each generator wires JSON Schema-style validation error messages into the target
 | String      | `x-minLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | String      | `x-maxLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | String      | `x-pattern-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| String      | `x-size-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-minItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-maxItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-uniqueItems-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-contains-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-minContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-maxContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-prefixItems-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-items-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-minProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-maxProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-additionalProperties-message` |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
@@ -169,13 +170,14 @@ Each generator wires JSON Schema-style validation error messages into the target
 | Object      | `x-patternProperties-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-dependentRequired-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-dependentSchemas-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-properties-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-allOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-anyOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-oneOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-not-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| **Total**   |                                  | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** | **30 / 30** |
+| **Total**   |                                  | **32 / 32** | **32 / 32** | **32 / 32** | **32 / 32** | **32 / 32** |
 
-All 5 generators reach **full 30/30 v3.0 parity**. The translation strategy per generator:
+All 5 generators reach **full 32/32 v3.1 parity**. The translation strategy per generator:
 
 - **Zod** — native `z.<type>({error: 'msg'})` arguments and `.refine((v, ctx) => ctx.addIssue(...))`-style hooks
 - **Valibot** — `v.minLength(n, 'msg')` style action arguments and `v.check((v) => ..., 'msg')` for advanced keywords
@@ -185,28 +187,32 @@ All 5 generators reach **full 30/30 v3.0 parity**. The translation strategy per 
 
 ### Quick Example (Zod)
 
-```yaml
-# input.yaml
-type: object
-required: [name, age]
-properties:
-  name:
-    type: string
-    minLength: 1
-    maxLength: 50
-    x-error-message: 'Name must be a string'
-    x-minLength-message: 'Name cannot be empty'
-    x-maxLength-message: 'Name must be at most 50 characters'
-  age:
-    type: integer
-    minimum: 0
-    maximum: 120
-    x-minimum-message: 'Age must be >= 0'
-    x-maximum-message: 'Age must be <= 120'
+```json
+{
+  "type": "object",
+  "required": ["name", "age"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "x-error-message": "Name must be a string",
+      "x-minLength-message": "Name cannot be empty",
+      "x-maxLength-message": "Name must be at most 50 characters"
+    },
+    "age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 120,
+      "x-minimum-message": "Age must be >= 0",
+      "x-maximum-message": "Age must be <= 120"
+    }
+  }
+}
 ```
 
 ```ts
-// schema-to-zod -i input.yaml -o output.ts
+// schema-to-zod -i input.json -o output.ts
 import { z } from 'zod'
 
 export const Root = z.object({

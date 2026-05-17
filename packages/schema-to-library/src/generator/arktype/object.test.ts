@@ -200,4 +200,37 @@ describe('object', () => {
       )
     })
   })
+
+  describe('x-properties-message', () => {
+    it('attaches .describe to the object type', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe('type({a:"string"}).describe("bad props")')
+    })
+
+    it('composes with narrows from minProperties', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            minProperties: 1,
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe('type({a:"string"}).narrow((o) => Object.keys(o).length >= 1).describe("bad props")')
+    })
+  })
 })

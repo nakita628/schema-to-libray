@@ -82,6 +82,8 @@ export function object(
   if (objDepSchMsg) objErrMsgEntries.push(`dependentSchemas:${JSON.stringify(objDepSchMsg)}`)
   const objReqMsg = schema['x-required-message']
   if (objReqMsg) objErrMsgEntries.push(`required:${JSON.stringify(objReqMsg)}`)
+  const objPropsMsg = schema['x-properties-message']
+  if (objPropsMsg) objErrMsgEntries.push(`properties:${JSON.stringify(objPropsMsg)}`)
   const objErrMsg =
     objErrMsgEntries.length > 0 ? `errorMessage:{${objErrMsgEntries.join(',')}}` : undefined
   const optParts = [

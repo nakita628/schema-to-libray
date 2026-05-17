@@ -32,19 +32,19 @@ const MULTIPLE_OF_REQUIREMENT = 1
 
 describe('error-messages: User', () => {
   it('safeParse valid input -> success', () => {
-    const valid = v.safeParse(ErrorUser, { name: 'taro', age: 30, tags: ['x', 'y'] })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', age: 30, tags: ['x', 'y'] })
+    const result = v.safeParse(ErrorUser, { name: 'taro', age: 30, tags: ['x', 'y'] })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', age: 30, tags: ['x', 'y'] })
     }
   })
 
   it('safeParse short name -> Name too short', () => {
     const input = { name: 'a', age: 10, tags: ['x'] }
-    const valid = v.safeParse(ErrorUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(ErrorUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'min_length',
@@ -65,10 +65,10 @@ describe('error-messages: User', () => {
 
   it('safeParse non-alphabetic name -> regex message', () => {
     const input = { name: 'a1b', age: 10, tags: ['x'] }
-    const valid = v.safeParse(ErrorUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(ErrorUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'regex',
@@ -89,10 +89,10 @@ describe('error-messages: User', () => {
 
   it('safeParse negative age -> Age must be positive', () => {
     const input = { name: 'taro', age: -1, tags: ['x'] }
-    const valid = v.safeParse(ErrorUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(ErrorUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'min_value',
@@ -113,10 +113,10 @@ describe('error-messages: User', () => {
 
   it('safeParse fractional age -> Age must be integer', () => {
     const input = { name: 'taro', age: 1.5, tags: ['x'] }
-    const valid = v.safeParse(ErrorUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(ErrorUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'integer',
@@ -152,19 +152,19 @@ describe('error-messages: User', () => {
 
 describe('allof: Combined', () => {
   it('safeParse valid intersect -> success', () => {
-    const valid = v.safeParse(Combined, { name: 'taro', age: 30 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', age: 30 })
+    const result = v.safeParse(Combined, { name: 'taro', age: 30 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', age: 30 })
     }
   })
 
   it('safeParse missing name -> Invalid key', () => {
     const input = { age: 10 }
-    const valid = v.safeParse(Combined, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(Combined, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'object',
@@ -186,19 +186,19 @@ describe('allof: Combined', () => {
 
 describe('allof-message: Merged', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(Merged, { name: 'taro', age: 30 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', age: 30 })
+    const result = v.safeParse(Merged, { name: 'taro', age: 30 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', age: 30 })
     }
   })
 
   it('safeParse invalid -> merged validation failed', () => {
     const input = { name: 'ab', age: -1 }
-    const valid = v.safeParse(Merged, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(Merged, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'raw_check',
@@ -234,26 +234,26 @@ describe('allof-message: Merged', () => {
 
 describe('anyof: StringOrNumber', () => {
   it('safeParse string -> success', () => {
-    const valid = v.safeParse(StringOrNumber, 'taro')
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toBe('taro')
+    const result = v.safeParse(StringOrNumber, 'taro')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toBe('taro')
     }
   })
 
   it('safeParse number -> success', () => {
-    const valid = v.safeParse(StringOrNumber, 42)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toBe(42)
+    const result = v.safeParse(StringOrNumber, 42)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toBe(42)
     }
   })
 
   it('safeParse boolean -> Must be string or number', () => {
-    const valid = v.safeParse(StringOrNumber, true)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(StringOrNumber, true)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'union',
@@ -304,27 +304,27 @@ describe('anyof: StringOrNumber', () => {
 
 describe('oneof: Shape', () => {
   it('safeParse circle -> success', () => {
-    const valid = v.safeParse(Shape, { kind: 'circle', radius: 3 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ kind: 'circle', radius: 3 })
+    const result = v.safeParse(Shape, { kind: 'circle', radius: 3 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ kind: 'circle', radius: 3 })
     }
   })
 
   it('safeParse rectangle -> success', () => {
-    const valid = v.safeParse(Shape, { kind: 'rectangle', width: 2, height: 4 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ kind: 'rectangle', width: 2, height: 4 })
+    const result = v.safeParse(Shape, { kind: 'rectangle', width: 2, height: 4 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ kind: 'rectangle', width: 2, height: 4 })
     }
   })
 
   it('safeParse unknown kind -> Must be a valid shape', () => {
     const input = { kind: 'triangle' }
-    const valid = v.safeParse(Shape, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(Shape, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'variant',
@@ -346,19 +346,19 @@ describe('oneof: Shape', () => {
 
 describe('additional-properties: Config', () => {
   it('safeParse valid record -> success', () => {
-    const valid = v.safeParse(AdditionalConfig, { host: 'localhost', port: '8080' })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ host: 'localhost', port: '8080' })
+    const result = v.safeParse(AdditionalConfig, { host: 'localhost', port: '8080' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ host: 'localhost', port: '8080' })
     }
   })
 
   it('safeParse number value -> Invalid type', () => {
     const input = { a: 1 }
-    const valid = v.safeParse(AdditionalConfig, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(AdditionalConfig, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'string',
@@ -386,20 +386,20 @@ describe('nested: Order', () => {
       items: [{ name: 'item', price: 10, quantity: 2 }],
       status: 'pending' as const,
     }
-    const valid = v.safeParse(Order, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(Order, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
   it('safeParse invalid order -> multiple issues', () => {
     const customer = { name: '', email: 'x' }
     const input = { id: 1.5, customer, items: [], status: 'unknown' }
-    const valid = v.safeParse(Order, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(Order, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'integer',
@@ -478,10 +478,10 @@ describe('brand: BrandedTypes', () => {
       tags: ['t1'],
       name: 'taro',
     }
-    const valid = v.safeParse(BrandedTypes, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(BrandedTypes, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
@@ -494,10 +494,10 @@ describe('brand: BrandedTypes', () => {
       tags: [],
       name: '',
     }
-    const valid = v.safeParse(BrandedTypes, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(BrandedTypes, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'uuid',
@@ -575,13 +575,13 @@ describe('brand: BrandedTypes', () => {
 
 describe('$defs: User', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(DefsUser, {
+    const result = v.safeParse(DefsUser, {
       name: 'taro',
       address: { street: 'main', city: 'tokyo' },
     })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({
         name: 'taro',
         address: { street: 'main', city: 'tokyo' },
       })
@@ -589,19 +589,19 @@ describe('$defs: User', () => {
   })
 
   it('safeParse without optional address -> success', () => {
-    const valid = v.safeParse(DefsUser, { name: 'taro' })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro' })
+    const result = v.safeParse(DefsUser, { name: 'taro' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro' })
     }
   })
 
   it('safeParse number name -> Invalid type', () => {
     const input = { name: 1 }
-    const valid = v.safeParse(DefsUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(DefsUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'string',
@@ -623,19 +623,19 @@ describe('$defs: User', () => {
 
 describe('circular: A', () => {
   it('safeParse empty -> success', () => {
-    const valid = v.safeParse(CircularA, {})
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({})
+    const result = v.safeParse(CircularA, {})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({})
     }
   })
 
   it('safeParse nested -> success', () => {
     const input = { b: { a: { b: { a: {} } } } }
-    const valid = v.safeParse(CircularA, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(CircularA, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
@@ -643,10 +643,10 @@ describe('circular: A', () => {
     const inner = { b: 'x' }
     const mid = { a: inner }
     const input = { b: mid }
-    const valid = v.safeParse(CircularA, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(CircularA, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'object',
@@ -672,20 +672,20 @@ describe('circular: A', () => {
 
 describe('definitions: A', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(DefinitionsA, { b: { c: 'taro' } })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ b: { c: 'taro' } })
+    const result = v.safeParse(DefinitionsA, { b: { c: 'taro' } })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ b: { c: 'taro' } })
     }
   })
 
   it('safeParse number c -> Invalid type', () => {
     const b = { c: 1 }
     const input = { b }
-    const valid = v.safeParse(DefinitionsA, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(DefinitionsA, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'string',
@@ -710,19 +710,19 @@ describe('definitions: A', () => {
 
 describe('meta: User', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(MetaUser, { id: 1, email: 'a@b.com' })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ id: 1, email: 'a@b.com' })
+    const result = v.safeParse(MetaUser, { id: 1, email: 'a@b.com' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ id: 1, email: 'a@b.com' })
     }
   })
 
   it('safeParse non-integer id and bad email -> two issues', () => {
     const input = { id: 1.5, email: 'bad' }
-    const valid = v.safeParse(MetaUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(MetaUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'integer',
@@ -758,18 +758,18 @@ describe('meta: User', () => {
 
 describe('not: NotString', () => {
   it('safeParse number -> success', () => {
-    const valid = v.safeParse(NotString, 1)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toBe(1)
+    const result = v.safeParse(NotString, 1)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toBe(1)
     }
   })
 
   it('safeParse string -> Must not be a string', () => {
-    const valid = v.safeParse(NotString, 'a string')
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(NotString, 'a string')
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'custom',
@@ -791,19 +791,19 @@ describe('not: NotString', () => {
 
 describe('readonly: Config', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(ReadonlyConfig, { name: 'taro', tags: ['x'], count: 1 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', tags: ['x'], count: 1 })
+    const result = v.safeParse(ReadonlyConfig, { name: 'taro', tags: ['x'], count: 1 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', tags: ['x'], count: 1 })
     }
   })
 
   it('safeParse invalid -> two issues', () => {
     const input = { name: 1, tags: 'x' }
-    const valid = v.safeParse(ReadonlyConfig, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(ReadonlyConfig, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'string',
@@ -839,19 +839,19 @@ describe('readonly: Config', () => {
 
 describe('self-reference: Schema', () => {
   it('safeParse empty -> success', () => {
-    const valid = v.safeParse(SelfSchema, {})
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({})
+    const result = v.safeParse(SelfSchema, {})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({})
     }
   })
 
   it('safeParse nested children -> success', () => {
     const input = { children: [{ children: [{}] }] }
-    const valid = v.safeParse(SelfSchema, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(SelfSchema, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
@@ -859,10 +859,10 @@ describe('self-reference: Schema', () => {
     const inner = { children: 'x' }
     const arr = [inner]
     const input = { children: arr }
-    const valid = v.safeParse(SelfSchema, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(SelfSchema, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'array',
@@ -888,27 +888,27 @@ describe('self-reference: Schema', () => {
 
 describe('simple: Schema', () => {
   it('safeParse with age -> success', () => {
-    const valid = v.safeParse(SimpleSchema, { name: 'taro', age: 30 })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', age: 30 })
+    const result = v.safeParse(SimpleSchema, { name: 'taro', age: 30 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', age: 30 })
     }
   })
 
   it('safeParse without optional age -> success', () => {
-    const valid = v.safeParse(SimpleSchema, { name: 'taro' })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro' })
+    const result = v.safeParse(SimpleSchema, { name: 'taro' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro' })
     }
   })
 
   it('safeParse missing name + wrong age -> two issues', () => {
     const input = { age: 'x' }
-    const valid = v.safeParse(SimpleSchema, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(SimpleSchema, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'object',
@@ -944,19 +944,19 @@ describe('simple: Schema', () => {
 
 describe('title: User', () => {
   it('safeParse valid -> success', () => {
-    const valid = v.safeParse(TitleUser, { name: 'taro', email: 'a@b.com' })
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual({ name: 'taro', email: 'a@b.com' })
+    const result = v.safeParse(TitleUser, { name: 'taro', email: 'a@b.com' })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual({ name: 'taro', email: 'a@b.com' })
     }
   })
 
   it('safeParse bad email -> Invalid email', () => {
     const input = { name: 'x', email: 'bad' }
-    const valid = v.safeParse(TitleUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(TitleUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'email',
@@ -987,20 +987,20 @@ describe('split-nested: Order', () => {
       },
       status: 'shipped' as const,
     }
-    const valid = v.safeParse(SplitNestedOrder, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(SplitNestedOrder, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
   it('safeParse invalid -> three issues', () => {
     const customer = { name: '', email: 'x' }
     const input = { id: 1.5, customer, status: 'unknown' }
-    const valid = v.safeParse(SplitNestedOrder, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(SplitNestedOrder, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
           type: 'integer',
@@ -1058,19 +1058,19 @@ describe('split-refs: User', () => {
       name: 'taro',
       address: { street: 'main', city: 'tokyo', zip: '100-0001' },
     }
-    const valid = v.safeParse(SplitRefsUser, input)
-    expect(valid.success).toBe(true)
-    if (valid.success) {
-      expect(valid.output).toStrictEqual(input)
+    const result = v.safeParse(SplitRefsUser, input)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.output).toStrictEqual(input)
     }
   })
 
   it('safeParse missing name + bad address -> two issues', () => {
     const input = { address: 'x' }
-    const valid = v.safeParse(SplitRefsUser, input)
-    expect(valid.success).toBe(false)
-    if (!valid.success) {
-      expect(valid.issues).toStrictEqual([
+    const result = v.safeParse(SplitRefsUser, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
         {
           kind: 'schema',
           type: 'object',

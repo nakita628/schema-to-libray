@@ -19,16 +19,16 @@ import { User as TitleUser } from '../title/output.ts'
 
 describe('simple', () => {
   it('valid', () => {
-    const valid = Value.Check(SimpleSchema, { name: 'taro' })
+    const result = Value.Check(SimpleSchema, { name: 'taro' })
     const errors = [...Value.Errors(SimpleSchema, { name: 'taro' })]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: missing name', () => {
-    const valid = Value.Check(SimpleSchema, { age: 1 })
+    const result = Value.Check(SimpleSchema, { age: 1 })
     const errors = [...Value.Errors(SimpleSchema, { age: 1 })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'required',
@@ -41,9 +41,9 @@ describe('simple', () => {
   })
 
   it('invalid: wrong type', () => {
-    const valid = Value.Check(SimpleSchema, { name: 1 })
+    const result = Value.Check(SimpleSchema, { name: 1 })
     const errors = [...Value.Errors(SimpleSchema, { name: 1 })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -58,16 +58,16 @@ describe('simple', () => {
 
 describe('title', () => {
   it('valid', () => {
-    const valid = Value.Check(TitleUser, { name: 'taro', email: 'a@b.com' })
+    const result = Value.Check(TitleUser, { name: 'taro', email: 'a@b.com' })
     const errors = [...Value.Errors(TitleUser, { name: 'taro', email: 'a@b.com' })]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: bad email format', () => {
-    const valid = Value.Check(TitleUser, { name: 'a', email: 'not-email' })
+    const result = Value.Check(TitleUser, { name: 'a', email: 'not-email' })
     const errors = [...Value.Errors(TitleUser, { name: 'a', email: 'not-email' })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'format',
@@ -83,17 +83,17 @@ describe('title', () => {
 describe('error-messages', () => {
   it('valid', () => {
     const value = { name: 'taro', age: 30, tags: ['a'] }
-    const valid = Value.Check(ErrUser, value)
+    const result = Value.Check(ErrUser, value)
     const errors = [...Value.Errors(ErrUser, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: minimum bounds', () => {
     const value = { name: '', age: -1, tags: [] }
-    const valid = Value.Check(ErrUser, value)
+    const result = Value.Check(ErrUser, value)
     const errors = [...Value.Errors(ErrUser, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'minLength',
@@ -128,9 +128,9 @@ describe('error-messages', () => {
 
   it('invalid: maximum bounds', () => {
     const value = { name: '123', age: 200, tags: ['a', 'b', 'c', 'd', 'e', 'f'] }
-    const valid = Value.Check(ErrUser, value)
+    const result = Value.Check(ErrUser, value)
     const errors = [...Value.Errors(ErrUser, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'pattern',
@@ -160,17 +160,17 @@ describe('error-messages', () => {
 describe('allof', () => {
   it('valid', () => {
     const value = { name: 'x', age: 1 }
-    const valid = Value.Check(AllofCombined, value)
+    const result = Value.Check(AllofCombined, value)
     const errors = [...Value.Errors(AllofCombined, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: missing required from second schema', () => {
     const value = { name: 'x' }
-    const valid = Value.Check(AllofCombined, value)
+    const result = Value.Check(AllofCombined, value)
     const errors = [...Value.Errors(AllofCombined, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'required',
@@ -185,23 +185,23 @@ describe('allof', () => {
 
 describe('anyof', () => {
   it('valid: string', () => {
-    const valid = Value.Check(AnyofStringOrNumber, 'hello')
+    const result = Value.Check(AnyofStringOrNumber, 'hello')
     const errors = [...Value.Errors(AnyofStringOrNumber, 'hello')]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('valid: number', () => {
-    const valid = Value.Check(AnyofStringOrNumber, 42)
+    const result = Value.Check(AnyofStringOrNumber, 42)
     const errors = [...Value.Errors(AnyofStringOrNumber, 42)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: boolean', () => {
-    const valid = Value.Check(AnyofStringOrNumber, true)
+    const result = Value.Check(AnyofStringOrNumber, true)
     const errors = [...Value.Errors(AnyofStringOrNumber, true)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -231,25 +231,25 @@ describe('anyof', () => {
 describe('oneof', () => {
   it('valid: circle', () => {
     const value = { kind: 'circle', radius: 5 }
-    const valid = Value.Check(OneofShape, value)
+    const result = Value.Check(OneofShape, value)
     const errors = [...Value.Errors(OneofShape, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('valid: rectangle', () => {
     const value = { kind: 'rectangle', width: 1, height: 2 }
-    const valid = Value.Check(OneofShape, value)
+    const result = Value.Check(OneofShape, value)
     const errors = [...Value.Errors(OneofShape, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: unknown kind', () => {
     const value = { kind: 'triangle' }
-    const valid = Value.Check(OneofShape, value)
+    const result = Value.Check(OneofShape, value)
     const errors = [...Value.Errors(OneofShape, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'required',
@@ -292,16 +292,16 @@ describe('oneof', () => {
 
 describe('additional-properties', () => {
   it('valid', () => {
-    const valid = Value.Check(AdditionalConfig, { a: 'hello' })
+    const result = Value.Check(AdditionalConfig, { a: 'hello' })
     const errors = [...Value.Errors(AdditionalConfig, { a: 'hello' })]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: value type mismatch', () => {
-    const valid = Value.Check(AdditionalConfig, { a: 1 })
+    const result = Value.Check(AdditionalConfig, { a: 1 })
     const errors = [...Value.Errors(AdditionalConfig, { a: 1 })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -322,9 +322,9 @@ describe('nested', () => {
       items: [{ name: 'x', price: 1, quantity: 1 }],
       status: 'pending',
     }
-    const valid = Value.Check(NestedOrder, value)
+    const result = Value.Check(NestedOrder, value)
     const errors = [...Value.Errors(NestedOrder, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
@@ -335,9 +335,9 @@ describe('nested', () => {
       items: [],
       status: 'unknown',
     }
-    const valid = Value.Check(NestedOrder, value)
+    const result = Value.Check(NestedOrder, value)
     const errors = [...Value.Errors(NestedOrder, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -402,17 +402,17 @@ describe('nested', () => {
 describe('$defs', () => {
   it('valid', () => {
     const value = { name: 'taro', address: { street: 's', city: 'c' } }
-    const valid = Value.Check(DefsUser, value)
+    const result = Value.Check(DefsUser, value)
     const errors = [...Value.Errors(DefsUser, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: nested ref violations', () => {
     const value = { name: 1, address: { street: 1 } }
-    const valid = Value.Check(DefsUser, value)
+    const result = Value.Check(DefsUser, value)
     const errors = [...Value.Errors(DefsUser, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -441,16 +441,16 @@ describe('$defs', () => {
 
 describe('definitions', () => {
   it('valid', () => {
-    const valid = Value.Check(DefinitionsA, { b: { c: 'hello' } })
+    const result = Value.Check(DefinitionsA, { b: { c: 'hello' } })
     const errors = [...Value.Errors(DefinitionsA, { b: { c: 'hello' } })]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: nested type', () => {
-    const valid = Value.Check(DefinitionsA, { b: { c: 1 } })
+    const result = Value.Check(DefinitionsA, { b: { c: 1 } })
     const errors = [...Value.Errors(DefinitionsA, { b: { c: 1 } })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -465,16 +465,16 @@ describe('definitions', () => {
 
 describe('readonly', () => {
   it('valid', () => {
-    const valid = Value.Check(ReadonlyConfig, { name: 'foo', tags: ['x'] })
+    const result = Value.Check(ReadonlyConfig, { name: 'foo', tags: ['x'] })
     const errors = [...Value.Errors(ReadonlyConfig, { name: 'foo', tags: ['x'] })]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: wrong types', () => {
-    const valid = Value.Check(ReadonlyConfig, { name: 1, tags: [1] })
+    const result = Value.Check(ReadonlyConfig, { name: 1, tags: [1] })
     const errors = [...Value.Errors(ReadonlyConfig, { name: 1, tags: [1] })]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -497,17 +497,17 @@ describe('readonly', () => {
 describe('split-refs', () => {
   it('valid', () => {
     const value = { name: 'taro', address: { street: 's', city: 'c' } }
-    const valid = Value.Check(SplitRefsUser, value)
+    const result = Value.Check(SplitRefsUser, value)
     const errors = [...Value.Errors(SplitRefsUser, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: nested type mismatches', () => {
     const value = { name: 1, address: { street: 1, city: 1 } }
-    const valid = Value.Check(SplitRefsUser, value)
+    const result = Value.Check(SplitRefsUser, value)
     const errors = [...Value.Errors(SplitRefsUser, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -541,17 +541,17 @@ describe('split-nested', () => {
       customer: { name: 'a', email: 'a@b.com' },
       status: 'pending',
     }
-    const valid = Value.Check(SplitNestedOrder, value)
+    const result = Value.Check(SplitNestedOrder, value)
     const errors = [...Value.Errors(SplitNestedOrder, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: multiple nested errors', () => {
     const value = { id: 1.5, customer: { name: 1, email: 'x' }, status: 'bad' }
-    const valid = Value.Check(SplitNestedOrder, value)
+    const result = Value.Check(SplitNestedOrder, value)
     const errors = [...Value.Errors(SplitNestedOrder, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',
@@ -609,17 +609,17 @@ describe('split-nested', () => {
 describe('meta', () => {
   it('valid', () => {
     const value = { id: 1, email: 'a@b.com' }
-    const valid = Value.Check(MetaUser, value)
+    const result = Value.Check(MetaUser, value)
     const errors = [...Value.Errors(MetaUser, value)]
-    expect(valid).toBe(true)
+    expect(result).toBe(true)
     expect(errors).toStrictEqual([])
   })
 
   it('invalid: type and format', () => {
     const value = { id: 1.5, email: 'bad' }
-    const valid = Value.Check(MetaUser, value)
+    const result = Value.Check(MetaUser, value)
     const errors = [...Value.Errors(MetaUser, value)]
-    expect(valid).toBe(false)
+    expect(result).toBe(false)
     expect(errors).toStrictEqual([
       {
         keyword: 'type',

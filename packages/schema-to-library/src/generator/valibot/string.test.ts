@@ -58,9 +58,31 @@ describe('valibot string', () => {
           type: 'string',
           minLength: 10,
           maxLength: 10,
-          'x-size-message': 'Must be exactly 10 characters',
+          'x-minLength-message': 'Must be exactly 10 characters',
+          'x-maxLength-message': 'Must be exactly 10 characters',
         },
         'v.pipe(v.string(),v.length(10,"Must be exactly 10 characters"))',
+      ],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('Phase 1A declarative behavior extensions', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'string', 'x-trim': true }, 'v.pipe(v.string(),v.trim())'],
+      [{ type: 'string', 'x-toLowerCase': true }, 'v.pipe(v.string(),v.toLowerCase())'],
+      [{ type: 'string', 'x-toUpperCase': true }, 'v.pipe(v.string(),v.toUpperCase())'],
+      [{ type: 'string', 'x-normalize': 'NFC' }, 'v.pipe(v.string(),v.normalize("NFC"))'],
+      [
+        { type: 'string', 'x-startsWith': 'https://' },
+        'v.pipe(v.string(),v.startsWith("https://"))',
+      ],
+      [{ type: 'string', 'x-endsWith': '.com' }, 'v.pipe(v.string(),v.endsWith(".com"))'],
+      [{ type: 'string', 'x-includes': '/api/' }, 'v.pipe(v.string(),v.includes("/api/"))'],
+      [
+        { type: 'string', 'x-trim': true, 'x-toLowerCase': true },
+        'v.pipe(v.string(),v.trim(),v.toLowerCase())',
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)

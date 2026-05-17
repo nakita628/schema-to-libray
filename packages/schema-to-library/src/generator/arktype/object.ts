@@ -159,8 +159,14 @@ export function object(
     additionalPropertiesNarrow,
   ].filter((a) => a !== '')
 
-  if (narrows.length > 0) {
-    return composeNarrows(`type(${innerLiteral})`, narrows)
-  }
-  return isArktype ? innerLiteral : `type(${innerLiteral})`
+  const baseExpr =
+    narrows.length > 0
+      ? composeNarrows(`type(${innerLiteral})`, narrows)
+      : isArktype
+        ? innerLiteral
+        : `type(${innerLiteral})`
+  const propsMessage = schema['x-properties-message']
+  if (typeof propsMessage !== 'string') return baseExpr
+  const wrapped = baseExpr.startsWith('{') ? `type(${baseExpr})` : baseExpr
+  return `${wrapped}.describe(${JSON.stringify(propsMessage)})`
 }

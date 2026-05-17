@@ -87,10 +87,18 @@ export function object(
       ? `,{error:(issue)=>issue.code==='unrecognized_keys'?${JSON.stringify(addlPropsMessage)}:${errorMessage ? JSON.stringify(errorMessage) : 'undefined'}}`
       : ''
 
-  const partialBase =
+  const rawBase =
     required.length === 0 && props.every((p) => p.includes('.optional()'))
       ? `z.${objectType}({${props.map((p) => p.replace('.optional()', '')).join(',')}}${objectParams}).partial()`
       : `z.${objectType}({${props.join(',')}}${objectParams})`
+  const propsMessage = schema['x-properties-message']
+  const partialBase = propsMessage
+    ? (() => {
+        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
+        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        return `(()=>{const Schema=${rawBase};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
+      })()
+    : rawBase
 
   const minProperties =
     typeof schema.minProperties === 'number'

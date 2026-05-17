@@ -225,4 +225,40 @@ describe('object', () => {
       )
     })
   })
+
+  describe('x-properties-message', () => {
+    it('wraps object with rawCheck that rewrites property-level messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.object({a:v.string()}),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:"bad props",path:issue.path})}else{addIssue(issue)}}}}))',
+      )
+    })
+
+    it('accepts arrow expression message', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': '(issue) => `bad ${issue.path[0].key}`',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.object({a:v.string()}),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:((issue) => `bad ${issue.path[0].key}`)(issue),path:issue.path})}else{addIssue(issue)}}}}))',
+      )
+    })
+  })
 })

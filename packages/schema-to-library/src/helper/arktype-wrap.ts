@@ -26,13 +26,19 @@ export function arktypeWrap(arktypeStr: string, schema: JSONSchema): string {
       ? `"${arktypeStr.slice(1, -1)} | null"`
       : `type(${arktypeStr}).or("null")`
     : arktypeStr
+  const withReadonly =
+    schema['x-readonly'] === true
+      ? isQuoted(withNullable)
+        ? `type(${withNullable}).readonly()`
+        : `${withNullable}.readonly()`
+      : withNullable
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string'
-      ? isQuoted(withNullable)
-        ? `type(${withNullable}).brand("${brand}")`
-        : `${withNullable}.brand("${brand}")`
-      : withNullable
+      ? isQuoted(withReadonly)
+        ? `type(${withReadonly}).brand("${brand}")`
+        : `${withReadonly}.brand("${brand}")`
+      : withReadonly
 
   if (schema.description === undefined) return withBrand
   const callable = isQuoted(withBrand) ? `type(${withBrand})` : withBrand

@@ -10,14 +10,15 @@ export function integer(schema: JSONSchema): string {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
+  const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
   const base =
     schema.format === 'int32'
-      ? `z.int32(${baseErrorArg})`
+      ? `z.${coercePrefix}int32(${baseErrorArg})`
       : schema.format === 'int64'
-        ? `z.int64(${baseErrorArg})`
+        ? `z.${coercePrefix}int64(${baseErrorArg})`
         : schema.format === 'bigint'
-          ? `z.bigint(${baseErrorArg})`
-          : `z.int(${baseErrorArg})`
+          ? `z.${coercePrefix}bigint(${baseErrorArg})`
+          : `z.${coercePrefix}int(${baseErrorArg})`
   const lit = (n: number): string => {
     if (schema.format === 'bigint') return `BigInt(${n})`
     if (schema.format === 'int64') return `${n}n`

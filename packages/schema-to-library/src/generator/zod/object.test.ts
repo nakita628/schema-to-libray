@@ -241,6 +241,60 @@ describe('object', () => {
     })
   })
 
+  describe('x-properties-message', () => {
+    it('wraps object with a check that rewrites property-level messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('accepts arrow expression message', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': '(issue) => `bad ${issue.path[0]}`',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:((issue) => `bad ${issue.path[0]}`)(issue)})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('composes with refines for minProperties / maxProperties', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            minProperties: 1,
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})().refine((o)=>Object.keys(o).length>=1)',
+      )
+    })
+  })
+
   // Note: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
   // not by `object()`. End-to-end readonly behavior is covered by zod.test.ts /
   // index.test.ts.

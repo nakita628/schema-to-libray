@@ -285,22 +285,22 @@ describe('zod', () => {
 
     describe('not', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [{ not: { type: 'string' } }, "z.any().refine((v) => typeof v !== 'string')"],
+        [{ not: { type: 'string' } }, "z.any().refine((val) => typeof val !== 'string')"],
         [
           { not: { type: 'integer' } },
-          "z.any().refine((v) => typeof v !== 'number' || !Number.isInteger(v))",
+          "z.any().refine((val) => typeof val !== 'number' || !Number.isInteger(val))",
         ],
-        [{ not: { type: 'boolean' } }, "z.any().refine((v) => typeof v !== 'boolean')"],
+        [{ not: { type: 'boolean' } }, "z.any().refine((val) => typeof val !== 'boolean')"],
         [
           { not: { type: 'string' }, nullable: true },
-          "z.any().refine((v) => typeof v !== 'string').nullable()",
+          "z.any().refine((val) => typeof val !== 'string').nullable()",
         ],
         [
           { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-          "z.any().refine((v) => typeof v !== 'string').nullable()",
+          "z.any().refine((val) => typeof val !== 'string').nullable()",
         ],
-        [{ not: { const: 42 } }, 'z.any().refine((v) => v !== 42)'],
-        [{ not: { enum: ['a', 'b'] } }, 'z.any().refine((v) => !["a","b"].includes(v))'],
+        [{ not: { const: 42 } }, 'z.any().refine((val) => val !== 42)'],
+        [{ not: { enum: ['a', 'b'] } }, 'z.any().refine((val) => !["a","b"].includes(val))'],
       ])('zod(%o) → %s', (input, expected) => {
         expect(zod(input)).toBe(expected)
       })
@@ -974,7 +974,8 @@ describe('zod', () => {
             type: 'string',
             minLength: 10,
             maxLength: 10,
-            'x-size-message': 'Must be exactly 10 characters',
+            'x-minLength-message': 'Must be exactly 10 characters',
+            'x-maxLength-message': 'Must be exactly 10 characters',
           },
           'z.string().length(10,{error:"Must be exactly 10 characters"})',
         ],
@@ -1314,6 +1315,125 @@ describe('zod', () => {
       expect(
         zod({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
       ).toBe('z.array(z.string()).min(1).brand<"Tags">()')
+    })
+  })
+
+  describe('x-prefixItems-message', () => {
+    it('wraps tuple with a check that rewrites element-level messages', () => {
+      expect(
+        zod({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe(
+        '(()=>{const Schema=z.tuple([z.string(),z.number()]);return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad tuple"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('falls through to plain tuple when message is absent', () => {
+      expect(
+        zod({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+        }),
+      ).toBe('z.tuple([z.string(),z.number()])')
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('wraps array with a check that rewrites element-level messages', () => {
+      expect(
+        zod({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe(
+        '(()=>{const Schema=z.array(z.string());return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad items"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+
+    it('preserves min/max chain after wrap', () => {
+      expect(
+        zod({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 5,
+          'x-items-message': 'bad items',
+        }),
+      ).toBe(
+        '(()=>{const Schema=z.array(z.string());return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad items"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})().min(1).max(5)',
+      )
+    })
+
+    it('accepts arrow expression message', () => {
+      expect(
+        zod({
+          type: 'array',
+          items: { type: 'string' },
+          'x-items-message': '(issue) => `bad at ${issue.path[0]}`',
+        }),
+      ).toBe(
+        '(()=>{const Schema=z.array(z.string());return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:((issue) => `bad at ${issue.path[0]}`)(issue)})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()',
+      )
+    })
+  })
+
+  describe('Phase 1C: x-coerce / x-prefault / x-catch (Zod-only)', () => {
+    describe('x-coerce', () => {
+      it('emits z.coerce.number()', () => {
+        expect(zod({ type: 'number', 'x-coerce': true })).toBe('z.coerce.number()')
+      })
+      it('emits z.coerce.int()', () => {
+        expect(zod({ type: 'integer', 'x-coerce': true })).toBe('z.coerce.int()')
+      })
+      it('emits z.coerce.boolean()', () => {
+        expect(zod({ type: 'boolean', 'x-coerce': true })).toBe('z.coerce.boolean()')
+      })
+      it('emits z.coerce.date()', () => {
+        expect(zod({ type: 'date', 'x-coerce': true })).toBe('z.coerce.date()')
+      })
+      it('emits z.coerce.string()', () => {
+        expect(zod({ type: 'string', 'x-coerce': true })).toBe('z.coerce.string()')
+      })
+      it('does not coerce when format is set (format-specific API has no coerce variant)', () => {
+        expect(zod({ type: 'string', format: 'email', 'x-coerce': true })).toBe('z.email()')
+      })
+      it('emits z.coerce.int32() for format int32', () => {
+        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true })).toBe('z.coerce.int32()')
+      })
+    })
+
+    describe('x-prefault', () => {
+      it('emits .prefault(literal) for string', () => {
+        expect(zod({ type: 'string', 'x-prefault': 'hello' })).toBe('z.string().prefault("hello")')
+      })
+      it('emits .prefault(literal) for number', () => {
+        expect(zod({ type: 'number', 'x-prefault': 42 })).toBe('z.number().prefault(42)')
+      })
+      it('emits .prefault(literal) for boolean', () => {
+        expect(zod({ type: 'boolean', 'x-prefault': false })).toBe('z.boolean().prefault(false)')
+      })
+    })
+
+    describe('x-catch', () => {
+      it('emits .catch(literal) for integer', () => {
+        expect(zod({ type: 'integer', 'x-catch': 0 })).toBe('z.int().catch(0)')
+      })
+      it('emits .catch(literal) for string', () => {
+        expect(zod({ type: 'string', 'x-catch': 'fallback' })).toBe('z.string().catch("fallback")')
+      })
+    })
+
+    describe('composition', () => {
+      it('chains prefault before catch', () => {
+        expect(zod({ type: 'string', 'x-prefault': 'hi', 'x-catch': 'fallback' })).toBe(
+          'z.string().prefault("hi").catch("fallback")',
+        )
+      })
+      it('combines coerce + prefault + catch', () => {
+        expect(zod({ type: 'number', 'x-coerce': true, 'x-prefault': 0, 'x-catch': -1 })).toBe(
+          'z.coerce.number().prefault(0).catch(-1)',
+        )
+      })
     })
   })
 })

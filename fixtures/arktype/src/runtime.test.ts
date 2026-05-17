@@ -41,20 +41,20 @@ const issues = (result: unknown) => {
 
 describe('simple', () => {
   it('valid', () => {
-    const valid = SimpleSchema({ name: 'taro' })
-    expect(valid).toStrictEqual({ name: 'taro' })
+    const result = SimpleSchema({ name: 'taro' })
+    expect(result).toStrictEqual({ name: 'taro' })
   })
 
   it('invalid: missing required', () => {
-    const valid = SimpleSchema({ age: 1 })
-    expect(issues(valid)).toStrictEqual([
+    const result = SimpleSchema({ age: 1 })
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'required', message: 'name must be a string (was missing)' },
     ])
   })
 
   it('invalid: wrong type', () => {
-    const valid = SimpleSchema({ name: 1 })
-    expect(issues(valid)).toStrictEqual([
+    const result = SimpleSchema({ name: 1 })
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
     ])
   })
@@ -62,13 +62,13 @@ describe('simple', () => {
 
 describe('title', () => {
   it('valid', () => {
-    const valid = TitleUser({ name: 'taro', email: 'a@b.com' })
-    expect(valid).toStrictEqual({ name: 'taro', email: 'a@b.com' })
+    const result = TitleUser({ name: 'taro', email: 'a@b.com' })
+    expect(result).toStrictEqual({ name: 'taro', email: 'a@b.com' })
   })
 
   it('invalid: bad email', () => {
-    const valid = TitleUser({ name: 'a', email: 'not-email' })
-    expect(issues(valid)).toStrictEqual([
+    const result = TitleUser({ name: 'a', email: 'not-email' })
+    expect(issues(result)).toStrictEqual([
       {
         path: ['email'],
         code: 'pattern',
@@ -80,13 +80,13 @@ describe('title', () => {
 
 describe('error-messages', () => {
   it('valid', () => {
-    const valid = ErrUser({ name: 'taro', age: 30, tags: ['a'] })
-    expect(valid).toStrictEqual({ name: 'taro', age: 30, tags: ['a'] })
+    const result = ErrUser({ name: 'taro', age: 30, tags: ['a'] })
+    expect(result).toStrictEqual({ name: 'taro', age: 30, tags: ['a'] })
   })
 
   it('invalid: empty/negative', () => {
-    const valid = ErrUser({ name: '', age: -1, tags: [] })
-    expect(issues(valid)).toStrictEqual([
+    const result = ErrUser({ name: '', age: -1, tags: [] })
+    expect(issues(result)).toStrictEqual([
       { path: ['age'], code: 'predicate', message: 'age must be Age must be positive (was -1)' },
       {
         path: ['name'],
@@ -98,8 +98,8 @@ describe('error-messages', () => {
   })
 
   it('invalid: out-of-bounds', () => {
-    const valid = ErrUser({ name: '123', age: 200, tags: ['a', 'b', 'c', 'd', 'e', 'f'] })
-    expect(issues(valid)).toStrictEqual([
+    const result = ErrUser({ name: '123', age: 200, tags: ['a', 'b', 'c', 'd', 'e', 'f'] })
+    expect(issues(result)).toStrictEqual([
       { path: ['age'], code: 'predicate', message: 'age must be Age too large (was 200)' },
       {
         path: ['name'],
@@ -117,13 +117,13 @@ describe('error-messages', () => {
 
 describe('allof', () => {
   it('valid', () => {
-    const valid = AllofCombined({ name: 'x', age: 1 })
-    expect(valid).toStrictEqual({ name: 'x', age: 1 })
+    const result = AllofCombined({ name: 'x', age: 1 })
+    expect(result).toStrictEqual({ name: 'x', age: 1 })
   })
 
   it('invalid: missing one branch', () => {
-    const valid = AllofCombined({ name: 'x' })
-    expect(issues(valid)).toStrictEqual([
+    const result = AllofCombined({ name: 'x' })
+    expect(issues(result)).toStrictEqual([
       { path: ['age'], code: 'required', message: 'age must be a number (was missing)' },
     ])
   })
@@ -131,13 +131,13 @@ describe('allof', () => {
 
 describe('allof-message', () => {
   it('valid', () => {
-    const valid = AllofMessageMerged({ name: 'taro', age: 1 })
-    expect(valid).toStrictEqual({ name: 'taro', age: 1 })
+    const result = AllofMessageMerged({ name: 'taro', age: 1 })
+    expect(result).toStrictEqual({ name: 'taro', age: 1 })
   })
 
   it('invalid: aggregated x-allOf-message', () => {
-    const valid = AllofMessageMerged({ name: 'ab', age: -1 })
-    expect(issues(valid)).toStrictEqual([
+    const result = AllofMessageMerged({ name: 'ab', age: -1 })
+    expect(issues(result)).toStrictEqual([
       { path: ['age'], code: 'predicate', message: 'merged validation failed' },
       { path: ['name'], code: 'predicate', message: 'merged validation failed' },
     ])
@@ -146,18 +146,18 @@ describe('allof-message', () => {
 
 describe('anyof', () => {
   it('valid: string', () => {
-    const valid = AnyofStringOrNumber('hello')
-    expect(valid).toBe('hello')
+    const result = AnyofStringOrNumber('hello')
+    expect(result).toBe('hello')
   })
 
   it('valid: number', () => {
-    const valid = AnyofStringOrNumber(42)
-    expect(valid).toBe(42)
+    const result = AnyofStringOrNumber(42)
+    expect(result).toBe(42)
   })
 
   it('invalid: boolean', () => {
-    const valid = AnyofStringOrNumber(true)
-    expect(issues(valid)).toStrictEqual([
+    const result = AnyofStringOrNumber(true)
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -169,18 +169,18 @@ describe('anyof', () => {
 
 describe('oneof', () => {
   it('valid: circle', () => {
-    const valid = OneofShape({ kind: 'circle', radius: 5 })
-    expect(valid).toStrictEqual({ kind: 'circle', radius: 5 })
+    const result = OneofShape({ kind: 'circle', radius: 5 })
+    expect(result).toStrictEqual({ kind: 'circle', radius: 5 })
   })
 
   it('valid: rectangle', () => {
-    const valid = OneofShape({ kind: 'rectangle', width: 1, height: 2 })
-    expect(valid).toStrictEqual({ kind: 'rectangle', width: 1, height: 2 })
+    const result = OneofShape({ kind: 'rectangle', width: 1, height: 2 })
+    expect(result).toStrictEqual({ kind: 'rectangle', width: 1, height: 2 })
   })
 
   it('invalid: unknown discriminator', () => {
-    const valid = OneofShape({ kind: 'triangle' })
-    expect(issues(valid)).toStrictEqual([
+    const result = OneofShape({ kind: 'triangle' })
+    expect(issues(result)).toStrictEqual([
       {
         path: ['kind'],
         code: 'predicate',
@@ -190,8 +190,8 @@ describe('oneof', () => {
   })
 
   it('invalid: missing branch field', () => {
-    const valid = OneofShape({ kind: 'circle' })
-    expect(issues(valid)).toStrictEqual([
+    const result = OneofShape({ kind: 'circle' })
+    expect(issues(result)).toStrictEqual([
       { path: ['radius'], code: 'required', message: 'radius must be a number (was missing)' },
     ])
   })
@@ -199,13 +199,13 @@ describe('oneof', () => {
 
 describe('additional-properties', () => {
   it('valid', () => {
-    const valid = AdditionalConfig({ a: 'hello', b: 'world' })
-    expect(valid).toStrictEqual({ a: 'hello', b: 'world' })
+    const result = AdditionalConfig({ a: 'hello', b: 'world' })
+    expect(result).toStrictEqual({ a: 'hello', b: 'world' })
   })
 
   it('invalid: non-string value', () => {
-    const valid = AdditionalConfig({ a: 1 })
-    expect(issues(valid)).toStrictEqual([
+    const result = AdditionalConfig({ a: 1 })
+    expect(issues(result)).toStrictEqual([
       { path: ['a'], code: 'domain', message: 'a must be a string (was a number)' },
     ])
   })
@@ -213,13 +213,13 @@ describe('additional-properties', () => {
 
 describe('nested', () => {
   it('valid', () => {
-    const valid = NestedOrder({
+    const result = NestedOrder({
       id: 1,
       customer: { name: 'a', email: 'a@b.com' },
       items: [{ name: 'x', price: 1, quantity: 1 }],
       status: 'pending',
     })
-    expect(valid).toStrictEqual({
+    expect(result).toStrictEqual({
       id: 1,
       customer: { name: 'a', email: 'a@b.com' },
       items: [{ name: 'x', price: 1, quantity: 1 }],
@@ -228,13 +228,13 @@ describe('nested', () => {
   })
 
   it('invalid: nested errors', () => {
-    const valid = NestedOrder({
+    const result = NestedOrder({
       id: 1.5,
       customer: { name: '', email: 'x' },
       items: [],
       status: 'unknown',
     })
-    expect(issues(valid)).toStrictEqual([
+    expect(issues(result)).toStrictEqual([
       {
         path: ['customer', 'email'],
         code: 'pattern',
@@ -258,7 +258,7 @@ describe('nested', () => {
 
 describe('brand', () => {
   it('valid', () => {
-    const valid = BrandedTypes({
+    const result = BrandedTypes({
       userId: '123e4567-e89b-12d3-a456-426614174000',
       email: 'a@b.com',
       price: 1,
@@ -266,7 +266,7 @@ describe('brand', () => {
       tags: ['x'],
       name: 'foo',
     })
-    expect(valid).toStrictEqual({
+    expect(result).toStrictEqual({
       userId: '123e4567-e89b-12d3-a456-426614174000',
       email: 'a@b.com',
       price: 1,
@@ -277,7 +277,7 @@ describe('brand', () => {
   })
 
   it('invalid: multiple branded field errors', () => {
-    const valid = BrandedTypes({
+    const result = BrandedTypes({
       userId: 'not-uuid',
       email: 'bad',
       price: -1,
@@ -285,7 +285,7 @@ describe('brand', () => {
       tags: [],
       name: 1,
     })
-    expect(issues(valid)).toStrictEqual([
+    expect(issues(result)).toStrictEqual([
       { path: ['email'], code: 'pattern', message: 'email must be an email address (was "bad")' },
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
       { path: ['price'], code: 'min', message: 'price must be non-negative (was -1)' },
@@ -298,13 +298,13 @@ describe('brand', () => {
 
 describe('$defs', () => {
   it('valid', () => {
-    const valid = DefsUser({ name: 'taro', address: { street: 's', city: 'c' } })
-    expect(valid).toStrictEqual({ name: 'taro', address: { street: 's', city: 'c' } })
+    const result = DefsUser({ name: 'taro', address: { street: 's', city: 'c' } })
+    expect(result).toStrictEqual({ name: 'taro', address: { street: 's', city: 'c' } })
   })
 
   it('invalid: nested ref errors', () => {
-    const valid = DefsUser({ name: 1, address: { street: 1 } })
-    expect(issues(valid)).toStrictEqual([
+    const result = DefsUser({ name: 1, address: { street: 1 } })
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
       {
         path: ['address', 'city'],
@@ -322,13 +322,13 @@ describe('$defs', () => {
 
 describe('circular', () => {
   it('valid', () => {
-    const valid = CircularA({ b: { a: {} } })
-    expect(valid).toStrictEqual({ b: { a: {} } })
+    const result = CircularA({ b: { a: {} } })
+    expect(result).toStrictEqual({ b: { a: {} } })
   })
 
   it('invalid: deep wrong type', () => {
-    const valid = CircularA({ b: { a: { b: 'wrong' } } })
-    expect(issues(valid)).toStrictEqual([
+    const result = CircularA({ b: { a: { b: 'wrong' } } })
+    expect(issues(result)).toStrictEqual([
       {
         path: ['b', 'a', 'b'],
         code: 'domain',
@@ -340,13 +340,13 @@ describe('circular', () => {
 
 describe('definitions', () => {
   it('valid', () => {
-    const valid = DefinitionsA({ b: { c: 'hello' } })
-    expect(valid).toStrictEqual({ b: { c: 'hello' } })
+    const result = DefinitionsA({ b: { c: 'hello' } })
+    expect(result).toStrictEqual({ b: { c: 'hello' } })
   })
 
   it('invalid: nested ref chain error', () => {
-    const valid = DefinitionsA({ b: { c: 1 } })
-    expect(issues(valid)).toStrictEqual([
+    const result = DefinitionsA({ b: { c: 1 } })
+    expect(issues(result)).toStrictEqual([
       { path: ['b', 'c'], code: 'domain', message: 'b.c must be a string (was a number)' },
     ])
   })
@@ -354,13 +354,13 @@ describe('definitions', () => {
 
 describe('not', () => {
   it('valid: non-string', () => {
-    const valid = NotString(42)
-    expect(valid).toBe(42)
+    const result = NotString(42)
+    expect(result).toBe(42)
   })
 
   it('invalid: a string', () => {
-    const valid = NotString('hello')
-    expect(issues(valid)).toStrictEqual([
+    const result = NotString('hello')
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -372,13 +372,13 @@ describe('not', () => {
 
 describe('readonly', () => {
   it('valid', () => {
-    const valid = ReadonlyConfig({ name: 'foo', tags: ['x'] })
-    expect(valid).toStrictEqual({ name: 'foo', tags: ['x'] })
+    const result = ReadonlyConfig({ name: 'foo', tags: ['x'] })
+    expect(result).toStrictEqual({ name: 'foo', tags: ['x'] })
   })
 
   it('invalid: wrong types', () => {
-    const valid = ReadonlyConfig({ name: 1, tags: [1] })
-    expect(issues(valid)).toStrictEqual([
+    const result = ReadonlyConfig({ name: 1, tags: [1] })
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
       {
         path: ['tags', 0],
@@ -391,13 +391,13 @@ describe('readonly', () => {
 
 describe('split-refs', () => {
   it('valid', () => {
-    const valid = SplitRefsUser({ name: 'taro', address: { street: 's', city: 'c' } })
-    expect(valid).toStrictEqual({ name: 'taro', address: { street: 's', city: 'c' } })
+    const result = SplitRefsUser({ name: 'taro', address: { street: 's', city: 'c' } })
+    expect(result).toStrictEqual({ name: 'taro', address: { street: 's', city: 'c' } })
   })
 
   it('invalid: nested ref errors', () => {
-    const valid = SplitRefsUser({ name: 1, address: { street: 1, city: 1 } })
-    expect(issues(valid)).toStrictEqual([
+    const result = SplitRefsUser({ name: 1, address: { street: 1, city: 1 } })
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
       {
         path: ['address', 'city'],
@@ -415,12 +415,12 @@ describe('split-refs', () => {
 
 describe('split-nested', () => {
   it('valid', () => {
-    const valid = SplitNestedOrder({
+    const result = SplitNestedOrder({
       id: 1,
       customer: { name: 'a', email: 'a@b.com' },
       status: 'pending',
     })
-    expect(valid).toStrictEqual({
+    expect(result).toStrictEqual({
       id: 1,
       customer: { name: 'a', email: 'a@b.com' },
       status: 'pending',
@@ -428,12 +428,12 @@ describe('split-nested', () => {
   })
 
   it('invalid: nested errors with enum', () => {
-    const valid = SplitNestedOrder({
+    const result = SplitNestedOrder({
       id: 1.5,
       customer: { name: 1, email: 'x' },
       status: 'bad',
     })
-    expect(issues(valid)).toStrictEqual([
+    expect(issues(result)).toStrictEqual([
       {
         path: ['customer', 'email'],
         code: 'pattern',
@@ -456,13 +456,13 @@ describe('split-nested', () => {
 
 describe('meta', () => {
   it('valid', () => {
-    const valid = MetaUser({ id: 1, email: 'a@b.com' })
-    expect(valid).toStrictEqual({ id: 1, email: 'a@b.com' })
+    const result = MetaUser({ id: 1, email: 'a@b.com' })
+    expect(result).toStrictEqual({ id: 1, email: 'a@b.com' })
   })
 
   it('invalid: description-overridden messages', () => {
-    const valid = MetaUser({ id: 1.5, email: 'bad' })
-    expect(issues(valid)).toStrictEqual([
+    const result = MetaUser({ id: 1.5, email: 'bad' })
+    expect(issues(result)).toStrictEqual([
       { path: ['email'], code: 'pattern', message: 'email must be email address (was "bad")' },
       { path: ['id'], code: 'divisor', message: 'id must be unique id (was 1.5)' },
     ])
@@ -471,18 +471,18 @@ describe('meta', () => {
 
 describe('discriminated-union', () => {
   it('valid: cat', () => {
-    const valid = Animal({ kind: 'cat', meow: true })
-    expect(valid).toStrictEqual({ kind: 'cat', meow: true })
+    const result = Animal({ kind: 'cat', meow: true })
+    expect(result).toStrictEqual({ kind: 'cat', meow: true })
   })
 
   it('valid: dog', () => {
-    const valid = Animal({ kind: 'dog', bark: false })
-    expect(valid).toStrictEqual({ kind: 'dog', bark: false })
+    const result = Animal({ kind: 'dog', bark: false })
+    expect(result).toStrictEqual({ kind: 'dog', bark: false })
   })
 
   it('invalid: unknown discriminator', () => {
-    const valid = Animal({ kind: 'fish', meow: true })
-    expect(issues(valid)).toStrictEqual([
+    const result = Animal({ kind: 'fish', meow: true })
+    expect(issues(result)).toStrictEqual([
       {
         path: ['kind'],
         code: 'predicate',
@@ -492,8 +492,8 @@ describe('discriminated-union', () => {
   })
 
   it('invalid: missing branch field', () => {
-    const valid = Animal({ kind: 'cat' })
-    expect(issues(valid)).toStrictEqual([
+    const result = Animal({ kind: 'cat' })
+    expect(issues(result)).toStrictEqual([
       { path: ['meow'], code: 'required', message: 'meow must be boolean (was missing)' },
     ])
   })
@@ -501,20 +501,20 @@ describe('discriminated-union', () => {
 
 describe('prefix-items-unevaluated', () => {
   it('valid', () => {
-    const valid = Tuple(['hello', true])
-    expect(valid).toStrictEqual(['hello', true])
+    const result = Tuple(['hello', true])
+    expect(result).toStrictEqual(['hello', true])
   })
 
   it('invalid: too short', () => {
-    const valid = Tuple(['x'])
-    expect(issues(valid)).toStrictEqual([
+    const result = Tuple(['x'])
+    expect(issues(result)).toStrictEqual([
       { path: [], code: 'exactLength', message: 'must be exactly length 2 (was 1)' },
     ])
   })
 
   it('invalid: wrong element types', () => {
-    const valid = Tuple([1, 'x'])
-    expect(issues(valid)).toStrictEqual([
+    const result = Tuple([1, 'x'])
+    expect(issues(result)).toStrictEqual([
       { path: [0], code: 'domain', message: 'value at [0] must be a string (was a number)' },
       { path: [1], code: 'union', message: 'value at [1] must be boolean (was "x")' },
     ])
@@ -523,13 +523,13 @@ describe('prefix-items-unevaluated', () => {
 
 describe('contains-min-max', () => {
   it('valid: within range', () => {
-    const valid = IntList([1, 2, 3])
-    expect(valid).toStrictEqual([1, 2, 3])
+    const result = IntList([1, 2, 3])
+    expect(result).toStrictEqual([1, 2, 3])
   })
 
   it('invalid: too few matches', () => {
-    const valid = IntList([1])
-    expect(issues(valid)).toStrictEqual([
+    const result = IntList([1])
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -539,8 +539,8 @@ describe('contains-min-max', () => {
   })
 
   it('invalid: too many matches', () => {
-    const valid = IntList([1, 2, 3, 4])
-    expect(issues(valid)).toStrictEqual([
+    const result = IntList([1, 2, 3, 4])
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -550,8 +550,8 @@ describe('contains-min-max', () => {
   })
 
   it('invalid: not array', () => {
-    const valid = IntList('not array' as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = IntList('not array' as never)
+    expect(issues(result)).toStrictEqual([
       { path: [], code: 'proto', message: 'must be an array (was string)' },
     ])
   })
@@ -572,13 +572,13 @@ describe.skip('pattern-properties (skip: not enforced at runtime)', () => {
 // validate base64 payloads. Test only covers the structural type fallback.
 describe('content-encoding-base64', () => {
   it('valid: any string passes', () => {
-    const valid = ImageBag({ image: 'iVBORw0KGgo=' })
-    expect(valid).toStrictEqual({ image: 'iVBORw0KGgo=' })
+    const result = ImageBag({ image: 'iVBORw0KGgo=' })
+    expect(result).toStrictEqual({ image: 'iVBORw0KGgo=' })
   })
 
   it('invalid: non-string image', () => {
-    const valid = ImageBag({ image: 1 } as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = ImageBag({ image: 1 } as never)
+    expect(issues(result)).toStrictEqual([
       { path: ['image'], code: 'domain', message: 'image must be a string (was a number)' },
     ])
   })
@@ -588,13 +588,13 @@ describe('content-encoding-base64', () => {
 // the inner JSON shape is not validated by the generator.
 describe('content-schema-json', () => {
   it('valid: any string passes', () => {
-    const valid = StyleBag({ style: 'eyJuYW1lIjoiZm9vIn0=' })
-    expect(valid).toStrictEqual({ style: 'eyJuYW1lIjoiZm9vIn0=' })
+    const result = StyleBag({ style: 'eyJuYW1lIjoiZm9vIn0=' })
+    expect(result).toStrictEqual({ style: 'eyJuYW1lIjoiZm9vIn0=' })
   })
 
   it('invalid: non-string style', () => {
-    const valid = StyleBag({ style: 1 } as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = StyleBag({ style: 1 } as never)
+    expect(issues(result)).toStrictEqual([
       { path: ['style'], code: 'domain', message: 'style must be a string (was a number)' },
     ])
   })
@@ -602,18 +602,18 @@ describe('content-schema-json', () => {
 
 describe('dependent-schemas', () => {
   it('valid: kind + feature both present', () => {
-    const valid = DependentRequired({ kind: 'a', feature: 'b' })
-    expect(valid).toStrictEqual({ kind: 'a', feature: 'b' })
+    const result = DependentRequired({ kind: 'a', feature: 'b' })
+    expect(result).toStrictEqual({ kind: 'a', feature: 'b' })
   })
 
   it('valid: neither present', () => {
-    const valid = DependentRequired({})
-    expect(valid).toStrictEqual({})
+    const result = DependentRequired({})
+    expect(result).toStrictEqual({})
   })
 
   it('invalid: kind without feature', () => {
-    const valid = DependentRequired({ kind: 'a' })
-    expect(issues(valid)).toStrictEqual([
+    const result = DependentRequired({ kind: 'a' })
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -627,8 +627,8 @@ describe('dependent-schemas', () => {
 // JSON Schema `if` / `then` / `else`. Only the base `properties` schema is enforced.
 describe('if-then-else (skip: conditionals not generated)', () => {
   it('valid: country only', () => {
-    const valid = Address({ country: 'JP' })
-    expect(valid).toStrictEqual({ country: 'JP' })
+    const result = Address({ country: 'JP' })
+    expect(result).toStrictEqual({ country: 'JP' })
   })
 
   it.skip('invalid: JP requires postalCode (not enforced)', () => {
@@ -638,18 +638,18 @@ describe('if-then-else (skip: conditionals not generated)', () => {
 
 describe('nullable-default', () => {
   it('valid: string', () => {
-    const valid = MaybeString('hello')
-    expect(valid).toBe('hello')
+    const result = MaybeString('hello')
+    expect(result).toBe('hello')
   })
 
   it('valid: null', () => {
-    const valid = MaybeString(null)
-    expect(valid).toBe(null)
+    const result = MaybeString(null)
+    expect(result).toBe(null)
   })
 
   it('invalid: number', () => {
-    const valid = MaybeString(123 as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = MaybeString(123 as never)
+    expect(issues(result)).toStrictEqual([
       { path: [], code: 'predicate', message: 'must be a string or null (was a number)' },
     ])
   })
@@ -657,13 +657,13 @@ describe('nullable-default', () => {
 
 describe('enum-japanese', () => {
   it('valid', () => {
-    const valid = Color('赤')
-    expect(valid).toBe('赤')
+    const result = Color('赤')
+    expect(result).toBe('赤')
   })
 
   it('invalid: not in enum', () => {
-    const valid = Color('黒' as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = Color('黒' as never)
+    expect(issues(result)).toStrictEqual([
       {
         path: [],
         code: 'predicate',
@@ -675,12 +675,12 @@ describe('enum-japanese', () => {
 
 describe('deep-nested-validation', () => {
   it('valid', () => {
-    const valid = DeepUser({
+    const result = DeepUser({
       name: 'taro',
       email: 'a@b.com',
       address: { city: 'Tokyo', zip: '100-0001' },
     })
-    expect(valid).toStrictEqual({
+    expect(result).toStrictEqual({
       name: 'taro',
       email: 'a@b.com',
       address: { city: 'Tokyo', zip: '100-0001' },
@@ -688,8 +688,8 @@ describe('deep-nested-validation', () => {
   })
 
   it('invalid: cascade across levels', () => {
-    const valid = DeepUser({ name: '', email: 'bad', address: { zip: 'x' } })
-    expect(issues(valid)).toStrictEqual([
+    const result = DeepUser({ name: '', email: 'bad', address: { zip: 'x' } })
+    expect(issues(result)).toStrictEqual([
       { path: ['email'], code: 'pattern', message: 'email must be an email address (was "bad")' },
       { path: ['name'], code: 'minLength', message: 'name must be non-empty' },
       {
@@ -706,13 +706,13 @@ describe('deep-nested-validation', () => {
 // augmentation in consumer projects), so password is just a plain `string`.
 describe('write-only-password', () => {
   it('valid', () => {
-    const valid = Account({ name: 'taro', password: 'secret' })
-    expect(valid).toStrictEqual({ name: 'taro', password: 'secret' })
+    const result = Account({ name: 'taro', password: 'secret' })
+    expect(result).toStrictEqual({ name: 'taro', password: 'secret' })
   })
 
   it('invalid: wrong types', () => {
-    const valid = Account({ name: 1 } as never)
-    expect(issues(valid)).toStrictEqual([
+    const result = Account({ name: 1 } as never)
+    expect(issues(result)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
     ])
   })
@@ -720,13 +720,13 @@ describe('write-only-password', () => {
 
 describe('length-message', () => {
   it('valid', () => {
-    const valid = LengthMessageCode({ code: 'abcdef' })
-    expect(valid).toStrictEqual({ code: 'abcdef' })
+    const result = LengthMessageCode({ code: 'abcdef' })
+    expect(result).toStrictEqual({ code: 'abcdef' })
   })
 
   it('invalid: empty code returns x-length-message via narrow + ctx.mustBe', () => {
-    const valid = LengthMessageCode({ code: '' })
-    expect(issues(valid)).toStrictEqual([
+    const result = LengthMessageCode({ code: '' })
+    expect(issues(result)).toStrictEqual([
       {
         path: ['code'],
         code: 'predicate',

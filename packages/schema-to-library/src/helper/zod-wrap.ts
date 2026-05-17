@@ -33,8 +33,17 @@ export function zodWrap(zodStr: string, schema: JSONSchema): string {
   const withDefault =
     schema.default !== undefined ? `${zodStr}.default(${formatLiteral(schema.default)})` : zodStr
   const withNullable = isNullable ? `${withDefault}.nullable()` : withDefault
+  const withReadonly = schema['x-readonly'] === true ? `${withNullable}.readonly()` : withNullable
+  const withPrefault =
+    schema['x-prefault'] !== undefined
+      ? `${withReadonly}.prefault(${formatLiteral(schema['x-prefault'])})`
+      : withReadonly
+  const withCatch =
+    schema['x-catch'] !== undefined
+      ? `${withPrefault}.catch(${formatLiteral(schema['x-catch'])})`
+      : withPrefault
   const brand = schema['x-brand']
-  const withBrand = typeof brand === 'string' ? `${withNullable}.brand<"${brand}">()` : withNullable
+  const withBrand = typeof brand === 'string' ? `${withCatch}.brand<"${brand}">()` : withCatch
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const metaObj: Record<string, unknown> = {}
@@ -47,3 +56,4 @@ export function zodWrap(zodStr: string, schema: JSONSchema): string {
   if (Object.keys(metaObj).length === 0) return withBrand
   return `${withBrand}.meta(${serializeJSValue(metaObj)})`
 }
+
