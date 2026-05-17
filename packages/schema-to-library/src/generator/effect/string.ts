@@ -22,8 +22,8 @@ export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${effectError(patternMessage)}` : ''
-  const sizeMessage = schema['x-size-message']
-  const sizeErrorPart = sizeMessage ? `,${effectError(sizeMessage)}` : ''
+  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
+  const lengthErrorPart = lengthMessage ? `,${effectError(lengthMessage)}` : ''
   const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maxLength-message']
@@ -36,7 +36,7 @@ export function string(schema: JSONSchema) {
     schema.pattern
       ? `Schema.pattern(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
       : undefined,
-    isFixedLength ? `Schema.length(${schema.minLength}${sizeErrorPart})` : undefined,
+    isFixedLength ? `Schema.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `Schema.minLength(${schema.minLength}${minErrorPart})`
       : undefined,

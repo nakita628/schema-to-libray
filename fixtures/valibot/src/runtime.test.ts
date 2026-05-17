@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vite-plus/test'
 import { Config as AdditionalConfig } from '../additional-properties/output.ts'
 import { Combined } from '../allof/output.ts'
 import { Merged } from '../allof-message/output.ts'
+import { Pet as DiscriminatedPet } from '../discriminated-union/output.ts'
+import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { StringOrNumber } from '../anyof/output.ts'
 import { BrandedTypes } from '../brand/output.ts'
 import { A as CircularA } from '../circular/output.ts'
@@ -1092,6 +1094,86 @@ describe('split-refs: User', () => {
           message: 'Invalid type: Expected Object but received "x"',
           path: [{ type: 'object', origin: 'value', input, key: 'address', value: 'x' }],
           requirement: undefined,
+          issues: undefined,
+          lang: undefined,
+          abortEarly: undefined,
+          abortPipeEarly: undefined,
+        },
+      ])
+    }
+  })
+})
+
+describe('valibot fixtures: discriminated-union runtime', () => {
+  it('valid: cat', () => {
+    expect(v.safeParse(DiscriminatedPet, { kind: 'cat', indoor: true }).success).toBe(true)
+  })
+
+  it('valid: dog', () => {
+    expect(v.safeParse(DiscriminatedPet, { kind: 'dog', breed: 'shiba' }).success).toBe(true)
+  })
+
+  it('invalid: unknown discriminator returns x-oneOf-message', () => {
+    const input = { kind: 'fish' }
+    const result = v.safeParse(DiscriminatedPet, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
+        {
+          kind: 'schema',
+          type: 'variant',
+          input: 'fish',
+          expected: '("cat" | "dog")',
+          received: '"fish"',
+          message: 'Must be a known pet kind',
+          path: [
+            {
+              type: 'object',
+              origin: 'value',
+              input,
+              key: 'kind',
+              value: 'fish',
+            },
+          ],
+          requirement: undefined,
+          issues: undefined,
+          lang: undefined,
+          abortEarly: undefined,
+          abortPipeEarly: undefined,
+        },
+      ])
+    }
+  })
+})
+
+describe('valibot fixtures: length-message runtime', () => {
+  it('valid: exactly 6 chars passes', () => {
+    expect(v.safeParse(LengthMessageCode, { code: 'abcdef' }).success).toBe(true)
+  })
+
+  it('invalid: empty code returns x-length-message', () => {
+    const input = { code: '' }
+    const result = v.safeParse(LengthMessageCode, input)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.issues).toStrictEqual([
+        {
+          kind: 'validation',
+          type: 'length',
+          input: '',
+          expected: '6',
+          received: '0',
+          message: 'Code must be exactly 6 characters',
+          requirement: 6,
+          path: [
+            {
+              type: 'object',
+              origin: 'value',
+              input,
+              key: 'code',
+              value: '',
+            },
+          ],
           issues: undefined,
           lang: undefined,
           abortEarly: undefined,

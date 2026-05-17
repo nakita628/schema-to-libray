@@ -7,7 +7,9 @@ import { StringOrNumber } from '../anyof/output.ts'
 import { BrandedTypes } from '../brand/output.ts'
 import { A as CircularA } from '../circular/output.ts'
 import { A as DefinitionsA } from '../definitions/output.ts'
+import { Animal as DiscriminatedAnimal } from '../discriminated-union/output.ts'
 import { User as ErrorMessagesUser } from '../error-messages/output.ts'
+import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
 import { NotString } from '../not/output.ts'
@@ -589,6 +591,90 @@ describe('zod fixtures: split-nested runtime', () => {
             "/^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/",
           path: ['customer', 'email'],
           message: 'Invalid email address',
+        },
+      ])
+    }
+  })
+})
+
+describe('zod fixtures: discriminated-union runtime', () => {
+  it('valid: cat', () => {
+    expect(DiscriminatedAnimal.safeParse({ kind: 'cat', meow: true }).success).toBe(true)
+  })
+
+  it('valid: dog', () => {
+    expect(DiscriminatedAnimal.safeParse({ kind: 'dog', bark: false }).success).toBe(true)
+  })
+
+  it('invalid: unknown discriminator', () => {
+    const result = DiscriminatedAnimal.safeParse({ kind: 'fish', meow: true })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
+        {
+          code: 'invalid_union',
+          errors: [],
+          note: 'No matching discriminator',
+          discriminator: 'kind',
+          path: ['kind'],
+          message: 'Invalid input',
+        },
+      ])
+    }
+  })
+
+  it('invalid: missing variant-specific property', () => {
+    const result = DiscriminatedAnimal.safeParse({ kind: 'cat' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
+        {
+          expected: 'boolean',
+          code: 'invalid_type',
+          path: ['meow'],
+          message: 'Invalid input: expected boolean, received undefined',
+        },
+      ])
+    }
+  })
+})
+
+describe('zod fixtures: length-message runtime', () => {
+  it('valid: exactly 6 chars passes', () => {
+    expect(LengthMessageCode.safeParse({ code: 'abcdef' }).success).toBe(true)
+  })
+
+  it('invalid: short code returns x-length-message', () => {
+    const result = LengthMessageCode.safeParse({ code: '' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
+        {
+          origin: 'string',
+          code: 'too_small',
+          minimum: 6,
+          inclusive: true,
+          exact: true,
+          path: ['code'],
+          message: 'Code must be exactly 6 characters',
+        },
+      ])
+    }
+  })
+
+  it('invalid: long code returns x-length-message', () => {
+    const result = LengthMessageCode.safeParse({ code: 'abcdefg' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toStrictEqual([
+        {
+          origin: 'string',
+          code: 'too_big',
+          maximum: 6,
+          inclusive: true,
+          exact: true,
+          path: ['code'],
+          message: 'Code must be exactly 6 characters',
         },
       ])
     }

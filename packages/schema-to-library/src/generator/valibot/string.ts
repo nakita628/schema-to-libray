@@ -27,8 +27,8 @@ export function string(schema: JSONSchema) {
       : ''
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${valibotError(patternMessage)}` : ''
-  const sizeMessage = schema['x-size-message']
-  const sizeErrorPart = sizeMessage ? `,${valibotError(sizeMessage)}` : ''
+  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
+  const lengthErrorPart = lengthMessage ? `,${valibotError(lengthMessage)}` : ''
   const minimumMessage = schema['x-minLength-message']
   const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maxLength-message']
@@ -48,7 +48,7 @@ export function string(schema: JSONSchema) {
     schema.pattern
       ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
       : undefined,
-    isFixedLength ? `v.length(${schema.minLength}${sizeErrorPart})` : undefined,
+    isFixedLength ? `v.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `v.minLength(${schema.minLength}${minErrorPart})`
       : undefined,

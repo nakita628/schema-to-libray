@@ -36,8 +36,8 @@ export function string(schema: JSONSchema) {
   const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
-  const sizeMessage = schema['x-size-message']
-  const sizeErrorPart = sizeMessage ? `,${zodError(sizeMessage)}` : ''
+  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
+  const lengthErrorPart = lengthMessage ? `,${zodError(lengthMessage)}` : ''
   // v3.0: string length uses x-minLength-message / x-maxLength-message
   // (split from the previous shared x-minimum-message / x-maximum-message
   // numeric-only slots).
@@ -59,7 +59,7 @@ export function string(schema: JSONSchema) {
   return [
     base,
     pattern,
-    isFixedLength ? `.length(${schema.minLength}${sizeErrorPart})` : undefined,
+    isFixedLength ? `.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `.min(${schema.minLength}${minErrorPart})`
       : undefined,

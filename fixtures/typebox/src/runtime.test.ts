@@ -5,7 +5,9 @@ import { Config as AdditionalConfig } from '../additional-properties/output.ts'
 import { Combined as AllofCombined } from '../allof/output.ts'
 import { StringOrNumber as AnyofStringOrNumber } from '../anyof/output.ts'
 import { A as DefinitionsA } from '../definitions/output.ts'
+import { Pet as DiscriminatedPet } from '../discriminated-union/output.ts'
 import { User as ErrUser } from '../error-messages/output.ts'
+import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
 import { Shape as OneofShape } from '../oneof/output.ts'
@@ -632,6 +634,80 @@ describe('meta', () => {
         instancePath: '/email',
         params: { format: 'email' },
         message: 'must match format "email"',
+      },
+    ])
+  })
+})
+
+describe('discriminated-union', () => {
+  it('valid: dog', () => {
+    expect(Value.Check(DiscriminatedPet, { kind: 'dog', bark: true })).toBe(true)
+  })
+
+  it('valid: cat', () => {
+    expect(Value.Check(DiscriminatedPet, { kind: 'cat', purr: false })).toBe(true)
+  })
+
+  it('invalid: unknown discriminator surfaces all branch failures + anyOf summary', () => {
+    const value = { kind: 'fish' }
+    expect(Value.Check(DiscriminatedPet, value)).toBe(false)
+    expect([...Value.Errors(DiscriminatedPet, value)]).toStrictEqual([
+      {
+        keyword: 'required',
+        schemaPath: '#/anyOf/0',
+        instancePath: '',
+        params: { requiredProperties: ['bark'] },
+        message: 'must have required properties bark',
+      },
+      {
+        keyword: 'const',
+        schemaPath: '#/anyOf/0/properties/kind',
+        instancePath: '/kind',
+        params: { allowedValue: 'dog' },
+        message: 'must be equal to constant',
+      },
+      {
+        keyword: 'required',
+        schemaPath: '#/anyOf/1',
+        instancePath: '',
+        params: { requiredProperties: ['purr'] },
+        message: 'must have required properties purr',
+      },
+      {
+        keyword: 'const',
+        schemaPath: '#/anyOf/1/properties/kind',
+        instancePath: '/kind',
+        params: { allowedValue: 'cat' },
+        message: 'must be equal to constant',
+      },
+      {
+        keyword: 'anyOf',
+        schemaPath: '#',
+        instancePath: '',
+        params: {},
+        message: 'must match a schema in anyOf',
+      },
+    ])
+  })
+})
+
+describe('length-message', () => {
+  it('valid', () => {
+    const value = { code: 'abcdef' }
+    expect(Value.Check(LengthMessageCode, value)).toBe(true)
+    expect([...Value.Errors(LengthMessageCode, value)]).toStrictEqual([])
+  })
+
+  it('invalid: empty code emits TypeBox default (x-length-message only via ajv-errors)', () => {
+    const value = { code: '' }
+    expect(Value.Check(LengthMessageCode, value)).toBe(false)
+    expect([...Value.Errors(LengthMessageCode, value)]).toStrictEqual([
+      {
+        keyword: 'minLength',
+        schemaPath: '#/properties/code',
+        instancePath: '/code',
+        params: { limit: 6 },
+        message: 'must not have fewer than 6 characters',
       },
     ])
   })

@@ -18,7 +18,7 @@ export function string(schema: JSONSchema) {
   // that constraint; the others continue to use DSL.
   const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
-  const sizeMessage = schema['x-size-message']
+  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
   const minLengthMessage = schema['x-minLength-message']
   const maxLengthMessage = schema['x-maxLength-message']
   const patternMessage = schema['x-pattern-message']
@@ -39,8 +39,8 @@ export function string(schema: JSONSchema) {
     schema.minLength === schema.maxLength
 
   if (isFixedLength) {
-    if (sizeMessage) {
-      return `type(${base}).narrow((s, ctx) => s.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(sizeMessage)}))${describe}`
+    if (lengthMessage) {
+      return `type(${base}).narrow((s, ctx) => s.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(lengthMessage)}))${describe}`
     }
     return `type("string == ${schema.minLength}")${describe}`
   }

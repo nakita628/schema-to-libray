@@ -9,7 +9,9 @@ import { BrandedTypes } from '../brand/output.ts'
 import { A as CircularA } from '../circular/output.ts'
 import { A as DefinitionsA } from '../definitions/output.ts'
 import { User as DefsUser } from '../$defs/output.ts'
+import { Event as DiscriminatedEvent } from '../discriminated-union/output.ts'
 import { User as ErrorMessagesUser } from '../error-messages/output.ts'
+import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
 import { NotString } from '../not/output.ts'
@@ -21,8 +23,7 @@ import { Order as SplitNestedOrder } from '../split-nested/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
 import { User as TitleUser } from '../title/output.ts'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const decode = (schema: Schema.Schema<any, any, never>, value: unknown) =>
+const decode = <A, I>(schema: Schema.Schema<A, I, never>, value: unknown) =>
   Schema.decodeUnknownEither(schema)(value)
 
 describe('error-messages runtime', () => {
@@ -473,6 +474,49 @@ describe('split-refs runtime', () => {
         _tag: 'ParseError',
         message:
           '{ readonly name: string; readonly address?: { readonly street: string; readonly city: string; readonly zip?: string | undefined } | undefined }\n└─ ["address"]\n   └─ { readonly street: string; readonly city: string; readonly zip?: string | undefined } | undefined\n      ├─ { readonly street: string; readonly city: string; readonly zip?: string | undefined }\n      │  └─ ["city"]\n      │     └─ is missing\n      └─ Expected undefined, actual {"street":"s"}',
+      })
+    }
+  })
+})
+
+describe('discriminated-union runtime', () => {
+  it('PASS click event', () => {
+    const valid = decode(DiscriminatedEvent, { type: 'click', x: 1, y: 2 })
+    expect(Either.isRight(valid)).toBe(true)
+  })
+
+  it('PASS keypress event', () => {
+    const valid = decode(DiscriminatedEvent, { type: 'keypress', key: 'Enter' })
+    expect(Either.isRight(valid)).toBe(true)
+  })
+
+  it('FAIL unknown discriminator', () => {
+    const valid = decode(DiscriminatedEvent, { type: 'unknown' })
+    expect(Either.isLeft(valid)).toBe(true)
+    if (Either.isLeft(valid)) {
+      expect({ _tag: valid.left._tag, message: valid.left.message }).toStrictEqual({
+        _tag: 'ParseError',
+        message:
+          '{ readonly type: "click"; readonly x: int; readonly y: int } | { readonly type: "keypress"; readonly key: string }\n└─ { readonly type: "click" | "keypress" }\n   └─ ["type"]\n      └─ Expected "click" | "keypress", actual "unknown"',
+      })
+    }
+  })
+})
+
+describe('length-message runtime', () => {
+  it('PASS exactly 6 chars', () => {
+    const valid = decode(LengthMessageCode, { code: 'abcdef' })
+    expect(Either.isRight(valid)).toBe(true)
+  })
+
+  it('FAIL empty code returns x-length-message', () => {
+    const valid = decode(LengthMessageCode, { code: '' })
+    expect(Either.isLeft(valid)).toBe(true)
+    if (Either.isLeft(valid)) {
+      expect({ _tag: valid.left._tag, message: valid.left.message }).toStrictEqual({
+        _tag: 'ParseError',
+        message:
+          '{ readonly code: length(6) }\n└─ ["code"]\n   └─ Code must be exactly 6 characters',
       })
     }
   })

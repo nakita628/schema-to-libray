@@ -296,6 +296,8 @@ export type JSONSchema = {
   /** `pattern` (`.regex()`) */
   readonly 'x-pattern-message'?: string
   /** Exact length (`minLength === maxLength`) */
+  readonly 'x-length-message'?: string
+  /** Exact length fallback (proprietary, kept for backward compatibility) */
   readonly 'x-size-message'?: string
   // Array
   /** `minItems` */

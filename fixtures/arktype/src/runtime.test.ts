@@ -16,6 +16,7 @@ import { DependentRequired } from '../dependent-schemas/output.ts'
 import { Animal } from '../discriminated-union/output.ts'
 import { Color } from '../enum-japanese/output.ts'
 import { User as ErrUser } from '../error-messages/output.ts'
+import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { Address } from '../if-then-else/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
@@ -713,6 +714,24 @@ describe('write-only-password', () => {
     const valid = Account({ name: 1 } as never)
     expect(issues(valid)).toStrictEqual([
       { path: ['name'], code: 'domain', message: 'name must be a string (was a number)' },
+    ])
+  })
+})
+
+describe('length-message', () => {
+  it('valid', () => {
+    const valid = LengthMessageCode({ code: 'abcdef' })
+    expect(valid).toStrictEqual({ code: 'abcdef' })
+  })
+
+  it('invalid: empty code returns x-length-message via narrow + ctx.mustBe', () => {
+    const valid = LengthMessageCode({ code: '' })
+    expect(issues(valid)).toStrictEqual([
+      {
+        path: ['code'],
+        code: 'predicate',
+        message: 'code must be Code must be exactly 6 characters (was "")',
+      },
     ])
   })
 })

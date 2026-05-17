@@ -23,7 +23,7 @@ export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const patternMessage = schema['x-pattern-message']
-  const sizeMessage = schema['x-size-message']
+  const lengthMessage = schema['x-length-message'] ?? schema['x-size-message']
   const minLengthMessage = schema['x-minLength-message']
   const maxLengthMessage = schema['x-maxLength-message']
   const perKeywordEntries: string[] = []
@@ -31,10 +31,9 @@ export function string(schema: JSONSchema) {
   if (patternMessage) perKeywordEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
   if (minLengthMessage) perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
   if (maxLengthMessage) perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
-  if (sizeMessage) {
-    // exact length → both minLength and maxLength constraints
-    perKeywordEntries.push(`minLength:${JSON.stringify(sizeMessage)}`)
-    perKeywordEntries.push(`maxLength:${JSON.stringify(sizeMessage)}`)
+  if (lengthMessage) {
+    perKeywordEntries.push(`minLength:${JSON.stringify(lengthMessage)}`)
+    perKeywordEntries.push(`maxLength:${JSON.stringify(lengthMessage)}`)
   }
   const errMsg =
     perKeywordEntries.length === 0
