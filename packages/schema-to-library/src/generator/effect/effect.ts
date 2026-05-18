@@ -1,4 +1,4 @@
-import { effectWrap } from '../../helper/index.js'
+import { type CodeExtensionOptions, effectWrap as _effectWrap } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   effectError,
@@ -26,8 +26,12 @@ export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isEffect: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
 ): string {
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const effectWrap = (effectStr: string, s: JSONSchema): string =>
+    _effectWrap(effectStr, s, codeExtOpts)
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {

@@ -78,12 +78,15 @@ export function object(
     return 'v.object({})'
   }
 
+  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
   const objectKind =
     schema.additionalProperties === true
       ? 'looseObject'
       : schema.additionalProperties === false
         ? 'strictObject'
-        : 'object'
+        : conditionalKeysReferenced
+          ? 'looseObject'
+          : 'object'
   const required = Array.isArray(schema.required) ? schema.required : []
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {

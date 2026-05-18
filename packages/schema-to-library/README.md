@@ -95,7 +95,7 @@ export const User = Schema.Struct({
 #### TypeBox
 
 ```ts
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({
   name: Type.String(),
@@ -222,6 +222,131 @@ export const Root = z.object({
     .max(50, { error: 'Name must be at most 50 characters' }),
   age: z.int().min(0, { error: 'Age must be >= 0' }).max(120, { error: 'Age must be <= 120' }),
 })
+```
+
+## Behavior Extensions
+
+Beyond message extensions, schema-to-library accepts a small set of safe **DSL-style** behavior extensions. Each extension takes a **literal value** (boolean / enum / number / regex string) and is mapped to the target validator's native API. No raw code strings are accepted — this is by design (the input may originate from an untrusted JSON Schema source).
+
+### String pre-validation transforms (all generators)
+
+| Extension       | Zod                           | Valibot              | Effect              | Arktype                          | TypeBox                             |
+| --------------- | ----------------------------- | -------------------- | ------------------- | -------------------------------- | ----------------------------------- |
+| `x-trim`        | `z.string().trim()`           | `v.trim()`           | `Schema.Trim`       | `.pipe((s) => s.trim())`         | `Type.Transform(...).Decode/Encode` |
+| `x-toLowerCase` | `z.string().toLowerCase()`    | `v.toLowerCase()`    | `Schema.Lowercase`  | `.pipe((s) => s.toLowerCase())`  | `Type.Transform(...).Decode/Encode` |
+| `x-toUpperCase` | `z.string().toUpperCase()`    | `v.toUpperCase()`    | `Schema.Uppercase`  | `.pipe((s) => s.toUpperCase())`  | `Type.Transform(...).Decode/Encode` |
+| `x-normalize`   | `z.string().normalize('NFC')` | `v.normalize('NFC')` | `Schema.Trim` 系    | `.pipe((s) => s.normalize(...))` | n/a                                 |
+| `x-startsWith`  | `.startsWith(s)`              | `v.startsWith(s)`    | `Schema.startsWith` | DSL constraint                   | n/a                                 |
+| `x-endsWith`    | `.endsWith(s)`                | `v.endsWith(s)`      | `Schema.endsWith`   | DSL constraint                   | n/a                                 |
+| `x-includes`    | `.includes(s)`                | `v.includes(s)`      | `Schema.includes`   | DSL constraint                   | n/a                                 |
+
+### Brand & Readonly
+
+| Extension    | Zod             | Valibot        | Effect              | Arktype       | TypeBox           |
+| ------------ | --------------- | -------------- | ------------------- | ------------- | ----------------- |
+| `x-brand`    | `.brand<"T">()` | `v.brand("T")` | `Schema.brand("T")` | `.brand("T")` | skip              |
+| `x-readonly` | `.readonly()`   | `v.readonly()` | skip                | `.readonly()` | `Type.Readonly()` |
+
+### Default / Fallback / Coerce (per-library)
+
+The default-on-failure behaviors map to each library's native API name. They are implemented only where the target library provides a direct equivalent.
+
+| Extension    | Zod            | Valibot                           | Effect | Arktype | TypeBox |
+| ------------ | -------------- | --------------------------------- | ------ | ------- | ------- |
+| `x-prefault` | `.prefault(v)` | skip                              | skip   | skip    | skip    |
+| `x-catch`    | `.catch(v)`    | skip                              | skip   | skip    | skip    |
+| `x-fallback` | skip           | `v.fallback(schema, v)` ← **new** | skip   | skip    | skip    |
+| `x-coerce`   | `z.coerce.*`   | skip                              | skip   | skip    | skip    |
+
+### Zod format-specific options (Zod-only, new)
+
+When `format` is set, these extensions are passed into Zod v4's native option object. Other generators silently skip them (Valibot/Effect/Arktype/TypeBox have no direct equivalents).
+
+| Extension        | Maps to                                    | Values                            |
+| ---------------- | ------------------------------------------ | --------------------------------- |
+| `x-emailPattern` | `z.email({ pattern: z.regexes.<v>Email })` | `html5` / `browser` / `unicode`   |
+| `x-emailRegex`   | `z.email({ pattern: /.../ })`              | custom regex string               |
+| `x-uuidVersion`  | `z.uuid({ version })`                      | `v1` / `v4` / `v6` / `v7` / `v8`  |
+| `x-urlProtocol`  | `z.url({ protocol: /.../ })`               | regex string                      |
+| `x-urlHostname`  | `z.url({ hostname: /.../ })`               | regex string                      |
+| `x-urlNormalize` | `z.url({ normalize })`                     | `true` / `false`                  |
+| `x-isoPrecision` | `z.iso.datetime({ precision })`            | fractional second digits (number) |
+| `x-isoOffset`    | `z.iso.datetime({ offset })`               | `true` / `false`                  |
+| `x-isoLocal`     | `z.iso.datetime({ local })`                | `true` / `false`                  |
+| `x-jwtAlg`       | `z.jwt({ alg })`                           | `HS256` etc.                      |
+
+Example:
+
+```yaml
+httpsUrl:
+  type: string
+  format: uri
+  x-urlProtocol: '^https$'
+  x-urlNormalize: true
+preciseDatetime:
+  type: string
+  format: date-time
+  x-isoPrecision: 3
+  x-isoOffset: true
+```
+
+```ts
+import { z } from 'zod'
+
+export const HttpsUrl = z.url({ protocol: /^https$/, normalize: true })
+export const PreciseDatetime = z.iso.datetime({ precision: 3, offset: true })
+```
+
+### Code-emitting extensions (opt-in: `--unsafe-code-extensions`)
+
+> [!CAUTION]
+> These extensions accept **raw TypeScript expressions** that are inlined into the generated code. **Never enable them on JSON Schemas fetched from untrusted sources** — a hostile schema can embed any expression that will run during your build/CI/runtime, which is a clean supply-chain attack path. A defense-in-depth denylist (`process` / `require` / `eval` / `Function` / `globalThis` / `constructor` / `__proto__` / browser globals / backticks / `\u`/`\x` escapes / `['…']` computed access) silently drops obviously malicious values, but the only real protection is keeping the input schema inside your own trust boundary.
+
+Enable per-CLI invocation with `--unsafe-code-extensions`; programmatic API users pass `{ unsafeCodeExtensions: true }`. Generated files include a `// @generated-with-unsafe-code-extensions` marker at the top for grep auditing.
+
+Per-library API-name mapping (raw expression values, library-native API names):
+
+| Concept             | Zod            | Valibot       | Effect        | Arktype    | TypeBox |
+| ------------------- | -------------- | ------------- | ------------- | ---------- | ------- |
+| Custom predicate    | `x-refine`     | `x-check`     | `x-filter`    | `x-narrow` | skip    |
+| Transform / morph   | `x-transform`  | `x-transform` | `x-transform` | `x-morph`  | skip    |
+| Pipe composition    | `x-pipe`       | `x-pipe`      | `x-pipe`      | `x-pipe`   | skip    |
+| Bidirectional codec | `x-codec`      | skip          | skip          | skip       | skip    |
+| Preprocess input    | `x-preprocess` | skip          | skip          | skip       | skip    |
+
+Example (Zod, with `--unsafe-code-extensions`):
+
+```yaml
+password:
+  type: string
+  minLength: 8
+  x-refine: '.refine((v) => /[A-Z]/.test(v), { message: "needs uppercase" })'
+updatedAt:
+  type: string
+  format: date-time
+  x-codec: 'z.codec(z.iso.datetime(), z.date(), { decode: (v) => new Date(v), encode: (v) => v.toISOString() })'
+```
+
+```ts
+// @generated-with-unsafe-code-extensions
+
+import * as z from 'zod'
+
+export const Password = z
+  .string()
+  .min(8)
+  .refine((v) => /[A-Z]/.test(v), { message: 'needs uppercase' })
+
+export const UpdatedAt = z.codec(z.iso.datetime(), z.date(), {
+  decode: (v) => new Date(v),
+  encode: (v) => v.toISOString(),
+})
+```
+
+Without the flag the values are silently dropped, and the CLI prints a `stderr` warning so the omission is auditable:
+
+```
+[schema-to-library] WARNING: detected code-emitting extensions x-refine but --unsafe-code-extensions is not set; values will be ignored.
 ```
 
 ## License

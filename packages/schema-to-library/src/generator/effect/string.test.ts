@@ -126,7 +126,7 @@ describe('effect string', () => {
     })
   })
 
-  describe('Phase 1A declarative behavior extensions', () => {
+  describe('declarative behavior extensions', () => {
     it('emits Schema.Trim for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe('Schema.Trim')
     })

@@ -28,9 +28,7 @@ export function string(schema: JSONSchema) {
     if (schema['x-toLowerCase'] === true) chains.push('.pipe((val: string) => val.toLowerCase())')
     if (schema['x-toUpperCase'] === true) chains.push('.pipe((val: string) => val.toUpperCase())')
     if (typeof schema['x-normalize'] === 'string') {
-      chains.push(
-        `.pipe((val: string) => val.normalize(${JSON.stringify(schema['x-normalize'])}))`,
-      )
+      chains.push(`.pipe((val: string) => val.normalize(${JSON.stringify(schema['x-normalize'])}))`)
     }
     if (typeof schema['x-startsWith'] === 'string') {
       const prefix = schema['x-startsWith']

@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
 /**
@@ -15,7 +16,11 @@ import { serializeJSValue } from './meta.js'
  *
  * @see https://effect.website/docs/schema/annotations/
  */
-export function effectWrap(effectStr: string, schema: JSONSchema): string {
+export function effectWrap(
+  effectStr: string,
+  schema: JSONSchema,
+  options?: CodeExtensionOptions,
+): string {
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
     if (typeof value === 'number') return `${value}`
@@ -31,11 +36,16 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string' ? `${withNullable}.pipe(Schema.brand("${brand}"))` : withNullable
+  const filter = readCodeExtension(schema, 'x-filter', options)
+  const transformExt = readCodeExtension(schema, 'x-transform', options)
+  const pipeExt = readCodeExtension(schema, 'x-pipe', options)
+  const codeChain = [filter, transformExt, pipeExt].filter((v): v is string => v !== undefined)
+  const withCodeExts = codeChain.length === 0 ? withBrand : `${withBrand}${codeChain.join('')}`
   // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
   const withDefault =
     schema.default !== undefined
-      ? `Schema.optionalWith(${withBrand},{default:() => ${formatLiteral(schema.default)}})`
-      : withBrand
+      ? `Schema.optionalWith(${withCodeExts},{default:() => ${formatLiteral(schema.default)}})`
+      : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}

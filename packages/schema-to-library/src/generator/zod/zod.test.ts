@@ -1318,6 +1318,78 @@ describe('zod', () => {
     })
   })
 
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('appends x-refine chain term after brand', () => {
+      expect(
+        zod(
+          { type: 'string', 'x-refine': '.refine((v) => v.length > 0)' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('z.string().refine((v) => v.length > 0)')
+    })
+
+    it('appends x-transform after refine', () => {
+      expect(
+        zod(
+          {
+            type: 'string',
+            'x-refine': '.refine((v) => v.length > 0)',
+            'x-transform': '.transform((v) => v.trim())',
+          },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('z.string().refine((v) => v.length > 0).transform((v) => v.trim())')
+    })
+
+    it('appends x-pipe last', () => {
+      expect(
+        zod(
+          {
+            type: 'string',
+            'x-pipe': '.pipe(z.string().toLowerCase())',
+          },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('z.string().pipe(z.string().toLowerCase())')
+    })
+
+    it('replaces output with x-codec when present', () => {
+      expect(
+        zod(
+          {
+            type: 'string',
+            format: 'date-time',
+            'x-codec':
+              'z.codec(z.iso.datetime(), z.date(), { decode: (val) => new Date(val), encode: (val) => val.toISOString() })',
+          },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe(
+        'z.codec(z.iso.datetime(), z.date(), { decode: (val) => new Date(val), encode: (val) => val.toISOString() })',
+      )
+    })
+
+    it('silently ignores x-refine when the flag is not set', () => {
+      expect(zod({ type: 'string', 'x-refine': '.refine((v) => v.length > 0)' })).toBe('z.string()')
+    })
+
+    it('silently ignores values rejected by the denylist even when the flag is set', () => {
+      expect(
+        zod({ type: 'string', 'x-refine': '.refine(() => eval("x"))' }, 'Schema', false, unsafe),
+      ).toBe('z.string()')
+    })
+  })
+
   describe('x-prefixItems-message', () => {
     it('wraps tuple with a check that rewrites element-level messages', () => {
       expect(
@@ -1377,7 +1449,7 @@ describe('zod', () => {
     })
   })
 
-  describe('Phase 1C: x-coerce / x-prefault / x-catch (Zod-only)', () => {
+  describe('x-coerce / x-prefault / x-catch (Zod-only)', () => {
     describe('x-coerce', () => {
       it('emits z.coerce.number()', () => {
         expect(zod({ type: 'number', 'x-coerce': true })).toBe('z.coerce.number()')

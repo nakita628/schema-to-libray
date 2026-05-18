@@ -63,7 +63,7 @@ describe('typebox string', () => {
     })
   })
 
-  describe('Phase 1A declarative behavior extensions', () => {
+  describe('declarative behavior extensions', () => {
     it('wraps Type.String with Type.Transform for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe(
         'Type.Transform(Type.String()).Decode((val: string) => val.trim()).Encode((val: string) => val)',

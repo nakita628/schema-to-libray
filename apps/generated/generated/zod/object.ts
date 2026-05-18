@@ -15,5 +15,3 @@ export const Schema = z
       .partial(),
   })
   .partial()
-
-export type Schema = z.infer<typeof Schema>

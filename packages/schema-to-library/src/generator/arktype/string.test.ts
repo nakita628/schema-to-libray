@@ -60,7 +60,7 @@ describe('arktype string', () => {
     })
   })
 
-  describe('Phase 1A declarative behavior extensions', () => {
+  describe('declarative behavior extensions', () => {
     it('emits .pipe morph for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe(
         'type("string").pipe((val: string) => val.trim())',

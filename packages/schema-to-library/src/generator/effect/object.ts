@@ -92,6 +92,10 @@ export function object(
 
   // Schema.partial cannot wrap a Struct that already contains transformation-bearing
   // PropertySignatures (e.g. Schema.optionalWith with default), so only use the
+  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
+  const restSignature = conditionalKeysReferenced
+    ? ',Schema.Record({key:Schema.String,value:Schema.Unknown})'
+    : ''
   // partial shorthand when every prop is a plain Schema.optional(Schema) wrapper.
   const rawBase =
     required.length === 0 &&
@@ -99,8 +103,8 @@ export function object(
     props.every((p) => /:Schema\.optional\(/.test(p) && !/Schema\.optionalWith\(/.test(p))
       ? `Schema.partial(Schema.Struct({${props
           .map((p) => p.replace(/^(.+?):Schema\.optional\((.+)\)$/, '$1:$2'))
-          .join(',')}}))`
-      : `Schema.Struct({${props.join(',')}})`
+          .join(',')}}${restSignature}))`
+      : `Schema.Struct({${props.join(',')}}${restSignature})`
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {

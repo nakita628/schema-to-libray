@@ -30,6 +30,67 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
   jwt: 'jwt()',
 }
 
+const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
+  html5: 'z.regexes.html5Email',
+  browser: 'z.regexes.browserEmail',
+  unicode: 'z.regexes.unicodeEmail',
+}
+
+function escapeRegexLiteral(pattern: string) {
+  return pattern.replace(/(?<!\\)\//g, '\\/')
+}
+
+function buildFormatOptions(schema: JSONSchema): readonly string[] {
+  const format = schema.format
+  const parts: string[] = []
+  if (format === 'email') {
+    const emailPattern = schema['x-emailPattern']
+    const emailRegex = schema['x-emailRegex']
+    if (typeof emailPattern === 'string' && EMAIL_PATTERN_MAP[emailPattern] !== undefined) {
+      parts.push(`pattern:${EMAIL_PATTERN_MAP[emailPattern]}`)
+    } else if (typeof emailRegex === 'string') {
+      parts.push(`pattern:/${escapeRegexLiteral(emailRegex)}/`)
+    }
+    return parts
+  }
+  if (format === 'uuid') {
+    const uuidVersion = schema['x-uuidVersion']
+    if (typeof uuidVersion === 'string') parts.push(`version:${JSON.stringify(uuidVersion)}`)
+    return parts
+  }
+  if (format === 'uri') {
+    const urlProtocol = schema['x-urlProtocol']
+    if (typeof urlProtocol === 'string') parts.push(`protocol:/${escapeRegexLiteral(urlProtocol)}/`)
+    const urlHostname = schema['x-urlHostname']
+    if (typeof urlHostname === 'string') parts.push(`hostname:/${escapeRegexLiteral(urlHostname)}/`)
+    if (schema['x-urlNormalize'] === true) parts.push('normalize:true')
+    else if (schema['x-urlNormalize'] === false) parts.push('normalize:false')
+    return parts
+  }
+  if (format === 'date-time') {
+    const precision = schema['x-isoPrecision']
+    if (typeof precision === 'number') parts.push(`precision:${precision}`)
+    const offset = schema['x-isoOffset']
+    if (typeof offset === 'boolean') parts.push(`offset:${offset}`)
+    const local = schema['x-isoLocal']
+    if (typeof local === 'boolean') parts.push(`local:${local}`)
+    return parts
+  }
+  if (format === 'jwt') {
+    const alg = schema['x-jwtAlg']
+    if (typeof alg === 'string') parts.push(`alg:${JSON.stringify(alg)}`)
+    return parts
+  }
+  return parts
+}
+
+function mergeOptions(formatOptions: readonly string[], baseErrorArg: string): string {
+  if (formatOptions.length === 0) return baseErrorArg
+  const errorPart = baseErrorArg ? baseErrorArg.slice(1, -1) : ''
+  const allParts = errorPart ? [...formatOptions, errorPart] : [...formatOptions]
+  return `{${allParts.join(',')}}`
+}
+
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
@@ -44,11 +105,13 @@ export function string(schema: JSONSchema) {
   const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
   const format = schema.format && FORMAT_STRING[schema.format]
   const coercePrefix = schema['x-coerce'] === true && !format ? 'coerce.' : ''
+  const formatOptions = format ? buildFormatOptions(schema) : []
+  const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
   const base = format
-    ? `z.${format.replace(/\(\)$/, `(${baseErrorArg})`)}`
-    : `z.${coercePrefix}string(${baseErrorArg})`
+    ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
+    : `z.${coercePrefix}string(${baseCallArg})`
   const pattern = schema.pattern
-    ? `.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
+    ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${patternErrorPart})`
     : undefined
   const isFixedLength =
     schema.minLength !== undefined &&

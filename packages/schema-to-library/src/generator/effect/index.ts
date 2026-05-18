@@ -1,4 +1,8 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
+import {
+  findCodeExtensionKeysInSchema,
+  resolveSchemaDependenciesFromSchema,
+  UNSAFE_GENERATED_MARKER,
+} from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
@@ -39,10 +43,17 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToEffect(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
+  options?: {
+    exportType?: boolean
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+  },
 ): string {
-  const { exportType = true, openapi = false } = options ?? {}
-  const genOptions = { openapi }
+  const { exportType = true, openapi = false, unsafeCodeExtensions = false } = options ?? {}
+  const genOptions = { openapi, unsafeCodeExtensions }
+  const codeExtensionsPresent =
+    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const pascalTitle = schema.title ? toName(schema.title) : 'Schema_'
   // Avoid conflict with `import { Schema } from "effect"`
@@ -108,6 +119,7 @@ export function schemaToEffect(
 
   // Assemble output
   return [
+    ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     importLine,
     typeDefsCode,
     schemaDefsCode,

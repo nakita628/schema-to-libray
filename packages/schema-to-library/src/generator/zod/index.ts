@@ -1,4 +1,8 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
+import {
+  findCodeExtensionKeysInSchema,
+  resolveSchemaDependenciesFromSchema,
+  UNSAFE_GENERATED_MARKER,
+} from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
@@ -45,10 +49,22 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToZod(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
+  options?: {
+    exportType?: boolean
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+  },
 ): string {
-  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
-  const genOptions = { openapi, readonly: readonlyMode }
+  const {
+    exportType = true,
+    openapi = false,
+    readonly: readonlyMode = false,
+    unsafeCodeExtensions = false,
+  } = options ?? {}
+  const genOptions = { openapi, readonly: readonlyMode, unsafeCodeExtensions }
+  const codeExtensionsPresent =
+    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
@@ -107,6 +123,7 @@ export function schemaToZod(
 
   // Assemble output
   return [
+    ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     `import * as z from 'zod'`,
     typeDefsCode,
     schemaDefsCode,

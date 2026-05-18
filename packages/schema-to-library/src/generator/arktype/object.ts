@@ -149,6 +149,21 @@ export function object(
         )
       : ''
 
+  const ifThenElseNarrow = (() => {
+    if (!schema.if) return ''
+    const ifS = ensureRuntime(arktype(schema.if, rootName, isArktype, options))
+    const thenS = schema.then
+      ? ensureRuntime(arktype(schema.then, rootName, isArktype, options))
+      : undefined
+    const elseS = schema.else
+      ? ensureRuntime(arktype(schema.else, rootName, isArktype, options))
+      : undefined
+    if (!thenS && !elseS) return ''
+    const thenCheck = thenS ? `${thenS}.allows(o)` : 'true'
+    const elseCheck = elseS ? `${elseS}.allows(o)` : 'true'
+    return narrowPredicate(`${ifS}.allows(o) ? ${thenCheck} : ${elseCheck}`)
+  })()
+
   const narrows = [
     minPropertiesNarrow,
     maxPropertiesNarrow,
@@ -157,6 +172,7 @@ export function object(
     ...dependentRequiredNarrows,
     ...dependentSchemasNarrows,
     additionalPropertiesNarrow,
+    ifThenElseNarrow,
   ].filter((a) => a !== '')
 
   const baseExpr =

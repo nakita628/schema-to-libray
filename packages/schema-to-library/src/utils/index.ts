@@ -1,13 +1,21 @@
 /**
- * Convert string to PascalCase (first character uppercase)
+ * Convert string to PascalCase (first character uppercase).
+ *
+ * When the input contains characters that are not valid in a TypeScript
+ * identifier (whitespace, dots, slashes, etc.) the input is routed through
+ * {@link toIdentifierPascalCase} so the generated variable name remains
+ * parseable. Hyphens and underscores are preserved for back-compat with
+ * upstream titles that already generated working code.
  *
  * @example
  * ```ts
- * toPascalCase('animal')      // 'Animal'
- * toPascalCase('userProfile') // 'UserProfile'
+ * toPascalCase('animal')                     // 'Animal'
+ * toPascalCase('userProfile')                // 'UserProfile'
+ * toPascalCase('Self-Referencing Entities')  // 'SelfReferencingEntities'
  * ```
  */
 export function toPascalCase(name: string) {
+  if (/[^A-Za-z0-9_-]/.test(name)) return toIdentifierPascalCase(name)
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 

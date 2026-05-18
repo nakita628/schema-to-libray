@@ -1,14 +1,18 @@
 import * as z from 'zod'
 
-type AnimalType = { name: string; species: string; offspring?: AnimalType[] }
-type SchemaType = AnimalType
+type _Schema = _Animal
 
-export const Animal: z.ZodType<AnimalType> = z.strictObject({
-  name: z.string(),
-  species: z.string(),
-  offspring: z.array(z.lazy(() => Animal)).optional(),
-})
+type _Animal = { name: string; species: string; offspring?: _Animal[] }
 
-export const Schema: z.ZodType<SchemaType> = z.lazy(() => Animal)
+const Animal: z.ZodType<_Animal> = z
+  .strictObject({
+    name: z.string().meta({ description: 'The name of the animal' }),
+    species: z.string().meta({ description: 'The species of the animal' }),
+    offspring: z
+      .array(z.lazy(() => Animal))
+      .meta({ description: 'List of child animals' })
+      .optional(),
+  })
+  .meta({ description: 'An animal that can have offspring' })
 
-export type Schema = z.infer<typeof Schema>
+export const Schema: z.ZodType<_Schema> = z.lazy(() => Animal)

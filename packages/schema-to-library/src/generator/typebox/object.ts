@@ -122,11 +122,26 @@ function buildAdvancedOpts(
         .map(([key, deps]) => `${JSON.stringify(key)}:${JSON.stringify(deps)}`)
         .join(',')}}`
     : undefined
+  const ifOpt = schema.if ? `if:${typebox(schema.if, rootName, isTypebox, options)}` : undefined
+  const thenOpt = schema.then
+    ? `then:${typebox(schema.then, rootName, isTypebox, options)}`
+    : undefined
+  const elseOpt = schema.else
+    ? `else:${typebox(schema.else, rootName, isTypebox, options)}`
+    : undefined
+  const requiredOpt =
+    !schema.properties && Array.isArray(schema.required) && schema.required.length > 0
+      ? `required:${JSON.stringify(schema.required)}`
+      : undefined
   return [
     typeof schema.minProperties === 'number' ? `minProperties:${schema.minProperties}` : undefined,
     typeof schema.maxProperties === 'number' ? `maxProperties:${schema.maxProperties}` : undefined,
     propertyNamesOpt,
     patternPropertiesOpt,
     dependentRequiredOpt,
+    ifOpt,
+    thenOpt,
+    elseOpt,
+    requiredOpt,
   ]
 }

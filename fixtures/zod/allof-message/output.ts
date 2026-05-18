@@ -8,9 +8,9 @@ export const Merged = (() => {
   return z
     .unknown()
     .check((ctx) => {
-      const valid = Schema.safeParse(ctx.value)
-      if (!valid.success) {
-        for (const issue of valid.error.issues) {
+      const result = Schema.safeParse(ctx.value)
+      if (!result.success) {
+        for (const issue of result.error.issues) {
           if (issue.code === 'invalid_type') {
             ctx.issues.push({ ...issue, input: issue.input, message: 'merged validation failed' })
           } else if (issue.code === 'too_big') {

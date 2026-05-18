@@ -1,13 +1,12 @@
 import * as z from 'zod'
 
-type NodeType = { name: string; children?: NodeType[] }
-type SchemaType = NodeType
+type _Schema = _Node
 
-export const Node: z.ZodType<NodeType> = z.strictObject({
+type _Node = { name: string; children?: _Node[] }
+
+const Node: z.ZodType<_Node> = z.strictObject({
   name: z.string(),
   children: z.array(z.lazy(() => Node)).optional(),
 })
 
-export const Schema: z.ZodType<SchemaType> = z.lazy(() => Node)
-
-export type Schema = z.infer<typeof Schema>
+export const Schema: z.ZodType<_Schema> = z.lazy(() => Node)

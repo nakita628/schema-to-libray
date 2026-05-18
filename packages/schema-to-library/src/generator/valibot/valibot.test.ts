@@ -956,6 +956,70 @@ describe('valibot', () => {
     })
   })
 
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('adds v.check action to the pipe', () => {
+      expect(
+        valibot(
+          { type: 'string', 'x-check': 'v.check((v) => v.length > 0, "non-empty")' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('v.pipe(v.string(),v.check((v) => v.length > 0, "non-empty"))')
+    })
+
+    it('adds v.transform action to the pipe', () => {
+      expect(
+        valibot(
+          { type: 'string', 'x-transform': 'v.transform((v) => v.toUpperCase())' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('v.pipe(v.string(),v.transform((v) => v.toUpperCase()))')
+    })
+
+    it('silently ignores x-check when flag is not set', () => {
+      expect(valibot({ type: 'string', 'x-check': 'v.check((v) => v.length > 0)' })).toBe(
+        'v.string()',
+      )
+    })
+
+    it('silently ignores denylisted values', () => {
+      expect(
+        valibot({ type: 'string', 'x-check': 'v.check(() => eval("x"))' }, 'Schema', false, unsafe),
+      ).toBe('v.string()')
+    })
+  })
+
+  describe('x-fallback', () => {
+    it('wraps a plain string with v.fallback()', () => {
+      expect(valibot({ type: 'string', 'x-fallback': 'guest' })).toBe(
+        'v.fallback(v.string(),"guest")',
+      )
+    })
+
+    it('wraps a numeric schema with v.fallback()', () => {
+      expect(valibot({ type: 'integer', minimum: 0, 'x-fallback': 0 })).toBe(
+        'v.fallback(v.pipe(v.number(),v.integer(),v.minValue(0)),0)',
+      )
+    })
+
+    it('wraps after v.brand() so brand is preserved on success path', () => {
+      expect(valibot({ type: 'string', 'x-brand': 'UserId', 'x-fallback': 'anon' })).toBe(
+        'v.fallback(v.pipe(v.string(),v.brand("UserId")),"anon")',
+      )
+    })
+
+    it('accepts boolean fallback value', () => {
+      expect(valibot({ type: 'boolean', 'x-fallback': false })).toBe(
+        'v.fallback(v.boolean(),false)',
+      )
+    })
+  })
+
   describe('x-prefixItems-message', () => {
     it('wraps tuple with rawCheck that rewrites element-level messages', () => {
       expect(

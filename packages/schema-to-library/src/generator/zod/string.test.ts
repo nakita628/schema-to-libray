@@ -83,7 +83,89 @@ describe('string', () => {
     })
   })
 
-  describe('Phase 1A declarative behavior extensions', () => {
+  describe('format-specific options', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'html5' },
+        'z.email({pattern:z.regexes.html5Email})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'browser' },
+        'z.email({pattern:z.regexes.browserEmail})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'unicode' },
+        'z.email({pattern:z.regexes.unicodeEmail})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '^[a-z]+@example\\.com$' },
+        'z.email({pattern:/^[a-z]+@example\\.com$/})',
+      ],
+      [
+        {
+          type: 'string',
+          format: 'email',
+          'x-emailPattern': 'html5',
+          'x-error-message': 'Invalid email',
+        },
+        'z.email({pattern:z.regexes.html5Email,error:"Invalid email"})',
+      ],
+      [{ type: 'string', format: 'uuid', 'x-uuidVersion': 'v7' }, 'z.uuid({version:"v7"})'],
+      [{ type: 'string', format: 'uuid', 'x-uuidVersion': 'v4' }, 'z.uuid({version:"v4"})'],
+      [
+        { type: 'string', format: 'uri', 'x-urlProtocol': '^https$' },
+        'z.url({protocol:/^https$/})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlHostname': '^[a-z.]+$' },
+        'z.url({hostname:/^[a-z.]+$/})',
+      ],
+      [{ type: 'string', format: 'uri', 'x-urlNormalize': true }, 'z.url({normalize:true})'],
+      [{ type: 'string', format: 'uri', 'x-urlNormalize': false }, 'z.url({normalize:false})'],
+      [
+        {
+          type: 'string',
+          format: 'uri',
+          'x-urlProtocol': '^https$',
+          'x-urlNormalize': true,
+        },
+        'z.url({protocol:/^https$/,normalize:true})',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoPrecision': 3 },
+        'z.iso.datetime({precision:3})',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoOffset': true },
+        'z.iso.datetime({offset:true})',
+      ],
+      [{ type: 'string', format: 'date-time', 'x-isoLocal': true }, 'z.iso.datetime({local:true})'],
+      [
+        {
+          type: 'string',
+          format: 'date-time',
+          'x-isoPrecision': 3,
+          'x-isoOffset': true,
+          'x-isoLocal': false,
+        },
+        'z.iso.datetime({precision:3,offset:true,local:false})',
+      ],
+      [{ type: 'string', format: 'jwt', 'x-jwtAlg': 'HS256' }, 'z.jwt({alg:"HS256"})'],
+      [
+        {
+          type: 'string',
+          format: 'jwt',
+          'x-jwtAlg': 'HS256',
+          'x-error-message': 'Invalid token',
+        },
+        'z.jwt({alg:"HS256",error:"Invalid token"})',
+      ],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('declarative behavior extensions', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'string', 'x-trim': true }, 'z.string().trim()'],
       [{ type: 'string', 'x-toLowerCase': true }, 'z.string().toLowerCase()'],
@@ -97,10 +179,7 @@ describe('string', () => {
         { type: 'string', 'x-trim': true, 'x-toLowerCase': true },
         'z.string().trim().toLowerCase()',
       ],
-      [
-        { type: 'string', format: 'email', 'x-toLowerCase': true },
-        'z.email().toLowerCase()',
-      ],
+      [{ type: 'string', format: 'email', 'x-toLowerCase': true }, 'z.email().toLowerCase()'],
       [
         { type: 'string', 'x-startsWith': 'https://', 'x-endsWith': '.com' },
         'z.string().startsWith("https://").endsWith(".com")',

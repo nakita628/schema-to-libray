@@ -147,30 +147,27 @@ describe('typebox', () => {
     })
   })
 
-  describe('not', () => {
+  describe('not (TypeBox v1 has no runtime Type.Not — falls back to Type.Any())', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } } as JSONSchema, 'Type.Not(Type.String())'],
-      [{ not: { type: 'integer' } } as JSONSchema, 'Type.Not(Type.Integer())'],
-      [{ not: { type: 'boolean' } } as JSONSchema, 'Type.Not(Type.Boolean())'],
-      [{ not: { type: 'number' } } as JSONSchema, 'Type.Not(Type.Number())'],
+      [{ not: { type: 'string' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'integer' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'boolean' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'number' } } as JSONSchema, 'Type.Any()'],
       [
         { not: { type: 'string' }, nullable: true } as JSONSchema,
-        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+        'Type.Union([Type.Any(),Type.Null()])',
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+        'Type.Union([Type.Any(),Type.Null()])',
       ],
       [
         {
           not: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
         } as JSONSchema,
-        'Type.Not(Type.Object({a:Type.String()}))',
+        'Type.Any()',
       ],
-      [
-        { not: { enum: ['admin', 'root'] } } as JSONSchema,
-        'Type.Not(Type.Union([Type.Literal("admin"),Type.Literal("root")]))',
-      ],
+      [{ not: { enum: ['admin', 'root'] } } as JSONSchema, 'Type.Any()'],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })

@@ -1,4 +1,4 @@
-import { valibotWrap } from '../../helper/index.js'
+import { type CodeExtensionOptions, valibotWrap as _valibotWrap } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -17,8 +17,12 @@ export function valibot(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isValibot: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
 ): string {
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const valibotWrap = (valibotStr: string, s: JSONSchema): string =>
+    _valibotWrap(valibotStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `v.pipe(${v},v.readonly())` : v)
 
   if (schema.$ref) {

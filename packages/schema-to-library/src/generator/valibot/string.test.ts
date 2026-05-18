@@ -68,7 +68,7 @@ describe('valibot string', () => {
     })
   })
 
-  describe('Phase 1A declarative behavior extensions', () => {
+  describe('declarative behavior extensions', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [{ type: 'string', 'x-trim': true }, 'v.pipe(v.string(),v.trim())'],
       [{ type: 'string', 'x-toLowerCase': true }, 'v.pipe(v.string(),v.toLowerCase())'],

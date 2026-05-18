@@ -7,7 +7,9 @@ import { StringOrNumber as AnyofStringOrNumber } from '../anyof/output.ts'
 import { A as DefinitionsA } from '../definitions/output.ts'
 import { Pet as DiscriminatedPet } from '../discriminated-union/output.ts'
 import { User as ErrUser } from '../error-messages/output.ts'
+import { Conditional as IfThenElseConditional } from '../if-then-else/output.ts'
 import { Code as LengthMessageCode } from '../length-message/output.ts'
+import { NotString } from '../not/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
 import { Shape as OneofShape } from '../oneof/output.ts'
@@ -710,5 +712,30 @@ describe('length-message', () => {
         message: 'must not have fewer than 6 characters',
       },
     ])
+  })
+})
+
+
+describe('not (TypeBox v1 falls back to Type.Any() — accepts any input)', () => {
+  it('accepts strings (fallback to Type.Any)', () => {
+    expect(Value.Check(NotString, 'hello')).toBe(true)
+  })
+
+  it('accepts non-strings (fallback to Type.Any)', () => {
+    expect(Value.Check(NotString, 42)).toBe(true)
+  })
+})
+
+describe('if-then-else (sub-schemas without `type` collapse to Type.Any)', () => {
+  it('accepts kind=named with value', () => {
+    expect(Value.Check(IfThenElseConditional, { kind: 'named', value: 'x' })).toBe(true)
+  })
+
+  it('accepts non-named without value', () => {
+    expect(Value.Check(IfThenElseConditional, { kind: 'other' })).toBe(true)
+  })
+
+  it('rejects non-string kind', () => {
+    expect(Value.Check(IfThenElseConditional, { kind: 42 })).toBe(false)
   })
 })

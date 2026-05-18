@@ -2,6 +2,7 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 
 import { fmt } from '../format/index.js'
+import { findCodeExtensionKeysInSchema } from '../helper/code-extensions.js'
 import type { JSONSchema } from '../parser/index.js'
 import { parseSchemaFile } from '../parser/index.js'
 
@@ -16,7 +17,10 @@ function validateIO(input: string | undefined, output: string | undefined) {
 }
 
 export async function cli(
-  fn: (schema: JSONSchema, options?: { exportType?: boolean; readonly?: boolean }) => string,
+  fn: (
+    schema: JSONSchema,
+    options?: { exportType?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
+  ) => string,
   helpText: string,
 ) {
   const args = process.argv.slice(2)
@@ -25,7 +29,10 @@ export async function cli(
   }
   const exportType = args.includes('--export-type')
   const readonlyMode = args.includes('--readonly')
-  const filteredArgs = args.filter((arg) => arg !== '--export-type' && arg !== '--readonly')
+  const unsafeCodeExtensions = args.includes('--unsafe-code-extensions')
+  const filteredArgs = args.filter(
+    (arg) => arg !== '--export-type' && arg !== '--readonly' && arg !== '--unsafe-code-extensions',
+  )
   const i = filteredArgs[0]
   const oIdx = filteredArgs.indexOf('-o')
   const o = oIdx !== -1 ? filteredArgs[oIdx + 1] : undefined
@@ -38,7 +45,20 @@ export async function cli(
   if (!schemaResult.ok) {
     return { ok: false, error: schemaResult.error } as const
   }
-  const result = fn(schemaResult.value, { exportType, readonly: readonlyMode })
+  if (!unsafeCodeExtensions) {
+    const detectedKeys = findCodeExtensionKeysInSchema(schemaResult.value)
+    if (detectedKeys.length > 0) {
+      process.stderr.write(
+        `[schema-to-library] WARNING: detected code-emitting extensions ${detectedKeys.join(', ')} ` +
+          `but --unsafe-code-extensions is not set; values will be ignored.\n`,
+      )
+    }
+  }
+  const result = fn(schemaResult.value, {
+    exportType,
+    readonly: readonlyMode,
+    unsafeCodeExtensions,
+  })
   const fmtResult = await fmt(result)
   if (!fmtResult.ok) {
     return { ok: false, error: fmtResult.error } as const

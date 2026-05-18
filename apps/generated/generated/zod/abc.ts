@@ -1,11 +1,13 @@
 import * as z from 'zod'
 
-type UserType = { address?: AddressType }
+type _A = { b?: _B }
 
-type AddressType = { street?: string }
+type _C = string
 
-const Address: z.ZodType<AddressType> = z.object({ street: z.string() }).partial()
+type _B = { c?: _C }
 
-export const User: z.ZodType<UserType> = z.object({ address: z.lazy(() => Address) }).partial()
+const C: z.ZodType<_C> = z.string()
 
-export type User = z.infer<typeof User>
+const B: z.ZodType<_B> = z.object({ c: z.lazy(() => C) }).partial()
+
+export const A: z.ZodType<_A> = z.object({ b: z.lazy(() => B) }).partial()

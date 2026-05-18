@@ -339,7 +339,7 @@ export type JSONSchema = {
   /** `not` predicate */
   readonly 'x-not-message'?: string
 
-  // ── Behavior Extensions (declarative, Phase 1A) ───────────────────
+  // ── Behavior Extensions (declarative) ─────────────────────────────
   /** Apply `.trim()` / `v.trim()` etc. before validation (string only) */
   readonly 'x-trim'?: boolean
   /** Apply `.toLowerCase()` before validation (string only) */

@@ -1,7 +1,7 @@
 import * as v from 'valibot'
 
 export const Address = v.pipe(
-  v.object({ country: v.string(), postalCode: v.optional(v.string()) }),
+  v.looseObject({ country: v.string(), postalCode: v.optional(v.string()) }),
   v.check((o) => {
     const m = v.safeParse(v.object({ country: v.literal('JP') }), o).success
     if (m) {

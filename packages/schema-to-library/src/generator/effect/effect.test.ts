@@ -823,6 +823,52 @@ describe('effect', () => {
     })
   })
 
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('appends x-filter chain to the schema', () => {
+      expect(
+        effect(
+          {
+            type: 'string',
+            'x-filter': '.pipe(Schema.filter((v) => v.length > 0))',
+          },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('Schema.String.pipe(Schema.filter((v) => v.length > 0))')
+    })
+
+    it('appends x-transform chain', () => {
+      expect(
+        effect(
+          { type: 'string', 'x-transform': '.pipe(Schema.transform(Schema.String, ...))' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('Schema.String.pipe(Schema.transform(Schema.String, ...))')
+    })
+
+    it('silently ignores x-filter without flag', () => {
+      expect(
+        effect({ type: 'string', 'x-filter': '.pipe(Schema.filter((v) => v.length > 0))' }),
+      ).toBe('Schema.String')
+    })
+
+    it('silently ignores denylisted code', () => {
+      expect(
+        effect(
+          { type: 'string', 'x-filter': '.pipe(Schema.filter((v) => eval(v)))' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('Schema.String')
+    })
+  })
+
   describe('x-brand', () => {
     it('should add Schema.brand() for string', () => {
       expect(effect({ type: 'string', 'x-brand': 'UserId' })).toBe(

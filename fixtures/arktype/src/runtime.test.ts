@@ -623,16 +623,20 @@ describe('dependent-schemas', () => {
   })
 })
 
-// if-then-else: arktype generator does not emit conditional branches for
-// JSON Schema `if` / `then` / `else`. Only the base `properties` schema is enforced.
-describe('if-then-else (skip: conditionals not generated)', () => {
-  it('valid: country only', () => {
-    const result = Address({ country: 'JP' })
-    expect(result).toStrictEqual({ country: 'JP' })
+describe('if-then-else', () => {
+  it('valid: non-JP country has no postalCode requirement', () => {
+    const result = Address({ country: 'US' })
+    expect(result).toStrictEqual({ country: 'US' })
   })
 
-  it.skip('invalid: JP requires postalCode (not enforced)', () => {
-    expect(true).toBe(true)
+  it('valid: JP country with matching postalCode', () => {
+    const result = Address({ country: 'JP', postalCode: '100-0001' })
+    expect(result).toStrictEqual({ country: 'JP', postalCode: '100-0001' })
+  })
+
+  it('invalid: JP country missing postalCode is rejected', () => {
+    const result = Address({ country: 'JP' })
+    expect(result instanceof type.errors).toBe(true)
   })
 })
 

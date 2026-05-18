@@ -1,4 +1,4 @@
-import { zodWrap } from '../../helper/index.js'
+import { type CodeExtensionOptions, zodWrap as _zodWrap } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -25,8 +25,11 @@ export function zod(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isZod: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
 ): string {
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const zodWrap = (zodStr: string, s: JSONSchema): string => _zodWrap(zodStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
     if (s.$ref === '#' || s.$ref === '') {

@@ -124,7 +124,10 @@ describe('arktype', () => {
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
         `type(type("unknown").narrow((val: unknown) => typeof val !== 'string')).or("null")`,
       ],
-      [{ not: { const: 42 } } as JSONSchema, `type("unknown").narrow((val: unknown) => val !== 42)`],
+      [
+        { not: { const: 42 } } as JSONSchema,
+        `type("unknown").narrow((val: unknown) => val !== 42)`,
+      ],
       [
         { not: { enum: ['a', 'b'] } } as JSONSchema,
         `type("unknown").narrow((val: unknown) => !["a","b"].includes(val as never))`,
@@ -465,6 +468,38 @@ describe('arktype', () => {
     })
   })
 
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('appends x-narrow chain after type literal', () => {
+      expect(
+        arktype(
+          { type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('type("string").narrow((v) => v.length > 0)')
+    })
+
+    it('silently ignores x-narrow when flag is not set', () => {
+      expect(arktype({ type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' })).toBe(
+        '"string"',
+      )
+    })
+
+    it('silently ignores denylisted code', () => {
+      expect(
+        arktype(
+          { type: 'string', 'x-narrow': '.narrow(() => eval("x"))' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('"string"')
+    })
+  })
+
   describe('x-brand', () => {
     it('should add .brand() for string', () => {
       expect(arktype({ type: 'string', 'x-brand': 'UserId' })).toBe(
@@ -520,9 +555,9 @@ describe('arktype', () => {
     })
 
     it('falls through to plain tuple when message is absent', () => {
-      expect(arktype({ type: 'array', prefixItems: [{ type: 'string' }, { type: 'number' }] })).toBe(
-        'type(["string","number"])',
-      )
+      expect(
+        arktype({ type: 'array', prefixItems: [{ type: 'string' }, { type: 'number' }] }),
+      ).toBe('type(["string","number"])')
     })
   })
 

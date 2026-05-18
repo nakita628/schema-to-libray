@@ -4,6 +4,7 @@ import { Config as AdditionalConfig } from '../additional-properties/output.ts'
 import { Combined } from '../allof/output.ts'
 import { Merged } from '../allof-message/output.ts'
 import { Pet as DiscriminatedPet } from '../discriminated-union/output.ts'
+import { Address as IfThenElseAddress } from '../if-then-else/output.ts'
 import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { StringOrNumber } from '../anyof/output.ts'
 import { BrandedTypes } from '../brand/output.ts'
@@ -1181,5 +1182,22 @@ describe('valibot fixtures: length-message runtime', () => {
         },
       ])
     }
+  })
+})
+
+describe('if-then-else', () => {
+  it('accepts non-JP country without postalCode', () => {
+    const r = v.safeParse(IfThenElseAddress, { country: 'US' })
+    expect(r.success).toBe(true)
+  })
+
+  it('accepts JP country with matching postalCode', () => {
+    const r = v.safeParse(IfThenElseAddress, { country: 'JP', postalCode: '100-0001' })
+    expect(r.success).toBe(true)
+  })
+
+  it('rejects JP country missing postalCode', () => {
+    const r = v.safeParse(IfThenElseAddress, { country: 'JP' })
+    expect(r.success).toBe(false)
   })
 })

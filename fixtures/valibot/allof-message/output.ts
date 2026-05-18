@@ -4,15 +4,15 @@ export const Merged = v.pipe(
   v.unknown(),
   v.rawCheck(({ dataset, addIssue }) => {
     if (!dataset.typed) return
-    const valid = v.safeParse(
+    const result = v.safeParse(
       v.intersect([
         v.object({ name: v.pipe(v.string(), v.minLength(3)) }),
         v.object({ age: v.pipe(v.number(), v.integer(), v.minValue(0, 'age must be >= 0')) }),
       ]),
       dataset.value,
     )
-    if (!valid.success) {
-      for (const issue of valid.issues) {
+    if (!result.success) {
+      for (const issue of result.issues) {
         addIssue({ message: 'merged validation failed', path: issue.path })
       }
     }

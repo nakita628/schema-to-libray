@@ -140,18 +140,11 @@ export function typebox(
   }
 
   if (schema.not) {
-    const inner = schema.not
-    if (typeof inner !== 'object' || inner === null)
-      return typeboxWrap(tbPrim('Type.Any', schema), schema)
-    return typeboxWrap(
-      tbComp(
-        'Type.Not',
-        typebox(inner, rootName, isTypebox, options),
-        schema,
-        messageOpt(schema['x-not-message']),
-      ),
-      schema,
-    )
+    // TypeBox v1 does not expose a runtime `Type.Not(...)` constructor and
+    // `Value.Check` does not evaluate the JSON Schema `not` keyword. We emit
+    // a permissive `Type.Any()` fallback so the generated file still imports,
+    // and surface the omission via a file-level marker in `index.ts`.
+    return typeboxWrap(tbPrim('Type.Any', schema), schema)
   }
 
   if (schema.const !== undefined) {
@@ -177,7 +170,9 @@ export function typebox(
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
       const prefixMsg = schema['x-prefixItems-message']
       const tupleOpts = prefixMsg
-        ? [`errorMessage:{prefixItems:${JSON.stringify(prefixMsg)},items:${JSON.stringify(prefixMsg)}}`]
+        ? [
+            `errorMessage:{prefixItems:${JSON.stringify(prefixMsg)},items:${JSON.stringify(prefixMsg)}}`,
+          ]
         : []
       return readonly(
         typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema, tupleOpts), schema),

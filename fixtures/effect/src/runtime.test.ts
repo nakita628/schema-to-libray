@@ -11,6 +11,7 @@ import { A as DefinitionsA } from '../definitions/output.ts'
 import { User as DefsUser } from '../$defs/output.ts'
 import { Event as DiscriminatedEvent } from '../discriminated-union/output.ts'
 import { User as ErrorMessagesUser } from '../error-messages/output.ts'
+import { Address as IfThenElseAddress } from '../if-then-else/output.ts'
 import { Code as LengthMessageCode } from '../length-message/output.ts'
 import { User as MetaUser } from '../meta/output.ts'
 import { Order as NestedOrder } from '../nested/output.ts'
@@ -519,5 +520,19 @@ describe('length-message runtime', () => {
           '{ readonly code: length(6) }\n└─ ["code"]\n   └─ Code must be exactly 6 characters',
       })
     }
+  })
+})
+
+describe('if-then-else', () => {
+  it('accepts non-JP country without postalCode', () => {
+    expect(Schema.is(IfThenElseAddress)({ country: 'US' })).toBe(true)
+  })
+
+  it('accepts JP country with matching postalCode', () => {
+    expect(Schema.is(IfThenElseAddress)({ country: 'JP', postalCode: '100-0001' })).toBe(true)
+  })
+
+  it('rejects JP country missing postalCode', () => {
+    expect(Schema.is(IfThenElseAddress)({ country: 'JP' })).toBe(false)
   })
 })

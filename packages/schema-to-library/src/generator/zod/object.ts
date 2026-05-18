@@ -64,12 +64,15 @@ export function object(
     return 'z.object({})'
   }
 
+  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
   const objectType =
     schema.additionalProperties === true
       ? 'looseObject'
       : schema.additionalProperties === false
         ? 'strictObject'
-        : 'object'
+        : conditionalKeysReferenced
+          ? 'looseObject'
+          : 'object'
   const required = Array.isArray(schema.required) ? schema.required : []
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
@@ -140,5 +143,16 @@ export function object(
         .join('')
     : ''
 
-  return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}`
+  const ifThenElse = (() => {
+    if (!schema.if) return ''
+    const ifS = zod(schema.if, rootName, isZod, options)
+    const thenS = schema.then ? zod(schema.then, rootName, isZod, options) : undefined
+    const elseS = schema.else ? zod(schema.else, rootName, isZod, options) : undefined
+    if (!thenS && !elseS) return ''
+    const thenCheck = thenS ? `${thenS}.safeParse(o).success` : 'true'
+    const elseCheck = elseS ? `${elseS}.safeParse(o).success` : 'true'
+    return `.refine((o)=>${ifS}.safeParse(o).success?${thenCheck}:${elseCheck})`
+  })()
+
+  return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}${ifThenElse}`
 }

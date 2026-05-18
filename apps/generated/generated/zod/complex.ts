@@ -1,26 +1,30 @@
 import * as z from 'zod'
 
-type EType = { label?: string; reference?: EType; flags?: string[]; meta?: Record<string, string> }
-type DType = { score: number; extra?: null | EType }
-type BType = { type: 'B'; name: string; detail: DType & { comment?: string } }
-type CType = { type: 'C'; entries: EType[] }
-type AType = { id: string; type: 'B' | 'C'; payload: BType | CType }
+type _A = { id: string; type: 'B' | 'C'; payload: _B | _C }
 
-export const E: z.ZodType<EType> = z
+type _E = { label?: string; reference?: _E; flags?: string[]; meta?: { [key: string]: string } }
+
+type _D = { score: number; extra?: null | _E }
+
+type _B = { type: 'B'; name: string; detail: _D & { comment?: string } }
+
+type _C = { type: 'C'; entries: _E[] }
+
+const E: z.ZodType<_E> = z
   .object({
     label: z.string(),
     reference: z.lazy(() => E),
-    flags: z.array(z.string()),
+    flags: z.array(z.string()).refine((items) => new Set(items).size === items.length),
     meta: z.record(z.string(), z.string()),
   })
   .partial()
 
-export const D: z.ZodType<DType> = z.object({
+const D: z.ZodType<_D> = z.object({
   score: z.int().min(0).max(100).default(50),
   extra: z.union([z.null().nullable(), z.lazy(() => E)]).optional(),
 })
 
-export const B: z.ZodType<BType> = z.object({
+const B: z.ZodType<_B> = z.object({
   type: z.literal('B'),
   name: z.string(),
   detail: z.intersection(
@@ -29,15 +33,13 @@ export const B: z.ZodType<BType> = z.object({
   ),
 })
 
-export const C: z.ZodType<CType> = z.object({
+const C: z.ZodType<_C> = z.object({
   type: z.literal('C'),
   entries: z.array(z.lazy(() => E)).min(1),
 })
 
-export const A: z.ZodType<AType> = z.object({
+export const A: z.ZodType<_A> = z.object({
   id: z.uuid(),
   type: z.enum(['B', 'C']),
-  payload: z.union([z.lazy(() => B), z.lazy(() => C)]),
+  payload: z.xor([z.lazy(() => B), z.lazy(() => C)]),
 })
-
-export type A = z.infer<typeof A>

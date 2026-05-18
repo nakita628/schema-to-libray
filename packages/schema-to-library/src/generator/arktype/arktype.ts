@@ -1,4 +1,4 @@
-import { arktypeWrap } from '../../helper/index.js'
+import { arktypeWrap as _arktypeWrap, type CodeExtensionOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -28,8 +28,12 @@ export function arktype(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isArktype: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
 ): string {
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const arktypeWrap = (arktypeStr: string, s: JSONSchema): string =>
+    _arktypeWrap(arktypeStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
 
   if (schema.$ref) {
@@ -196,32 +200,35 @@ export function arktype(
               ? `type(${base}).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
               : `type(${base}).and(type("unknown[] <= ${maxItems}"))`
             : base
-    let arrayExpr =
+    const uniqueExpr =
       schema.uniqueItems === true
         ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''})`
         : lengthExpr
-    // contains / minContains / maxContains as narrows
-    if (schema.contains) {
+    const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
+    const containsNarrows = ((): readonly string[] => {
+      if (!schema.contains) return []
       const containsSchema = arktype(schema.contains, rootName, isArktype, options)
       const containsRt = isQuoted(containsSchema) ? `type(${containsSchema})` : containsSchema
       const minC = schema.minContains
       const maxC = schema.maxContains
-      const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
       if (minC === undefined && maxC === undefined) {
         const msg = containsMessage ?? 'must contain at least one matching item'
-        arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.some((i) => ${containsRt}.allows(i)) || ctx.mustBe(${JSON.stringify(msg)}))`
-      } else {
-        const effectiveMin = minC ?? 1
-        if (effectiveMin > 0) {
-          const msg = minContainsMessage ?? `must contain at least ${effectiveMin} matching items`
-          arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(msg)}))`
-        }
-        if (maxC !== undefined) {
-          const msg = maxContainsMessage ?? `must contain at most ${maxC} matching items`
-          arrayExpr = `${wrap(arrayExpr)}.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(msg)}))`
-        }
+        return [
+          `.narrow((arr: unknown[], ctx) => arr.some((i) => ${containsRt}.allows(i)) || ctx.mustBe(${JSON.stringify(msg)}))`,
+        ]
       }
-    }
+      const effectiveMin = minC ?? 1
+      const minNarrow =
+        effectiveMin > 0
+          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(minContainsMessage ?? `must contain at least ${effectiveMin} matching items`)}))`
+          : undefined
+      const maxNarrow =
+        maxC !== undefined
+          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(maxContainsMessage ?? `must contain at most ${maxC} matching items`)}))`
+          : undefined
+      return [minNarrow, maxNarrow].filter((v): v is string => v !== undefined)
+    })()
+    const arrayExpr = containsNarrows.reduce((acc, narrow) => `${wrap(acc)}${narrow}`, uniqueExpr)
     return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }
 
