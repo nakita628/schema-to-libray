@@ -358,6 +358,21 @@ export type JSONSchema = {
   readonly 'x-includes'?: string
   /** Zod-only: enable `z.coerce.<type>` for number / integer / boolean / date */
   readonly 'x-coerce'?: boolean
+  /**
+   * Zod-only: emit `z.stringbool()` — string-typed input parsed as boolean
+   * via a fixed (or custom) truthy/falsy whitelist. Trigger is `type: "string"`;
+   * when set, supersedes `format` / `pattern` / `x-coerce` / other string options.
+   * `true` enables defaults; an object configures truthy/falsy/case/error.
+   * See: https://zod.dev/api?id=stringbools
+   */
+  readonly 'x-stringbool'?:
+    | boolean
+    | {
+        readonly truthy?: readonly string[]
+        readonly falsy?: readonly string[]
+        readonly case?: 'sensitive' | 'insensitive'
+        readonly error?: string
+      }
   /** Zod-only: `.prefault(value)` — apply default to input before parse */
   readonly 'x-prefault'?: unknown
   /** Zod-only: `.catch(value)` — fall back to value on parse failure */

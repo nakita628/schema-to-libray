@@ -188,4 +188,58 @@ describe('string', () => {
       expect(string(input)).toBe(expected)
     })
   })
+
+  describe('x-stringbool', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'string', 'x-stringbool': true }, 'z.stringbool()'],
+      [{ type: 'string', 'x-stringbool': {} }, 'z.stringbool()'],
+      [
+        { type: 'string', 'x-stringbool': true, 'x-error-message': 'Must be "true" or "false"' },
+        'z.stringbool({error:"Must be \\"true\\" or \\"false\\""})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { truthy: ['yes'], falsy: ['no'] } },
+        'z.stringbool({truthy:["yes"],falsy:["no"]})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { case: 'sensitive' } },
+        'z.stringbool({case:"sensitive"})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { case: 'insensitive' } },
+        'z.stringbool({case:"insensitive"})',
+      ],
+      [
+        {
+          type: 'string',
+          'x-stringbool': {
+            truthy: ['yes', 'y'],
+            falsy: ['no', 'n'],
+            case: 'sensitive',
+            error: 'bad flag',
+          },
+        },
+        'z.stringbool({truthy:["yes","y"],falsy:["no","n"],case:"sensitive",error:"bad flag"})',
+      ],
+      [
+        {
+          type: 'string',
+          'x-stringbool': { error: 'inner wins' },
+          'x-error-message': 'outer loses',
+        },
+        'z.stringbool({error:"inner wins"})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': true, 'x-coerce': true, format: 'email' },
+        'z.stringbool()',
+      ],
+      [
+        { type: 'string', 'x-stringbool': true, minLength: 1, maxLength: 10, pattern: '^a$' },
+        'z.stringbool()',
+      ],
+      [{ type: 'string', 'x-stringbool': false }, 'z.string()'],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
 })

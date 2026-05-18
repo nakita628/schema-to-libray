@@ -91,7 +91,28 @@ function mergeOptions(formatOptions: readonly string[], baseErrorArg: string): s
   return `{${allParts.join(',')}}`
 }
 
+function stringbool(schema: JSONSchema): string | undefined {
+  const flag = schema['x-stringbool']
+  if (flag === undefined || flag === false) return undefined
+  const opts = typeof flag === 'object' ? flag : {}
+  const parts: string[] = []
+  if (Array.isArray(opts.truthy)) {
+    parts.push(`truthy:[${opts.truthy.map((s) => JSON.stringify(s)).join(',')}]`)
+  }
+  if (Array.isArray(opts.falsy)) {
+    parts.push(`falsy:[${opts.falsy.map((s) => JSON.stringify(s)).join(',')}]`)
+  }
+  if (opts.case === 'sensitive' || opts.case === 'insensitive') {
+    parts.push(`case:${JSON.stringify(opts.case)}`)
+  }
+  const error = opts.error ?? schema['x-error-message']
+  if (typeof error === 'string') parts.push(`error:${JSON.stringify(error)}`)
+  return parts.length === 0 ? 'z.stringbool()' : `z.stringbool({${parts.join(',')}})`
+}
+
 export function string(schema: JSONSchema) {
+  const stringboolExpr = stringbool(schema)
+  if (stringboolExpr !== undefined) return stringboolExpr
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
