@@ -1,5 +1,5 @@
 import { type CodeExtensionOptions, zodWrap as _zodWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -25,8 +25,16 @@ export function zod(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isZod: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const isStringWireParam = options?.paramIn === 'query' || options?.paramIn === 'path'
+  const withForcedCoerce = (s: JSONSchema): JSONSchema =>
+    isStringWireParam && s['x-coerce'] !== false ? { ...s, 'x-coerce': true } : s
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const zodWrap = (zodStr: string, s: JSONSchema): string => _zodWrap(zodStr, s, codeExtOpts)
@@ -100,7 +108,7 @@ export function zod(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return zodWrap('z.any()', schema)
     const schemas = schema.anyOf.map((s) => zod(s, rootName, isZod, options))
-    const anyOfMessage = schema['x-anyOf-message']
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const errorPart = anyOfMessage ? `,${zodError(anyOfMessage)}` : ''
     return zodWrap(`z.union([${schemas.join(',')}]${errorPart})`, schema)
   }
@@ -228,11 +236,17 @@ export function zod(
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return zodWrap(string(schema), schema)
-  if (types.includes('number')) return zodWrap(number(schema), schema)
-  if (types.includes('integer')) return zodWrap(integer(schema), schema)
+  if (types.includes('number')) return zodWrap(number(withForcedCoerce(schema)), schema)
+  if (types.includes('integer')) return zodWrap(integer(withForcedCoerce(schema)), schema)
   if (types.includes('boolean')) {
     const errorMessage = schema['x-error-message']
     const errorArg = errorMessage ? zodError(errorMessage) : ''
+    if (isStringWireParam) {
+      return zodWrap(
+        `z.stringbool(${errorArg ? `{error:${errorArg.replace(/^{error:|}$/g, '')}}` : ''})`,
+        schema,
+      )
+    }
     const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
     return zodWrap(`z.${coercePrefix}boolean(${errorArg})`, schema)
   }
@@ -240,9 +254,10 @@ export function zod(
   if (types.includes('array')) {
     const errorMessage = schema['x-error-message']
     const baseError = errorMessage ? `,${zodError(errorMessage)}` : ''
-    const minItemsMessage = schema['x-minItems-message']
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
     const minError = minItemsMessage ? `,${zodError(minItemsMessage)}` : ''
-    const maxItemsMessage = schema['x-maxItems-message']
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
     const maxError = maxItemsMessage ? `,${zodError(maxItemsMessage)}` : ''
     const fixedItemsMessage = minItemsMessage ?? maxItemsMessage
     const fixedItemsError = fixedItemsMessage ? `,${zodError(fixedItemsMessage)}` : ''
@@ -322,7 +337,7 @@ export function zod(
   if (types.includes('date')) {
     const errorMessage = schema['x-error-message']
     const errorArg = errorMessage ? zodError(errorMessage) : ''
-    const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
+    const coercePrefix = schema['x-coerce'] === true || isStringWireParam ? 'coerce.' : ''
     return zodWrap(`z.${coercePrefix}date(${errorArg})`, schema)
   }
   if (types.length === 1 && types[0] === 'null') {

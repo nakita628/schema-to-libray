@@ -1,5 +1,5 @@
 import { typeboxMetaOpts } from '../../helper/meta.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
@@ -21,7 +21,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return typebox(schema, rootName, isTypebox, options)
@@ -84,6 +84,14 @@ export function object(
   if (objReqMsg) objErrMsgEntries.push(`required:${JSON.stringify(objReqMsg)}`)
   const objPropsMsg = schema['x-properties-message']
   if (objPropsMsg) objErrMsgEntries.push(`properties:${JSON.stringify(objPropsMsg)}`)
+  const objIfMsg = schema['x-if-message']
+  const objThenMsg = schema['x-then-message'] ?? objIfMsg
+  if (objThenMsg) objErrMsgEntries.push(`then:${JSON.stringify(objThenMsg)}`)
+  const objElseMsg = schema['x-else-message'] ?? objIfMsg
+  if (objElseMsg) objErrMsgEntries.push(`else:${JSON.stringify(objElseMsg)}`)
+  const objUnevalPropsMsg = schema['x-unevaluatedProperties-message']
+  if (objUnevalPropsMsg)
+    objErrMsgEntries.push(`unevaluatedProperties:${JSON.stringify(objUnevalPropsMsg)}`)
   const objErrMsg =
     objErrMsgEntries.length > 0 ? `errorMessage:{${objErrMsgEntries.join(',')}}` : undefined
   const optParts = [
@@ -104,7 +112,7 @@ function buildAdvancedOpts(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ): readonly (string | undefined)[] {
   const propertyNamesOpt = schema.propertyNames
     ? `propertyNames:${typebox(schema.propertyNames, rootName, isTypebox, options)}`

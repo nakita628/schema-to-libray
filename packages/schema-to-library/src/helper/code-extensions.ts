@@ -43,12 +43,12 @@ const DENYLIST_PATTERN = new RegExp(
  * Validate a raw code-extension value against a small denylist.
  *
  * **This is defense-in-depth only — not a primary control.** The primary
- * security control is the `--unsafe-code-extensions` opt-in flag itself.
- * A motivated attacker can bypass the denylist through string-construction
- * (`String.fromCharCode(...)`, `['c','o','d','e'].join('')`),
+ * security control is the `unsafeCodeExtensions: true` programmatic opt-in
+ * itself. A motivated attacker can bypass the denylist through string-
+ * construction (`String.fromCharCode(...)`, `['c','o','d','e'].join('')`),
  * `arguments.callee.caller` chains, ES2015+ identifier characters, or any
- * number of metaprogramming patterns we have not enumerated. Do not enable
- * `--unsafe-code-extensions` on JSON Schemas from outside your trust
+ * number of metaprogramming patterns we have not enumerated. Do not pass
+ * `{ unsafeCodeExtensions: true }` for JSON Schemas from outside your trust
  * boundary, regardless of what this function returns.
  *
  * Blocks: `process` / `require` / `import` / `globalThis` / `eval` /
@@ -65,8 +65,8 @@ export function isSafeCodeExtension(value: string): boolean {
 
 /**
  * Returns the list of code-extension keys present on a schema (any nested
- * level), so the CLI can emit a single warning if `--unsafe-code-extensions`
- * is not set.
+ * level), so callers can emit a single warning when programmatic callers
+ * supply such schemas without `unsafeCodeExtensions: true`.
  */
 export function findCodeExtensionKeysInSchema(schema: JSONSchema): readonly string[] {
   const found = new Set<string>()

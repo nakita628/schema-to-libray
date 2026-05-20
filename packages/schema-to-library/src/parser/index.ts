@@ -1,5 +1,14 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 
+import type { XExtCode } from './x-ext/code.js'
+import type { XExtMessages } from './x-ext/messages.js'
+import type { XExtTransform } from './x-ext/transform.js'
+
+export type { XExtCode } from './x-ext/code.js'
+export type { XExtMessages } from './x-ext/messages.js'
+export type { XExtTransform } from './x-ext/transform.js'
+export type { ParamIn } from './x-ext/param.js'
+
 /**
  * Parse and resolve a JSON Schema file using @apidevtools/json-schema-ref-parser.
  *
@@ -15,10 +24,20 @@ import $RefParser from '@apidevtools/json-schema-ref-parser'
  * @param input - File path to JSON/YAML schema
  * @returns Bundled JSON Schema or error
  */
+function isJSONSchema(value: unknown): value is JSONSchema {
+  return typeof value === 'object' && value !== null
+}
+
 export async function parseSchemaFile(input: string) {
   try {
     const schema = await $RefParser.bundle(input)
-    return { ok: true, value: schema as JSONSchema } as const
+    if (!isJSONSchema(schema)) {
+      return {
+        ok: false,
+        error: 'Failed to parse schema: bundle did not return an object',
+      } as const
+    }
+    return { ok: true, value: schema } as const
   } catch (e) {
     return {
       ok: false,
@@ -108,7 +127,7 @@ export type JSONSchemaFormat =
  * @see https://json-schema.org/draft/2020-12/json-schema-core
  * @see https://json-schema.org/draft/2020-12/json-schema-validation
  */
-export type JSONSchema = {
+type JSONSchemaCore = {
   // ── Core (Draft 2020-12) ──────────────────────────────────────────
   /** JSON Schema dialect identifier */
   readonly $schema?: string
@@ -211,7 +230,7 @@ export type JSONSchema = {
   /** Array item schema */
   readonly items?: JSONSchema
   /** Positional item schemas (Draft 2020-12) */
-  readonly prefixItems?: JSONSchema[]
+  readonly prefixItems?: readonly JSONSchema[]
   /** Contains constraint */
   readonly contains?: JSONSchema
   /** Minimum number of items */
@@ -229,11 +248,11 @@ export type JSONSchema = {
 
   // ── Composition ───────────────────────────────────────────────────
   /** Must match all schemas */
-  readonly allOf?: JSONSchema[]
+  readonly allOf?: readonly JSONSchema[]
   /** Must match at least one schema */
-  readonly anyOf?: JSONSchema[]
+  readonly anyOf?: readonly JSONSchema[]
   /** Must match exactly one schema */
-  readonly oneOf?: JSONSchema[]
+  readonly oneOf?: readonly JSONSchema[]
   /** Must not match the schema */
   readonly not?: JSONSchema
 
@@ -267,120 +286,11 @@ export type JSONSchema = {
     readonly description?: string
   }
 
-  // ── Vendor Extensions (x-*) — v3.0: 1 keyword = 1 message ─────────
-  // Common (any schema type)
-  /** General error / type-mismatch fallback */
-  readonly 'x-error-message'?: string
-  /** Missing required (`issue.input === undefined`) */
-  readonly 'x-required-message'?: string
-  /** `const` literal mismatch */
-  readonly 'x-const-message'?: string
-  /** `enum` value not in allowed list */
-  readonly 'x-enum-message'?: string
-  // Numeric
-  /** `minimum` (inclusive) */
-  readonly 'x-minimum-message'?: string
-  /** `maximum` (inclusive) */
-  readonly 'x-maximum-message'?: string
-  /** `exclusiveMinimum` (`>`) */
-  readonly 'x-exclusiveMinimum-message'?: string
-  /** `exclusiveMaximum` (`<`) */
-  readonly 'x-exclusiveMaximum-message'?: string
-  /** `multipleOf` */
-  'x-multipleOf-message'?: string
-  // String
-  /** `minLength` */
-  readonly 'x-minLength-message'?: string
-  /** `maxLength` */
-  readonly 'x-maxLength-message'?: string
-  /** `pattern` (`.regex()`) */
-  readonly 'x-pattern-message'?: string
-  // Array
-  /** `minItems` */
-  readonly 'x-minItems-message'?: string
-  /** `maxItems` */
-  readonly 'x-maxItems-message'?: string
-  /** `uniqueItems` */
-  readonly 'x-uniqueItems-message'?: string
-  /** `contains` alone (at least 1 type-match) */
-  readonly 'x-contains-message'?: string
-  /** `minContains` (count lower bound) */
-  readonly 'x-minContains-message'?: string
-  /** `maxContains` (count upper bound) */
-  readonly 'x-maxContains-message'?: string
-  /** `prefixItems` (tuple positional schemas) */
-  readonly 'x-prefixItems-message'?: string
-  /** `items` (homogeneous element schema) */
-  readonly 'x-items-message'?: string
-  // Object
-  /** `minProperties` */
-  readonly 'x-minProperties-message'?: string
-  /** `maxProperties` */
-  readonly 'x-maxProperties-message'?: string
-  /** `additionalProperties: false` (`unrecognized_keys`) */
-  readonly 'x-additionalProperties-message'?: string
-  /** `propertyNames` pattern / enum check */
-  readonly 'x-propertyNames-message'?: string
-  /** `patternProperties` value check */
-  readonly 'x-patternProperties-message'?: string
-  /** `dependentRequired` (key A ⇒ key B required) */
-  readonly 'x-dependentRequired-message'?: string
-  /** `dependentSchemas` (key A ⇒ sub-schema applies) */
-  readonly 'x-dependentSchemas-message'?: string
-  /** `properties` schema value check (typeless / generic) */
-  readonly 'x-properties-message'?: string
-  // Combinators
-  /** `oneOf` (`z.xor` / `z.discriminatedUnion`) */
-  readonly 'x-oneOf-message'?: string
-  /** `anyOf` (`z.union`) */
-  readonly 'x-anyOf-message'?: string
-  /** `allOf` composition */
-  readonly 'x-allOf-message'?: string
-  /** `not` predicate */
-  readonly 'x-not-message'?: string
-
-  // ── Behavior Extensions (declarative) ─────────────────────────────
-  /** Apply `.trim()` / `v.trim()` etc. before validation (string only) */
-  readonly 'x-trim'?: boolean
-  /** Apply `.toLowerCase()` before validation (string only) */
-  readonly 'x-toLowerCase'?: boolean
-  /** Apply `.toUpperCase()` before validation (string only) */
-  readonly 'x-toUpperCase'?: boolean
-  /** Apply Unicode normalization (string only) */
-  readonly 'x-normalize'?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD'
-  /** Mark schema as readonly (array / object) */
-  readonly 'x-readonly'?: boolean
-  /** Require value to start with a literal prefix (string only) */
-  readonly 'x-startsWith'?: string
-  /** Require value to end with a literal suffix (string only) */
-  readonly 'x-endsWith'?: string
-  /** Require value to contain a literal substring (string only) */
-  readonly 'x-includes'?: string
-  /** Zod-only: enable `z.coerce.<type>` for number / integer / boolean / date */
-  readonly 'x-coerce'?: boolean
-  /**
-   * Zod-only: emit `z.stringbool()` — string-typed input parsed as boolean
-   * via a fixed (or custom) truthy/falsy whitelist. Trigger is `type: "string"`;
-   * when set, supersedes `format` / `pattern` / `x-coerce` / other string options.
-   * `true` enables defaults; an object configures truthy/falsy/case/error.
-   * See: https://zod.dev/api?id=stringbools
-   */
-  readonly 'x-stringbool'?:
-    | boolean
-    | {
-        readonly truthy?: readonly string[]
-        readonly falsy?: readonly string[]
-        readonly case?: 'sensitive' | 'insensitive'
-        readonly error?: string
-      }
-  /** Zod-only: `.prefault(value)` — apply default to input before parse */
-  readonly 'x-prefault'?: unknown
-  /** Zod-only: `.catch(value)` — fall back to value on parse failure */
-  readonly 'x-catch'?: unknown
-
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */
   readonly name?: string
   /** Allow additional properties via index signature */
   readonly [k: string]: unknown
 }
+
+export type JSONSchema = JSONSchemaCore & XExtMessages & XExtTransform & XExtCode

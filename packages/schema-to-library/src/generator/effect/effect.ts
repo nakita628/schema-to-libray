@@ -1,5 +1,5 @@
 import { type CodeExtensionOptions, effectWrap as _effectWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   effectError,
   normalizeTypes,
@@ -26,8 +26,16 @@ export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isEffect: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const replaceBase = (inner: string, from: string, to: string): string => inner.replace(from, to)
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const effectWrap = (effectStr: string, s: JSONSchema): string =>
@@ -96,7 +104,7 @@ export function effect(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
-    const anyOfMessage = schema['x-anyOf-message']
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const expr = `Schema.Union(${schemas.join(',')})`
     return effectWrap(
       anyOfMessage ? `${expr}.annotations(${effectError(anyOfMessage)})` : expr,
@@ -191,9 +199,24 @@ export function effect(
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return effectWrap(string(schema), schema)
-  if (types.includes('number')) return effectWrap(number(schema), schema)
-  if (types.includes('integer')) return effectWrap(integer(schema), schema)
-  if (types.includes('boolean')) return effectWrap('Schema.Boolean', schema)
+  if (types.includes('number')) {
+    const base = number(schema)
+    if (isStringWireParam) {
+      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
+    }
+    return effectWrap(base, schema)
+  }
+  if (types.includes('integer')) {
+    const base = integer(schema)
+    if (isStringWireParam) {
+      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
+    }
+    return effectWrap(base, schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) return effectWrap('Schema.BooleanFromString', schema)
+    return effectWrap('Schema.Boolean', schema)
+  }
 
   if (types.includes('array')) {
     const elementMessageWrap = (inner: string, msg: string) => {
@@ -219,9 +242,10 @@ export function effect(
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
     // Per-keyword array messages
-    const minItemsMsg = schema['x-minItems-message']
+    const lengthMsg = schema['x-length-message']
+    const minItemsMsg = schema['x-minItems-message'] ?? lengthMsg
     const minArg = minItemsMsg ? `,${effectError(minItemsMsg)}` : ''
-    const maxItemsMsg = schema['x-maxItems-message']
+    const maxItemsMsg = schema['x-maxItems-message'] ?? lengthMsg
     const maxArg = maxItemsMsg ? `,${effectError(maxItemsMsg)}` : ''
     const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
     const sizeArg = fixedItemsMsg ? `,${effectError(fixedItemsMsg)}` : ''
@@ -278,7 +302,10 @@ export function effect(
 
   if (types.includes('object'))
     return effectWrap(object(schema, rootName, isEffect, options), schema)
-  if (types.includes('date')) return effectWrap('Schema.Date', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) return effectWrap('Schema.DateFromString', schema)
+    return effectWrap('Schema.Date', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return effectWrap('Schema.Null', schema)
 
   return effectWrap('Schema.Unknown', schema)

@@ -1,5 +1,5 @@
 import { type CodeExtensionOptions, valibotWrap as _valibotWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -17,8 +17,22 @@ export function valibot(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isValibot: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const prependPipe = (prefix: readonly string[], inner: string): string => {
+    if (inner.startsWith('v.pipe(') && inner.endsWith(')')) {
+      const body = inner.slice('v.pipe('.length, -1)
+      return `v.pipe(${prefix.join(',')},${body})`
+    }
+    return `v.pipe(${prefix.join(',')},${inner})`
+  }
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const valibotWrap = (valibotStr: string, s: JSONSchema): string =>
@@ -91,7 +105,7 @@ export function valibot(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return valibotWrap('v.any()', schema)
     const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
-    const anyOfMessage = schema['x-anyOf-message']
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const errorPart = anyOfMessage ? `,${valibotError(anyOfMessage)}` : ''
     return valibotWrap(`v.union([${schemas.join(',')}]${errorPart})`, schema)
   }
@@ -179,9 +193,29 @@ export function valibot(
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return valibotWrap(string(schema), schema)
-  if (types.includes('number')) return valibotWrap(number(schema), schema)
-  if (types.includes('integer')) return valibotWrap(integer(schema), schema)
-  if (types.includes('boolean')) return valibotWrap('v.boolean()', schema)
+  if (types.includes('number')) {
+    const base = number(schema)
+    if (isStringWireParam) {
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+    }
+    return valibotWrap(base, schema)
+  }
+  if (types.includes('integer')) {
+    const base = integer(schema)
+    if (isStringWireParam) {
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+    }
+    return valibotWrap(base, schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) {
+      return valibotWrap(
+        `v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))`,
+        schema,
+      )
+    }
+    return valibotWrap('v.boolean()', schema)
+  }
 
   if (types.includes('array')) {
     const elementMessageWrap = (inner: string, msg: string) => {
@@ -205,9 +239,10 @@ export function valibot(
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
     // Per-keyword messages
-    const minItemsMsg = schema['x-minItems-message']
+    const lengthMsg = schema['x-length-message']
+    const minItemsMsg = schema['x-minItems-message'] ?? lengthMsg
     const minArg = minItemsMsg ? `,${valibotError(minItemsMsg)}` : ''
-    const maxItemsMsg = schema['x-maxItems-message']
+    const maxItemsMsg = schema['x-maxItems-message'] ?? lengthMsg
     const maxArg = maxItemsMsg ? `,${valibotError(maxItemsMsg)}` : ''
     const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
     const sizeArg = fixedItemsMsg ? `,${valibotError(fixedItemsMsg)}` : ''
@@ -264,7 +299,12 @@ export function valibot(
 
   if (types.includes('object'))
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
-  if (types.includes('date')) return valibotWrap('v.date()', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) {
+      return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema)
+    }
+    return valibotWrap('v.date()', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return valibotWrap('v.null()', schema)
 
   return valibotWrap('v.any()', schema)

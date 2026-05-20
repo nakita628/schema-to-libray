@@ -1063,4 +1063,59 @@ describe('valibot', () => {
       )
     })
   })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        valibot({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe('v.union([v.string(),v.number()],"implication failed")')
+    })
+  })
+
+  describe('x-length-message', () => {
+    it('falls back for minItems when x-minItems-message absent', () => {
+      expect(
+        valibot({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('v.pipe(v.array(v.string()),v.minLength(1,"bad length"))')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: integer → string transform', () => {
+      expect(valibot({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.integer())',
+      )
+    })
+
+    it('query: number → string transform', () => {
+      expect(valibot({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'v.pipe(v.string(),v.transform(Number),v.number())',
+      )
+    })
+
+    it("path: boolean → picklist('true'|'false') transform", () => {
+      expect(valibot({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        "v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))",
+      )
+    })
+
+    it('no paramIn: integer → v.pipe(v.number(),v.integer())', () => {
+      expect(valibot({ type: 'integer' })).toBe('v.pipe(v.number(),v.integer())')
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        valibot({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('v.pipe(v.number(),v.integer())')
+    })
+  })
 })

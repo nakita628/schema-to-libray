@@ -1,6 +1,6 @@
 import { typeboxWrap } from '../../helper/index.js'
 import { typeboxMetaOpts } from '../../helper/meta.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -41,8 +41,10 @@ export function typebox(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isTypebox: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ): string {
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   const readonly = (v: string) => (options?.readonly ? `Type.Readonly(${v})` : v)
 
   if (schema.$ref) {
@@ -97,8 +99,9 @@ export function typebox(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, options))
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     return typeboxWrap(
-      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(schema['x-anyOf-message'])),
+      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(anyOfMessage)),
       schema,
     )
   }
@@ -161,9 +164,35 @@ export function typebox(
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return typeboxWrap(string(schema), schema)
-  if (types.includes('number')) return typeboxWrap(number(schema), schema)
-  if (types.includes('integer')) return typeboxWrap(integer(schema), schema)
-  if (types.includes('boolean')) return typeboxWrap(tbPrim('Type.Boolean', schema), schema)
+  if (types.includes('number')) {
+    const base = number(schema)
+    if (isStringWireParam) {
+      return typeboxWrap(
+        `Type.Transform(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))`,
+        schema,
+      )
+    }
+    return typeboxWrap(base, schema)
+  }
+  if (types.includes('integer')) {
+    const base = integer(schema)
+    if (isStringWireParam) {
+      return typeboxWrap(
+        `Type.Transform(Type.String()).Decode((v)=>Number.parseInt(v,10)).Encode((v)=>String(v))`,
+        schema,
+      )
+    }
+    return typeboxWrap(base, schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) {
+      return typeboxWrap(
+        `Type.Transform(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')`,
+        schema,
+      )
+    }
+    return typeboxWrap(tbPrim('Type.Boolean', schema), schema)
+  }
 
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
@@ -183,9 +212,14 @@ export function typebox(
     const arrayErrMsgEntries: string[] = []
     const arrErrorMsg = schema['x-error-message']
     if (arrErrorMsg) arrayErrMsgEntries.push(`type:${JSON.stringify(arrErrorMsg)}`)
-    const arrMinItemsMsg = schema['x-minItems-message']
+    const arrLengthMsg = schema['x-length-message']
+    const arrMinItemsMsg =
+      schema['x-minItems-message'] ??
+      (typeof schema.minItems === 'number' ? arrLengthMsg : undefined)
     if (arrMinItemsMsg) arrayErrMsgEntries.push(`minItems:${JSON.stringify(arrMinItemsMsg)}`)
-    const arrMaxItemsMsg = schema['x-maxItems-message']
+    const arrMaxItemsMsg =
+      schema['x-maxItems-message'] ??
+      (typeof schema.maxItems === 'number' ? arrLengthMsg : undefined)
     if (arrMaxItemsMsg) arrayErrMsgEntries.push(`maxItems:${JSON.stringify(arrMaxItemsMsg)}`)
     const arrUniqueMsg = schema['x-uniqueItems-message']
     if (arrUniqueMsg) arrayErrMsgEntries.push(`uniqueItems:${JSON.stringify(arrUniqueMsg)}`)
@@ -199,6 +233,9 @@ export function typebox(
       arrayErrMsgEntries.push(`maxContains:${JSON.stringify(arrMaxContainsMsg)}`)
     const arrItemsMsg = schema['x-items-message']
     if (arrItemsMsg) arrayErrMsgEntries.push(`items:${JSON.stringify(arrItemsMsg)}`)
+    const arrUnevalItemsMsg = schema['x-unevaluatedItems-message']
+    if (arrUnevalItemsMsg)
+      arrayErrMsgEntries.push(`unevaluatedItems:${JSON.stringify(arrUnevalItemsMsg)}`)
     const arrayOpts = [
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
@@ -210,7 +247,15 @@ export function typebox(
 
   if (types.includes('object'))
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
-  if (types.includes('date')) return typeboxWrap(tbPrim('Type.Date', schema), schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) {
+      return typeboxWrap(
+        `Type.Transform(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
+        schema,
+      )
+    }
+    return typeboxWrap(tbPrim('Type.Date', schema), schema)
+  }
   if (types.length === 1 && types[0] === 'null')
     return typeboxWrap(tbPrim('Type.Null', schema), schema)
 

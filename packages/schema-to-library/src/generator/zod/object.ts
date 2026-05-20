@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey, zodError } from '../../utils/index.js'
 import { zod } from './zod.js'
 
@@ -16,7 +16,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return zod(schema, rootName, isZod, options)
@@ -149,9 +149,19 @@ export function object(
     const thenS = schema.then ? zod(schema.then, rootName, isZod, options) : undefined
     const elseS = schema.else ? zod(schema.else, rootName, isZod, options) : undefined
     if (!thenS && !elseS) return ''
-    const thenCheck = thenS ? `${thenS}.safeParse(o).success` : 'true'
-    const elseCheck = elseS ? `${elseS}.safeParse(o).success` : 'true'
-    return `.refine((o)=>${ifS}.safeParse(o).success?${thenCheck}:${elseCheck})`
+    const ifMsg = schema['x-if-message']
+    const thenMsg = schema['x-then-message'] ?? ifMsg
+    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const parts: string[] = []
+    if (thenS) {
+      const arg = thenMsg ? `,${zodError(thenMsg)}` : ''
+      parts.push(`.refine((o)=>!${ifS}.safeParse(o).success||${thenS}.safeParse(o).success${arg})`)
+    }
+    if (elseS) {
+      const arg = elseMsg ? `,${zodError(elseMsg)}` : ''
+      parts.push(`.refine((o)=>${ifS}.safeParse(o).success||${elseS}.safeParse(o).success${arg})`)
+    }
+    return parts.join('')
   })()
 
   return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}${ifThenElse}`

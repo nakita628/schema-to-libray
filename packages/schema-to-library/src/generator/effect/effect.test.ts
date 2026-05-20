@@ -932,4 +932,57 @@ describe('effect', () => {
       )
     })
   })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        effect({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe(
+        'Schema.Union(Schema.String,Schema.Number).annotations({message:()=>"implication failed"})',
+      )
+    })
+  })
+
+  describe('x-length-message', () => {
+    it('falls back for minItems when x-minItems-message absent', () => {
+      expect(
+        effect({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('Schema.Array(Schema.String).pipe(Schema.minItems(1,{message:()=>"bad length"}))')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: number → Schema.NumberFromString', () => {
+      expect(effect({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'Schema.NumberFromString',
+      )
+    })
+
+    it('path: boolean → Schema.BooleanFromString', () => {
+      expect(effect({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        'Schema.BooleanFromString',
+      )
+    })
+
+    it('query: date → Schema.DateFromString', () => {
+      expect(effect({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'Schema.DateFromString',
+      )
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        effect({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('Schema.Number')
+    })
+  })
 })

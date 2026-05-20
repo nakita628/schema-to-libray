@@ -3,7 +3,7 @@ import {
   resolveSchemaDependenciesFromSchema,
   UNSAFE_GENERATED_MARKER,
 } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
@@ -48,10 +48,20 @@ export function schemaToEffect(
     openapi?: boolean
     readonly?: boolean
     unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
   },
 ): string {
-  const { exportType = true, openapi = false, unsafeCodeExtensions = false } = options ?? {}
-  const genOptions = { openapi, unsafeCodeExtensions }
+  const {
+    exportType = true,
+    openapi = false,
+    unsafeCodeExtensions = false,
+    paramIn,
+  } = options ?? {}
+  const genOptions = {
+    openapi,
+    unsafeCodeExtensions,
+    ...(paramIn !== undefined && { paramIn }),
+  }
   const codeExtensionsPresent =
     unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
   const toName = openapi ? toIdentifierPascalCase : toPascalCase

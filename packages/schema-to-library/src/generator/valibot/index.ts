@@ -3,7 +3,7 @@ import {
   resolveSchemaDependenciesFromSchema,
   UNSAFE_GENERATED_MARKER,
 } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
 import { valibot } from './valibot.js'
@@ -48,6 +48,7 @@ export function schemaToValibot(
     openapi?: boolean
     readonly?: boolean
     unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
   },
 ): string {
   const {
@@ -55,8 +56,14 @@ export function schemaToValibot(
     openapi = false,
     readonly: readonlyMode = false,
     unsafeCodeExtensions = false,
+    paramIn,
   } = options ?? {}
-  const genOptions = { openapi, readonly: readonlyMode, unsafeCodeExtensions }
+  const genOptions = {
+    openapi,
+    readonly: readonlyMode,
+    unsafeCodeExtensions,
+    ...(paramIn !== undefined && { paramIn }),
+  }
   const codeExtensionsPresent =
     unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
   const toName = openapi ? toIdentifierPascalCase : toPascalCase

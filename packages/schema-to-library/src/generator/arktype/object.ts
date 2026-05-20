@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
@@ -30,7 +30,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return arktype(schema, rootName, isArktype, options)
@@ -149,8 +149,8 @@ export function object(
         )
       : ''
 
-  const ifThenElseNarrow = (() => {
-    if (!schema.if) return ''
+  const ifThenElseNarrows = (() => {
+    if (!schema.if) return [] as string[]
     const ifS = ensureRuntime(arktype(schema.if, rootName, isArktype, options))
     const thenS = schema.then
       ? ensureRuntime(arktype(schema.then, rootName, isArktype, options))
@@ -158,10 +158,18 @@ export function object(
     const elseS = schema.else
       ? ensureRuntime(arktype(schema.else, rootName, isArktype, options))
       : undefined
-    if (!thenS && !elseS) return ''
-    const thenCheck = thenS ? `${thenS}.allows(o)` : 'true'
-    const elseCheck = elseS ? `${elseS}.allows(o)` : 'true'
-    return narrowPredicate(`${ifS}.allows(o) ? ${thenCheck} : ${elseCheck}`)
+    if (!thenS && !elseS) return [] as string[]
+    const ifMsg = schema['x-if-message']
+    const thenMsg = schema['x-then-message'] ?? ifMsg
+    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const parts: string[] = []
+    if (thenS) {
+      parts.push(narrowPredicate(`!${ifS}.allows(o) || ${thenS}.allows(o)`, thenMsg))
+    }
+    if (elseS) {
+      parts.push(narrowPredicate(`${ifS}.allows(o) || ${elseS}.allows(o)`, elseMsg))
+    }
+    return parts
   })()
 
   const narrows = [
@@ -172,7 +180,7 @@ export function object(
     ...dependentRequiredNarrows,
     ...dependentSchemasNarrows,
     additionalPropertiesNarrow,
-    ifThenElseNarrow,
+    ...ifThenElseNarrows,
   ].filter((a) => a !== '')
 
   const baseExpr =

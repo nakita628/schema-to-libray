@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { effectError, makeSafeKey } from '../../utils/index.js'
 import { effect } from './effect.js'
 
@@ -15,7 +15,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isEffect: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return effect(schema, rootName, isEffect, options)
@@ -145,15 +145,27 @@ export function object(
 
   // v3.2: if/then/else conditional schema. Routed through Schema.filter:
   // when `if` matches, the object must also satisfy `then`; otherwise `else`.
-  const ifThenElseFilter = (() => {
-    if (!schema.if) return ''
+  const ifThenElseFilters = (() => {
+    if (!schema.if) return [] as string[]
     const ifSchema = effect(schema.if, rootName, isEffect, options)
     const thenSchema = schema.then ? effect(schema.then, rootName, isEffect, options) : ''
     const elseSchema = schema.else ? effect(schema.else, rootName, isEffect, options) : ''
-    if (!thenSchema && !elseSchema) return ''
-    const thenCheck = thenSchema ? `Schema.is(${thenSchema})(o)` : 'true'
-    const elseCheck = elseSchema ? `Schema.is(${elseSchema})(o)` : 'true'
-    return `Schema.filter((o)=>Schema.is(${ifSchema})(o)?${thenCheck}:${elseCheck}${errorArg})`
+    if (!thenSchema && !elseSchema) return [] as string[]
+    const ifMsg = schema['x-if-message']
+    const thenMsg = schema['x-then-message'] ?? ifMsg
+    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const parts: string[] = []
+    if (thenSchema) {
+      const arg = thenMsg ? `,${effectError(thenMsg)}` : errorArg
+      parts.push(
+        `Schema.filter((o)=>!Schema.is(${ifSchema})(o)||Schema.is(${thenSchema})(o)${arg})`,
+      )
+    }
+    if (elseSchema) {
+      const arg = elseMsg ? `,${effectError(elseMsg)}` : errorArg
+      parts.push(`Schema.filter((o)=>Schema.is(${ifSchema})(o)||Schema.is(${elseSchema})(o)${arg})`)
+    }
+    return parts
   })()
 
   const actions = [
@@ -164,7 +176,7 @@ export function object(
     ...dependentRequiredFilters,
     ...dependentSchemasFilters,
     additionalPropertiesFilter,
-    ifThenElseFilter,
+    ...ifThenElseFilters,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `${partialBase}.pipe(${actions.join(',')})` : partialBase

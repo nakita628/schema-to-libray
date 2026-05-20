@@ -1508,4 +1508,164 @@ describe('zod', () => {
       })
     })
   })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message on anyOf path', () => {
+      expect(
+        zod({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'if A then B',
+        } as JSONSchema),
+      ).toBe('z.union([z.string(),z.number()],{error:"if A then B"})')
+    })
+
+    it('falls back to x-anyOf-message when x-implication-message absent', () => {
+      expect(
+        zod({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any failed',
+        } as JSONSchema),
+      ).toBe('z.union([z.string(),z.number()],{error:"any failed"})')
+    })
+
+    it('is silently ignored when anyOf is absent', () => {
+      expect(zod({ type: 'string', 'x-implication-message': 'unused' })).toBe('z.string()')
+    })
+  })
+
+  describe('x-length-message', () => {
+    it('falls back for minItems when x-minItems-message absent', () => {
+      expect(
+        zod({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('z.array(z.string()).min(1,{error:"bad length"})')
+    })
+
+    it('falls back for maxItems when x-maxItems-message absent', () => {
+      expect(
+        zod({
+          type: 'array',
+          items: { type: 'string' },
+          maxItems: 3,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('z.array(z.string()).max(3,{error:"bad length"})')
+    })
+
+    it('does not override x-minItems-message when both present', () => {
+      expect(
+        zod({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'fallback',
+          'x-minItems-message': 'specific',
+        }),
+      ).toBe('z.array(z.string()).min(1,{error:"specific"})')
+    })
+  })
+
+  describe('x-if/then/else-message', () => {
+    const buildSchema = (overrides: Partial<JSONSchema>): JSONSchema =>
+      ({
+        type: 'object',
+        properties: { a: { type: 'string' }, b: { type: 'string' } },
+        if: { properties: { a: { const: 'x' } } },
+        // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
+        then: { required: ['b'] },
+        ...overrides,
+      }) as JSONSchema
+
+    it('emits then refine with x-then-message', () => {
+      expect(zod(buildSchema({ 'x-then-message': 'then failed' }))).toBe(
+        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
+      )
+    })
+
+    it('falls back to x-if-message for then when x-then-message absent', () => {
+      expect(zod(buildSchema({ 'x-if-message': 'if shared' }))).toBe(
+        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
+      )
+    })
+
+    it('emits then + else refines with separate messages', () => {
+      expect(
+        zod(
+          buildSchema({
+            else: { required: ['a'] },
+            'x-then-message': 'then failed',
+            'x-else-message': 'else failed',
+          }),
+        ),
+      ).toBe(
+        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
+      )
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: integer → z.coerce.int()', () => {
+      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe('z.coerce.int()')
+    })
+
+    it('query: number → z.coerce.number()', () => {
+      expect(zod({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.number()',
+      )
+    })
+
+    it('path: boolean → z.stringbool()', () => {
+      expect(zod({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe('z.stringbool()')
+    })
+
+    it('query: date → z.coerce.date()', () => {
+      expect(zod({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe('z.coerce.date()')
+    })
+
+    it('no paramIn: integer → z.int() (no coerce)', () => {
+      expect(zod({ type: 'integer' })).toBe('z.int()')
+    })
+
+    it('header: integer → z.int() (no coerce for non query/path)', () => {
+      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'header' })).toBe('z.int()')
+    })
+
+    it('nested in object: properties coerced too', () => {
+      expect(
+        zod(
+          {
+            type: 'object',
+            properties: { page: { type: 'integer' }, q: { type: 'string' } },
+            required: ['page'],
+          },
+          'Schema',
+          false,
+          { paramIn: 'query' },
+        ),
+      ).toBe('z.object({page:z.coerce.int(),q:z.string().optional()})')
+    })
+
+    it('nested in array: items coerced too', () => {
+      expect(
+        zod({ type: 'array', items: { type: 'integer' } }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('z.array(z.coerce.int())')
+    })
+
+    it('integer with min/max: constraints preserved after coerce', () => {
+      expect(
+        zod({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('z.coerce.int().min(1).max(100)')
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        zod({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('z.int()')
+    })
+  })
 })

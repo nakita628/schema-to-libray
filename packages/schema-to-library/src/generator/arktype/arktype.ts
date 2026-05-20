@@ -1,5 +1,5 @@
 import { arktypeWrap as _arktypeWrap, type CodeExtensionOptions } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -28,7 +28,12 @@ export function arktype(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isArktype: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean; unsafeCodeExtensions?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
@@ -74,7 +79,8 @@ export function arktype(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
-    return arktypeWrap(describeWithMessage(unionStr(schemas), schema['x-anyOf-message']), schema)
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
+    return arktypeWrap(describeWithMessage(unionStr(schemas), anyOfMessage), schema)
   }
 
   if (schema.allOf) {
@@ -150,10 +156,23 @@ export function arktype(
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
 
   const types = normalizeTypes(schema.type)
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
-  if (types.includes('number')) return arktypeWrap(number(schema), schema)
-  if (types.includes('integer')) return arktypeWrap(integer(schema), schema)
-  if (types.includes('boolean')) return arktypeWrap('"boolean"', schema)
+  if (types.includes('number')) {
+    if (isStringWireParam) return arktypeWrap('"string.numeric.parse"', schema)
+    return arktypeWrap(number(schema), schema)
+  }
+  if (types.includes('integer')) {
+    if (isStringWireParam) return arktypeWrap('"string.integer.parse"', schema)
+    return arktypeWrap(integer(schema), schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) {
+      return arktypeWrap(`type("'true' | 'false'").pipe((s) => s === 'true')`, schema)
+    }
+    return arktypeWrap('"boolean"', schema)
+  }
 
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
@@ -169,8 +188,9 @@ export function arktype(
     const isFixedLength =
       typeof minItems === 'number' && typeof maxItems === 'number' && minItems === maxItems
     // Per-keyword array messages via .narrow() with ctx.mustBe.
-    const minItemsMessage = schema['x-minItems-message']
-    const maxItemsMessage = schema['x-maxItems-message']
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
     const uniqueItemsMessage = schema['x-uniqueItems-message']
     const containsMessage = schema['x-contains-message']
     const minContainsMessage = schema['x-minContains-message']
@@ -234,7 +254,10 @@ export function arktype(
 
   if (types.includes('object'))
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
-  if (types.includes('date')) return arktypeWrap('"Date"', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) return arktypeWrap('"string.date.parse"', schema)
+    return arktypeWrap('"Date"', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 
   return arktypeWrap('"unknown"', schema)

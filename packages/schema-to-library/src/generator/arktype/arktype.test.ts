@@ -579,4 +579,48 @@ describe('arktype', () => {
       ).toBe('type("string[]").and(type("unknown[] >= 1")).describe("bad items")')
     })
   })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        arktype({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe('type("string | number").describe("implication failed")')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: number → "string.numeric.parse"', () => {
+      expect(arktype({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.numeric.parse"',
+      )
+    })
+
+    it('query: integer → "string.integer.parse"', () => {
+      expect(arktype({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.integer.parse"',
+      )
+    })
+
+    it("path: boolean → type(\"'true' | 'false'\").pipe", () => {
+      expect(arktype({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        `type("'true' | 'false'").pipe((s) => s === 'true')`,
+      )
+    })
+
+    it('query: date → "string.date.parse"', () => {
+      expect(arktype({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.date.parse"',
+      )
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        arktype({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('"number"')
+    })
+  })
 })

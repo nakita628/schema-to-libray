@@ -1,0 +1,77 @@
+/**
+ * B 層: 振る舞い・transform 系 vendor extensions.
+ *
+ * Declarative knobs that adjust the generated validator's runtime behavior
+ * (coercion, normalization, branding) or constrain format APIs without
+ * embedding code. Most are validator-portable; format-option fields are
+ * tagged Zod-only and become no-ops on validators without an equivalent API.
+ */
+export type XExtTransform = {
+  // ── Declarative transforms (string-only unless noted) ────────────
+  /** Apply `.trim()` / `v.trim()` etc. before validation */
+  readonly 'x-trim'?: boolean
+  /** Apply `.toLowerCase()` before validation */
+  readonly 'x-toLowerCase'?: boolean
+  /** Apply `.toUpperCase()` before validation */
+  readonly 'x-toUpperCase'?: boolean
+  /** Apply Unicode normalization */
+  readonly 'x-normalize'?: 'NFC' | 'NFD' | 'NFKC' | 'NFKD'
+  /** Mark schema as readonly (array / object) */
+  readonly 'x-readonly'?: boolean
+  /** Require value to start with a literal prefix */
+  readonly 'x-startsWith'?: string
+  /** Require value to end with a literal suffix */
+  readonly 'x-endsWith'?: string
+  /** Require value to contain a literal substring */
+  readonly 'x-includes'?: string
+
+  // ── Coercion / fallback (Zod-only) ───────────────────────────────
+  /** Zod-only: enable `z.coerce.<type>` for number / integer / boolean / date */
+  readonly 'x-coerce'?: boolean
+  /**
+   * Zod-only: emit `z.stringbool()` — string-typed input parsed as boolean
+   * via a fixed (or custom) truthy/falsy whitelist. Trigger is `type: "string"`;
+   * when set, supersedes `format` / `pattern` / `x-coerce` / other string options.
+   * `true` enables defaults; an object configures truthy/falsy/case/error.
+   * @see https://zod.dev/api?id=stringbools
+   */
+  readonly 'x-stringbool'?:
+    | boolean
+    | {
+        readonly truthy?: readonly string[]
+        readonly falsy?: readonly string[]
+        readonly case?: 'sensitive' | 'insensitive'
+        readonly error?: string
+      }
+  /** Zod-only: `.prefault(value)` — apply default to input before parse */
+  readonly 'x-prefault'?: unknown
+  /** Zod-only: `.catch(value)` — fall back to value on parse failure */
+  readonly 'x-catch'?: unknown
+
+  // ── Format-option (Zod-only) ─────────────────────────────────────
+  // No-op on validators without an equivalent format API.
+  /** Zod-only: select the email regex preset for `format: email` */
+  readonly 'x-emailPattern'?: 'html5' | 'browser' | 'unicode'
+  /** Zod-only: custom email regex source for `format: email` */
+  readonly 'x-emailRegex'?: string
+  /** Zod-only: restrict UUID version on `format: uuid` */
+  readonly 'x-uuidVersion'?: 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | 'v8'
+  /** Zod-only: restrict URL hostname on `format: uri` / `format: url` */
+  readonly 'x-urlHostname'?: string
+  /** Zod-only: restrict URL protocol on `format: uri` / `format: url` */
+  readonly 'x-urlProtocol'?: string
+  /** Zod-only: enable / disable URL normalization */
+  readonly 'x-urlNormalize'?: boolean
+  /** Zod-only: ISO datetime sub-second precision (digits) */
+  readonly 'x-isoPrecision'?: number
+  /** Zod-only: require timezone offset on ISO datetime */
+  readonly 'x-isoOffset'?: boolean
+  /** Zod-only: allow local (offset-less) ISO datetime */
+  readonly 'x-isoLocal'?: boolean
+  /** Zod-only: allowed algorithm(s) for `format: jwt` */
+  readonly 'x-jwtAlg'?: string
+
+  // ── Branded types ────────────────────────────────────────────────
+  /** Branded type tag — emitted as Zod `.brand<"Tag">()` etc. */
+  readonly 'x-brand'?: string
+}

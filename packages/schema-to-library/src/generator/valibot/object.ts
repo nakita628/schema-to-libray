@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey, valibotError } from '../../utils/index.js'
 import { valibot } from './valibot.js'
 
@@ -19,7 +19,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return valibot(schema, rootName, isValibot, options)
@@ -140,16 +140,29 @@ export function object(
       ? `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
       : ''
   // v3.0: if/then/else (Draft-07+)
-  const ifThenElseCheck = (() => {
-    if (!schema.if) return ''
+  const ifThenElseChecks = (() => {
+    if (!schema.if) return [] as string[]
     const ifSchema = valibot(schema.if, rootName, isValibot, options)
     const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
     const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
-    if (!thenSchema && !elseSchema) return ''
-    const branchCheck = (s: string) => `const r=v.safeParse(${s},o);if(!r.success)return false;`
-    const thenBranch = thenSchema ? branchCheck(thenSchema) : ''
-    const elseBranch = elseSchema ? branchCheck(elseSchema) : ''
-    return `v.check((o)=>{const m=v.safeParse(${ifSchema},o).success;if(m){${thenBranch}}else{${elseBranch}}return true;})`
+    if (!thenSchema && !elseSchema) return [] as string[]
+    const ifMsg = schema['x-if-message']
+    const thenMsg = schema['x-then-message'] ?? ifMsg
+    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const parts: string[] = []
+    if (thenSchema) {
+      const arg = thenMsg ? `,${valibotError(thenMsg)}` : ''
+      parts.push(
+        `v.check((o)=>!v.safeParse(${ifSchema},o).success||v.safeParse(${thenSchema},o).success${arg})`,
+      )
+    }
+    if (elseSchema) {
+      const arg = elseMsg ? `,${valibotError(elseMsg)}` : ''
+      parts.push(
+        `v.check((o)=>v.safeParse(${ifSchema},o).success||v.safeParse(${elseSchema},o).success${arg})`,
+      )
+    }
+    return parts
   })()
 
   const actions = [
@@ -160,7 +173,7 @@ export function object(
     ...dependentRequiredChecks,
     ...dependentSchemasChecks,
     additionalPropertiesCheck,
-    ifThenElseCheck,
+    ...ifThenElseChecks,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase
