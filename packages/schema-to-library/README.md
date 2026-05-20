@@ -6,8 +6,8 @@ npm install -D schema-to-library
 
 ## What is schema-to-library?
 
-**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a CLI tool that converts JSON Schema into code for validation libraries.
-It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions.
+**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a library (with CLI) that converts JSON Schema into code for validation libraries.
+It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions, either via the bundled CLI commands or programmatically by importing `schemaToZod` / `schemaToValibot` / `schemaToEffect` / `schemaToTypebox` / `schemaToArktype`.
 
 ## Supported Libraries
 
@@ -139,45 +139,54 @@ export type User = typeof User.infer
 
 Each generator wires JSON Schema-style validation error messages into the target validator's native error API. Coverage varies per validator due to API differences.
 
-### Coverage Matrix (32 extensions, v3.1)
+### Coverage Matrix (39 extensions, v3.2)
 
-| Category    | Extension                        |     zod     |   valibot   |   effect    |   arktype   |   typebox   |
-| ----------- | -------------------------------- | :---------: | :---------: | :---------: | :---------: | :---------: |
-| Common      | `x-error-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Common      | `x-required-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Common      | `x-const-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Common      | `x-enum-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Numeric     | `x-minimum-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Numeric     | `x-maximum-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Numeric     | `x-exclusiveMinimum-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Numeric     | `x-exclusiveMaximum-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Numeric     | `x-multipleOf-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| String      | `x-minLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| String      | `x-maxLength-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| String      | `x-pattern-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-minItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-maxItems-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-uniqueItems-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-contains-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-minContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-maxContains-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-prefixItems-message`          |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-items-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-minProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-maxProperties-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-additionalProperties-message` |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-propertyNames-message`        |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-patternProperties-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-dependentRequired-message`    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-dependentSchemas-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-properties-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Combinators | `x-allOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Combinators | `x-anyOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Combinators | `x-oneOf-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Combinators | `x-not-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| **Total**   |                                  | **32 / 32** | **32 / 32** | **32 / 32** | **32 / 32** | **32 / 32** |
+| Category    | Extension                         |     zod     |   valibot   |   effect    |   arktype   |   typebox   |
+| ----------- | --------------------------------- | :---------: | :---------: | :---------: | :---------: | :---------: |
+| Common      | `x-error-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-required-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-const-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Common      | `x-enum-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-minimum-message`               |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-maximum-message`               |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-exclusiveMinimum-message`      |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-exclusiveMaximum-message`      |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Numeric     | `x-multipleOf-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-minLength-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-maxLength-message`             |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| String      | `x-pattern-message`               |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-minItems-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-maxItems-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-uniqueItems-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-contains-message`              |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-minContains-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-maxContains-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-prefixItems-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-items-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-length-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Array       | `x-unevaluatedItems-message`      |     ⚪      |     ⚪      |     ⚪      |     ⚪      |     ✅      |
+| Object      | `x-minProperties-message`         |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-maxProperties-message`         |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-additionalProperties-message`  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-propertyNames-message`         |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-patternProperties-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-dependentRequired-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-dependentSchemas-message`      |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-properties-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Object      | `x-unevaluatedProperties-message` |     ⚪      |     ⚪      |     ⚪      |     ⚪      |     ✅      |
+| Combinators | `x-allOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-anyOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-oneOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-not-message`                   |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-implication-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Conditional | `x-if-message`                    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Conditional | `x-then-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Conditional | `x-else-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| **Total**   |                                   | **37 / 39** | **37 / 39** | **37 / 39** | **37 / 39** | **39 / 39** |
 
-All 5 generators reach **full 32/32 v3.1 parity**. The translation strategy per generator:
+Legend: ✅ = message wired into emission, ⚪ = type slot accepted but no generator-side emission yet (passes through `[k: string]: unknown`).
+
+The translation strategy per generator:
 
 - **Zod** — native `z.<type>({error: 'msg'})` arguments and `.refine((v, ctx) => ctx.addIssue(...))`-style hooks
 - **Valibot** — `v.minLength(n, 'msg')` style action arguments and `v.check((v) => ..., 'msg')` for advanced keywords
@@ -297,12 +306,12 @@ export const HttpsUrl = z.url({ protocol: /^https$/, normalize: true })
 export const PreciseDatetime = z.iso.datetime({ precision: 3, offset: true })
 ```
 
-### Code-emitting extensions (opt-in: `--unsafe-code-extensions`)
+### Code-emitting extensions (programmatic opt-in: `unsafeCodeExtensions`)
 
 > [!CAUTION]
 > These extensions accept **raw TypeScript expressions** that are inlined into the generated code. **Never enable them on JSON Schemas fetched from untrusted sources** — a hostile schema can embed any expression that will run during your build/CI/runtime, which is a clean supply-chain attack path. A defense-in-depth denylist (`process` / `require` / `eval` / `Function` / `globalThis` / `constructor` / `__proto__` / browser globals / backticks / `\u`/`\x` escapes / `['…']` computed access) silently drops obviously malicious values, but the only real protection is keeping the input schema inside your own trust boundary.
 
-Enable per-CLI invocation with `--unsafe-code-extensions`; programmatic API users pass `{ unsafeCodeExtensions: true }`. Generated files include a `// @generated-with-unsafe-code-extensions` marker at the top for grep auditing.
+Enable via the programmatic API only by passing `{ unsafeCodeExtensions: true }` to `schemaToZod` / `schemaToValibot` / `schemaToEffect` / `schemaToArktype`. There is no CLI flag — the feature is opt-in by design to keep the surface that processes untrusted schemas minimal. Generated files include a `// @generated-with-unsafe-code-extensions` marker at the top for grep auditing.
 
 Per-library API-name mapping (raw expression values, library-native API names):
 
@@ -314,7 +323,7 @@ Per-library API-name mapping (raw expression values, library-native API names):
 | Bidirectional codec | `x-codec`      | skip          | skip          | skip       | skip    |
 | Preprocess input    | `x-preprocess` | skip          | skip          | skip       | skip    |
 
-Example (Zod, with `--unsafe-code-extensions`):
+Example (Zod, with `unsafeCodeExtensions: true`):
 
 ```yaml
 password:
@@ -343,11 +352,66 @@ export const UpdatedAt = z.codec(z.iso.datetime(), z.date(), {
 })
 ```
 
-Without the flag the values are silently dropped, and the CLI prints a `stderr` warning so the omission is auditable:
+Without `unsafeCodeExtensions: true`, code-emitting extension values are silently dropped at codegen time.
 
+## Programmatic API
+
+The CLI is a thin wrapper around the programmatic entry points. Import the generator that matches your target library to embed schema generation in build scripts, test fixtures, or framework integrations:
+
+```ts
+import { schemaToZod } from 'schema-to-library'
+import type { JSONSchema } from 'schema-to-library'
+
+const schema: JSONSchema = { type: 'integer', minimum: 1 }
+const code = schemaToZod(schema, { paramIn: 'query' })
+//   → "import * as z from 'zod'\n\nexport const Schema = z.coerce.int().min(1)"
 ```
-[schema-to-library] WARNING: detected code-emitting extensions x-refine but --unsafe-code-extensions is not set; values will be ignored.
-```
+
+### Programmatic Options
+
+The same `options` shape is accepted by `schemaToZod` / `schemaToValibot` / `schemaToEffect` / `schemaToTypebox` / `schemaToArktype` (TypeBox does not accept `unsafeCodeExtensions`).
+
+| Option                 | Type                                        | Default | Description                                                                                                                                                |
+| ---------------------- | ------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `exportType`           | `boolean`                                   | `true`  | Append `export type X = ...` after the schema export                                                                                                       |
+| `openapi`              | `boolean`                                   | `false` | Resolve `#/components/{schemas,parameters,...}` refs and use OpenAPI-aware identifier casing                                                               |
+| `readonly`             | `boolean`                                   | `false` | Emit readonly arrays / readonly object types                                                                                                               |
+| `paramIn`              | `'query' \| 'path' \| 'header' \| 'cookie'` | —       | Treat the schema as an OpenAPI parameter; `query` / `path` enable per-library string-wire coercion (see below). `header` / `cookie` are accepted but no-op |
+| `unsafeCodeExtensions` | `boolean`                                   | `false` | Honor code-emitting `x-*` extensions. Trust your input — generated code is executed at build time                                                          |
+
+## OpenAPI Parameter Coercion (`paramIn`)
+
+When a schema represents an OpenAPI `parameter` whose `in` is `query` or `path`, the wire format is always a string. Pass `paramIn: 'query' | 'path'` to apply per-library auto-coercion on primitives. There is **no CLI flag** — call the programmatic API directly when emitting parameter schemas.
+
+User-supplied `x-coerce: false` overrides `paramIn` (per-schema opt-out wins). Coercion propagates recursively through `object.properties` and `array.items`.
+
+| Type      | Zod                 | Valibot                                                              | Effect                     | TypeBox                                                                                                        | Arktype                               |
+| --------- | ------------------- | -------------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `number`  | `z.coerce.number()` | `v.pipe(v.string(), v.transform(Number), v.number())`                | `Schema.NumberFromString`  | `Type.Transform(Type.String()).Decode((v)=>Number(v)).Encode(String)`                                          | `"string.numeric.parse"`              |
+| `integer` | `z.coerce.int()`    | `v.pipe(v.string(), v.transform(Number), v.number(), v.integer())`   | `Schema.NumberFromString`  | `Type.Transform(Type.String()).Decode((v)=>Number.parseInt(v,10)).Encode(String)`                              | `"string.integer.parse"`              |
+| `boolean` | `z.stringbool()`    | `v.pipe(v.picklist(['true','false']), v.transform((s)=>s==='true'))` | `Schema.BooleanFromString` | `Type.Transform(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode(...)` | `type("'true' \| 'false'").pipe(...)` |
+| `date`    | `z.coerce.date()`   | `v.pipe(v.string(), v.transform((s)=>new Date(s)), v.date())`        | `Schema.DateFromString`    | `Type.Transform(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`                          | `"string.date.parse"`                 |
+
+TypeBox transforms are evaluated by `Value.Decode`, **not** `Value.Check` — pick the API that matches your validation pipeline.
+
+## Migration from 0.2.x
+
+### CLI flag removals (breaking)
+
+- **`--unsafe-code-extensions`** — removed. The feature is still available; call the programmatic API instead:
+
+  ```ts
+  import { schemaToZod } from 'schema-to-library'
+  const code = schemaToZod(schema, { unsafeCodeExtensions: true })
+  ```
+
+  The CLI surface is now minimal to keep the path that processes untrusted schemas tight.
+
+- **stderr warning when code-emitting extensions appear without the opt-in** — also removed. Programmatic callers that pass a schema with `x-refine` / `x-codec` / etc. but no `unsafeCodeExtensions: true` get the same silent drop, with no warning. If you depended on this signal, gate it yourself with `findCodeExtensionKeysInSchema` from `schema-to-library`.
+
+### Coercion contract fix (security)
+
+Previously, on **Valibot / Effect / TypeBox / Arktype**, a user-supplied `x-coerce: false` was silently overridden when `paramIn` (or its predecessor flag) was set. Starting with 0.3.0, `x-coerce: false` always wins on all 5 generators. If you were relying on the override behavior, switch to leaving `x-coerce` unset.
 
 ## License
 
