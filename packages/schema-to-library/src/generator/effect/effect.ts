@@ -226,7 +226,15 @@ export function effect(
     }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => effect(s, rootName, isEffect, options))
-      const tupleExpr = `Schema.Tuple(${items.join(',')})`
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
+      // prefixItems. `false` → fixed tuple (default rejects extras);
+      // schema → `Schema.Tuple(prefix, Schema.Element(rest))` form via
+      // `Schema.NonEmptyTupleType` not supported in v3; use `Schema.Array` rest.
+      const u = schema.unevaluatedItems
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? `Schema.Tuple({elements:[${items.join(',')}],rest:[${effect(u, rootName, isEffect, options)}]})`
+          : `Schema.Tuple(${items.join(',')})`
       const prefixMsg = schema['x-prefixItems-message']
       const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
       return effectWrap(wrapped, schema)
@@ -283,6 +291,8 @@ export function effect(
       }
       return out
     })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
     const actions = [
       isFixedLength ? `Schema.itemsCount(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'

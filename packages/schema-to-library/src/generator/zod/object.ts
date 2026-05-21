@@ -37,6 +37,9 @@ export function object(
   const depReqErrorArg = depReqMessage ? `,${zodError(depReqMessage)}` : errorArg
   const depSchMessage = schema['x-dependentSchemas-message']
   const depSchErrorArg = depSchMessage ? `,${zodError(depSchMessage)}` : errorArg
+  // JSON Schema 2020-12 §11.4: outside compositions, `unevaluatedProperties`
+  // reduces to `additionalProperties`. The message rides through the
+  // strictObject `unrecognized_keys` error param (see `strictMessage` below).
 
   // ── additionalProperties: schema → z.record(...) + propertyNames + patternProperties ──
   // NOTE: `.readonly()` is appended by the dispatcher (`zod.ts:readonly`),
@@ -68,7 +71,7 @@ export function object(
   const objectType =
     schema.additionalProperties === true
       ? 'looseObject'
-      : schema.additionalProperties === false
+      : schema.additionalProperties === false || schema.unevaluatedProperties === false
         ? 'strictObject'
         : conditionalKeysReferenced
           ? 'looseObject'
@@ -82,12 +85,16 @@ export function object(
       return `${safeKey}:${parsed}${required.includes(key) ? '' : '.optional()'}`
     })
     .filter((v) => v !== null)
-  // v3.0: x-additionalProperties-message attaches a custom message to the
-  // `unrecognized_keys` issue (only meaningful for strictObject).
+  // x-additionalProperties-message / x-unevaluatedProperties-message both
+  // attach to the `unrecognized_keys` issue (only meaningful for strictObject).
+  // Specific keyword takes precedence: additionalProperties > unevaluatedProperties.
   const addlPropsMessage = schema['x-additionalProperties-message']
+  const strictMessage =
+    addlPropsMessage ??
+    (schema.unevaluatedProperties === false ? schema['x-unevaluatedProperties-message'] : undefined)
   const objectParams =
-    objectType === 'strictObject' && addlPropsMessage
-      ? `,{error:(issue)=>issue.code==='unrecognized_keys'?${JSON.stringify(addlPropsMessage)}:${errorMessage ? JSON.stringify(errorMessage) : 'undefined'}}`
+    objectType === 'strictObject' && strictMessage
+      ? `,{error:(issue)=>issue.code==='unrecognized_keys'?${JSON.stringify(strictMessage)}:${errorMessage ? JSON.stringify(errorMessage) : 'undefined'}}`
       : ''
 
   const rawBase =

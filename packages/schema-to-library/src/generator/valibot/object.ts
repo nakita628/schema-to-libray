@@ -40,8 +40,13 @@ export function object(
   const depReqErrorArg = depReqMessage ? `,${valibotError(depReqMessage)}` : errorArg
   const depSchMessage = schema['x-dependentSchemas-message']
   const depSchErrorArg = depSchMessage ? `,${valibotError(depSchMessage)}` : errorArg
+  // x-additionalProperties-message / x-unevaluatedProperties-message both
+  // attach to the strictObject "extra key" rejection. Specific keyword takes
+  // precedence (additionalProperties > unevaluatedProperties).
   const addlPropsMessage = schema['x-additionalProperties-message']
-  const addlPropsErrorArg = addlPropsMessage ? `,${valibotError(addlPropsMessage)}` : ''
+  const unevalPropsMessage =
+    schema.unevaluatedProperties === false ? schema['x-unevaluatedProperties-message'] : undefined
+  const strictExtrasMessage = addlPropsMessage ?? unevalPropsMessage
 
   const propertyNamesCheck = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -82,7 +87,7 @@ export function object(
   const objectKind =
     schema.additionalProperties === true
       ? 'looseObject'
-      : schema.additionalProperties === false
+      : schema.additionalProperties === false || schema.unevaluatedProperties === false
         ? 'strictObject'
         : conditionalKeysReferenced
           ? 'looseObject'
@@ -98,12 +103,17 @@ export function object(
     })
     .filter((p) => p !== null)
 
+  // `v.strictObject(entries, message)` surfaces the custom message on extras.
+  const strictMsgArg =
+    objectKind === 'strictObject' && strictExtrasMessage
+      ? `,${valibotError(strictExtrasMessage)}`
+      : ''
   const rawBase =
     required.length === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
-          .join(',')}}))`
-      : `v.${objectKind}({${props.join(',')}})`
+          .join(',')}}${strictMsgArg}))`
+      : `v.${objectKind}({${props.join(',')}}${strictMsgArg})`
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {
@@ -134,11 +144,9 @@ export function object(
         return `v.check((o)=>!('${key}' in o)||v.safeParse(${s},o).success${depSchErrorArg})`
       })
     : []
-  // v3.0: x-additionalProperties-message
-  const additionalPropertiesCheck =
-    schema.additionalProperties === false && addlPropsMessage
-      ? `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
-      : ''
+  // Extras rejection is wired into `v.strictObject` directly via its second
+  // argument (see `strictMsgArg` above). No separate check needed.
+  const additionalPropertiesCheck = ''
   // v3.0: if/then/else (Draft-07+)
   const ifThenElseChecks = (() => {
     if (!schema.if) return [] as string[]

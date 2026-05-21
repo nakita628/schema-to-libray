@@ -36,8 +36,12 @@ export function object(
   const depReqErrorArg = depReqMessage ? `,${effectError(depReqMessage)}` : errorArg
   const depSchMessage = schema['x-dependentSchemas-message']
   const depSchErrorArg = depSchMessage ? `,${effectError(depSchMessage)}` : errorArg
+  // x-additionalProperties-message / x-unevaluatedProperties-message: specific
+  // keyword takes precedence (additionalProperties > unevaluatedProperties).
   const addlPropsMessage = schema['x-additionalProperties-message']
-  const addlPropsErrorArg = addlPropsMessage ? `,${effectError(addlPropsMessage)}` : ''
+  const unevalPropsMessage =
+    schema.unevaluatedProperties === false ? schema['x-unevaluatedProperties-message'] : undefined
+  const strictExtrasMessage = addlPropsMessage ?? unevalPropsMessage
 
   const propertyNamesFilter = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -136,12 +140,17 @@ export function object(
         return `Schema.filter((o)=>!('${key}' in o)||Schema.is(${s})(o)${depSchErrorArg})`
       })
     : []
-  // v3.0: x-additionalProperties-message rejects extras when
-  // additionalProperties: false.
-  const additionalPropertiesFilter =
-    schema.additionalProperties === false && addlPropsMessage
-      ? `Schema.filter((o)=>Object.keys(o).every((k)=>${JSON.stringify(Object.keys(schema.properties))}.includes(k))${addlPropsErrorArg})`
-      : ''
+  // Effect Schema enforces strict decoding via the `parseOptions` annotation,
+  // which sets `onExcessProperty: 'error'` at schema level. We attach the
+  // custom message through `Schema.annotations({message: ...})`.
+  const isStrictExtras =
+    schema.additionalProperties === false || schema.unevaluatedProperties === false
+  const additionalPropertiesFilter = ''
+  const strictExtrasAnnotation = isStrictExtras
+    ? strictExtrasMessage
+      ? `Schema.annotations({parseOptions:{onExcessProperty:"error"},message:()=>${JSON.stringify(strictExtrasMessage)}})`
+      : `Schema.annotations({parseOptions:{onExcessProperty:"error"}})`
+    : ''
 
   // v3.2: if/then/else conditional schema. Routed through Schema.filter:
   // when `if` matches, the object must also satisfy `then`; otherwise `else`.
@@ -176,6 +185,7 @@ export function object(
     ...dependentRequiredFilters,
     ...dependentSchemasFilters,
     additionalPropertiesFilter,
+    strictExtrasAnnotation,
     ...ifThenElseFilters,
   ].filter((a) => a !== '')
 

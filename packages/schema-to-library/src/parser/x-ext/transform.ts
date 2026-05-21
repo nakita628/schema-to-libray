@@ -70,6 +70,20 @@ export type XExtTransform = {
   readonly 'x-isoLocal'?: boolean
   /** Zod-only: allowed algorithm(s) for `format: jwt` */
   readonly 'x-jwtAlg'?: string
+  /** Zod-only: hash algorithm for `format: hash` (required positional arg of `z.hash`) */
+  readonly 'x-hashAlg'?: 'sha1' | 'sha256' | 'sha384' | 'sha512' | 'md5'
+  /** Zod-only: hash encoding for `format: hash` */
+  readonly 'x-hashEnc'?: 'hex' | 'base64' | 'base64url'
+  /** Zod-only: delimiter for `format: mac` */
+  readonly 'x-macDelimiter'?: string
+
+  // ── Case validation (Zod-only) ───────────────────────────────────
+  // NOTE: validation, not transform — input must already be lower/uppercase.
+  // Pair with `x-toLowerCase` / `x-toUpperCase` to normalize first, then check.
+  /** Zod-only: enforce lowercase via `.lowercase()` validation */
+  readonly 'x-lowercase'?: boolean
+  /** Zod-only: enforce uppercase via `.uppercase()` validation */
+  readonly 'x-uppercase'?: boolean
 
   // ── Branded types ────────────────────────────────────────────────
   /** Branded type tag — emitted as Zod `.brand<"Tag">()` etc. */

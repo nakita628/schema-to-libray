@@ -270,7 +270,19 @@ export function zod(
     }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => zod(s, rootName, isZod, options))
-      const tupleExpr = `z.tuple([${items.join(',')}]${baseError})`
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
+      // prefixItems. With `false` we keep the fixed tuple (default rejects extras);
+      // with a schema we emit a rest argument (`z.tuple([...], rest)`).
+      const u = schema.unevaluatedItems
+      const unevalItemsMsg = schema['x-unevaluatedItems-message']
+      const unevalItemsError = unevalItemsMsg ? `,${zodError(unevalItemsMsg)}` : ''
+      const rest =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? zod(u, rootName, isZod, options)
+          : undefined
+      const tupleArgs = rest ? `[${items.join(',')}],${rest}` : `[${items.join(',')}]`
+      const tupleError = u === false && unevalItemsMsg ? unevalItemsError : baseError
+      const tupleExpr = `z.tuple(${tupleArgs}${tupleError})`
       const prefixMsg = schema['x-prefixItems-message']
       const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
       return readonly(zodWrap(wrapped, schema))
@@ -319,6 +331,9 @@ export function zod(
       return parts.join('')
     })()
     const { minItems, maxItems } = schema
+    // unevaluatedItems is handled in the prefixItems branch; with a single
+    // `items` schema (no prefixItems), JSON Schema 2020-12 §11.3 makes the
+    // keyword redundant — items already validates every element.
     const arrayExpr =
       typeof minItems === 'number' && typeof maxItems === 'number'
         ? minItems === maxItems

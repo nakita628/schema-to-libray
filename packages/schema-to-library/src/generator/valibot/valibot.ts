@@ -225,7 +225,18 @@ export function valibot(
     }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
-      const tupleExpr = `v.tuple([${items.join(',')}])`
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies beyond prefixItems.
+      // `v.tuple` accepts extras by default; `v.strictTuple` rejects them.
+      // `unevaluatedItems: schema` → `v.tupleWithRest(...)`.
+      const u = schema.unevaluatedItems
+      const unevalItemsMsg = schema['x-unevaluatedItems-message']
+      const unevalItemsArg = unevalItemsMsg ? `,${valibotError(unevalItemsMsg)}` : ''
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? `v.tupleWithRest([${items.join(',')}],${valibot(u, rootName, isValibot, options)})`
+          : u === false
+            ? `v.strictTuple([${items.join(',')}]${unevalItemsArg})`
+            : `v.tuple([${items.join(',')}])`
       const prefixMsg = schema['x-prefixItems-message']
       const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
       return readonly(valibotWrap(wrapped, schema))
@@ -280,6 +291,8 @@ export function valibot(
       }
       return out
     })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
     const actions = [
       isFixedLength ? `v.length(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'

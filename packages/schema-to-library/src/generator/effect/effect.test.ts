@@ -985,4 +985,44 @@ describe('effect', () => {
       ).toBe('Schema.Number')
     })
   })
+
+  describe('x-unevaluatedProperties-message', () => {
+    it('attaches parseOptions:onExcessProperty=error + message annotation', () => {
+      expect(
+        effect({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe(
+        'Schema.Struct({a:Schema.String}).pipe(Schema.annotations({parseOptions:{onExcessProperty:"error"},message:()=>"no extras"}))',
+      )
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('emits a fixed-length tuple when unevaluatedItems: false (extras rejected by default)', () => {
+      expect(
+        effect({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+        }),
+      ).toBe('Schema.Tuple(Schema.String,Schema.Boolean)')
+    })
+
+    it('emits Schema.Tuple with rest when unevaluatedItems is a schema', () => {
+      expect(
+        effect({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe(
+        'Schema.Tuple({elements:[Schema.String,Schema.Boolean],rest:[Schema.Number.pipe(Schema.int())]})',
+      )
+    })
+  })
 })

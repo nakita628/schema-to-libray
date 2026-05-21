@@ -25,6 +25,7 @@ describe('string', () => {
     [{ type: 'string', format: 'ulid' }, 'z.ulid()'],
     [{ type: 'string', format: 'ipv4' }, 'z.ipv4()'],
     [{ type: 'string', format: 'ipv6' }, 'z.ipv6()'],
+    [{ type: 'string', format: 'mac' }, 'z.mac()'],
     [{ type: 'string', format: 'cidrv4' }, 'z.cidrv4()'],
     [{ type: 'string', format: 'cidrv6' }, 'z.cidrv6()'],
     [{ type: 'string', format: 'date' }, 'z.iso.date()'],
@@ -160,6 +161,38 @@ describe('string', () => {
         },
         'z.jwt({alg:"HS256",error:"Invalid token"})',
       ],
+      [{ type: 'string', format: 'mac', 'x-macDelimiter': ':' }, 'z.mac({delimiter:":"})'],
+      [{ type: 'string', format: 'mac', 'x-macDelimiter': '-' }, 'z.mac({delimiter:"-"})'],
+      [
+        {
+          type: 'string',
+          format: 'mac',
+          'x-macDelimiter': ':',
+          'x-error-message': 'Invalid MAC',
+        },
+        'z.mac({delimiter:":",error:"Invalid MAC"})',
+      ],
+      [{ type: 'string', format: 'hash', 'x-hashAlg': 'sha256' }, 'z.hash("sha256")'],
+      [{ type: 'string', format: 'hash', 'x-hashAlg': 'md5' }, 'z.hash("md5")'],
+      [
+        { type: 'string', format: 'hash', 'x-hashAlg': 'sha256', 'x-hashEnc': 'hex' },
+        'z.hash("sha256",{enc:"hex"})',
+      ],
+      [
+        { type: 'string', format: 'hash', 'x-hashAlg': 'sha512', 'x-hashEnc': 'base64url' },
+        'z.hash("sha512",{enc:"base64url"})',
+      ],
+      [
+        {
+          type: 'string',
+          format: 'hash',
+          'x-hashAlg': 'sha256',
+          'x-hashEnc': 'hex',
+          'x-error-message': 'Invalid digest',
+        },
+        'z.hash("sha256",{enc:"hex",error:"Invalid digest"})',
+      ],
+      [{ type: 'string', format: 'hash' }, 'z.string()'],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)
     })
@@ -183,6 +216,16 @@ describe('string', () => {
       [
         { type: 'string', 'x-startsWith': 'https://', 'x-endsWith': '.com' },
         'z.string().startsWith("https://").endsWith(".com")',
+      ],
+      [{ type: 'string', 'x-lowercase': true }, 'z.string().lowercase()'],
+      [{ type: 'string', 'x-uppercase': true }, 'z.string().uppercase()'],
+      [
+        { type: 'string', 'x-toLowerCase': true, 'x-lowercase': true },
+        'z.string().toLowerCase().lowercase()',
+      ],
+      [
+        { type: 'string', 'x-toUpperCase': true, 'x-uppercase': true },
+        'z.string().toUpperCase().uppercase()',
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)

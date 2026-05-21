@@ -1449,6 +1449,45 @@ describe('zod', () => {
     })
   })
 
+  describe('x-unevaluatedProperties-message', () => {
+    it('switches to strictObject with the message wired into the unrecognized_keys error', () => {
+      expect(
+        zod({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe(
+        'z.strictObject({a:z.string()},{error:(issue)=>issue.code===\'unrecognized_keys\'?"no extras":undefined})',
+      )
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('embeds the message via the tuple error param when unevaluatedItems: false', () => {
+      expect(
+        zod({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+          'x-unevaluatedItems-message': 'no extras',
+        }),
+      ).toBe('z.tuple([z.string(),z.boolean()],{error:"no extras"})')
+    })
+
+    it('emits z.tuple with rest argument when unevaluatedItems is a schema', () => {
+      expect(
+        zod({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe('z.tuple([z.string(),z.boolean()],z.int())')
+    })
+  })
+
   describe('x-coerce / x-prefault / x-catch (Zod-only)', () => {
     describe('x-coerce', () => {
       it('emits z.coerce.number()', () => {

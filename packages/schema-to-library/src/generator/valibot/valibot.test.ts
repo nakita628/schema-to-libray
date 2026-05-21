@@ -1118,4 +1118,41 @@ describe('valibot', () => {
       ).toBe('v.pipe(v.number(),v.integer())')
     })
   })
+
+  describe('x-unevaluatedProperties-message', () => {
+    it('switches to v.strictObject with the message as second argument', () => {
+      expect(
+        valibot({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe('v.strictObject({a:v.string()},"no extras")')
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('emits v.strictTuple with the message when unevaluatedItems: false', () => {
+      expect(
+        valibot({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+          'x-unevaluatedItems-message': 'no extras',
+        }),
+      ).toBe('v.strictTuple([v.string(),v.boolean()],"no extras")')
+    })
+
+    it('emits v.tupleWithRest when unevaluatedItems is a schema', () => {
+      expect(
+        valibot({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe('v.tupleWithRest([v.string(),v.boolean()],v.pipe(v.number(),v.integer()))')
+    })
+  })
 })

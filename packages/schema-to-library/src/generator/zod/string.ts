@@ -17,6 +17,7 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
   ulid: 'ulid()',
   ipv4: 'ipv4()',
   ipv6: 'ipv6()',
+  mac: 'mac()',
   cidrv4: 'cidrv4()',
   cidrv6: 'cidrv6()',
   date: 'iso.date()',
@@ -81,7 +82,28 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
     if (typeof alg === 'string') parts.push(`alg:${JSON.stringify(alg)}`)
     return parts
   }
+  if (format === 'mac') {
+    const delimiter = schema['x-macDelimiter']
+    if (typeof delimiter === 'string') parts.push(`delimiter:${JSON.stringify(delimiter)}`)
+    return parts
+  }
   return parts
+}
+
+function hashBase(schema: JSONSchema, baseErrorArg: string): string | undefined {
+  if (schema.format !== 'hash') return undefined
+  const algo = schema['x-hashAlg']
+  if (algo === undefined) {
+    return baseErrorArg ? `z.string(${baseErrorArg})` : 'z.string()'
+  }
+  const enc = schema['x-hashEnc']
+  const errorPart = baseErrorArg ? baseErrorArg.slice(1, -1) : ''
+  const opts = [
+    enc !== undefined ? `enc:${JSON.stringify(enc)}` : undefined,
+    errorPart || undefined,
+  ].filter((v) => v !== undefined)
+  const optsStr = opts.length > 0 ? `,{${opts.join(',')}}` : ''
+  return `z.hash(${JSON.stringify(algo)}${optsStr})`
 }
 
 function mergeOptions(formatOptions: readonly string[], baseErrorArg: string): string {
@@ -124,13 +146,16 @@ export function string(schema: JSONSchema) {
   const maxErrorPart = maxLengthMessage ? `,${zodError(maxLengthMessage)}` : ''
   const fixedLengthMessage = minLengthMessage ?? maxLengthMessage
   const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
+  const hash = hashBase(schema, baseErrorArg)
   const format = schema.format && FORMAT_STRING[schema.format]
   const coercePrefix = schema['x-coerce'] === true && !format ? 'coerce.' : ''
   const formatOptions = format ? buildFormatOptions(schema) : []
   const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
-  const base = format
-    ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
-    : `z.${coercePrefix}string(${baseCallArg})`
+  const base = hash
+    ? hash
+    : format
+      ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
+      : `z.${coercePrefix}string(${baseCallArg})`
   const pattern = schema.pattern
     ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${patternErrorPart})`
     : undefined
@@ -157,6 +182,8 @@ export function string(schema: JSONSchema) {
     typeof schema['x-includes'] === 'string'
       ? `.includes(${JSON.stringify(schema['x-includes'])})`
       : undefined
+  const lowercaseValidate = schema['x-lowercase'] === true ? '.lowercase()' : undefined
+  const uppercaseValidate = schema['x-uppercase'] === true ? '.uppercase()' : undefined
   return [
     base,
     trim,
@@ -174,6 +201,8 @@ export function string(schema: JSONSchema) {
     !isFixedLength && schema.maxLength !== undefined
       ? `.max(${schema.maxLength}${maxErrorPart})`
       : undefined,
+    lowercaseValidate,
+    uppercaseValidate,
   ]
     .filter((v) => v !== undefined)
     .join('')

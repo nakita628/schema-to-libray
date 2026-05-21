@@ -147,7 +147,9 @@ export function typebox(
     // `Value.Check` does not evaluate the JSON Schema `not` keyword. We emit
     // a permissive `Type.Any()` fallback so the generated file still imports,
     // and surface the omission via a file-level marker in `index.ts`.
-    return typeboxWrap(tbPrim('Type.Any', schema), schema)
+    // `x-not-message` rides through `errorMessage` for ajv-compatible
+    // downstreams; TypeBox's own `Value.Check` will not surface it.
+    return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(schema['x-not-message'])), schema)
   }
 
   if (schema.const !== undefined) {

@@ -715,4 +715,12 @@ describe('typebox', () => {
       ).toBe('Type.Number()')
     })
   })
+
+  describe('x-not-message', () => {
+    it('rides through Type.Any errorMessage for ajv-compatible downstreams', () => {
+      expect(
+        typebox({ type: 'string', not: { type: 'number' }, 'x-not-message': 'cannot be number' }),
+      ).toBe('Type.Any({errorMessage:"cannot be number"})')
+    })
+  })
 })

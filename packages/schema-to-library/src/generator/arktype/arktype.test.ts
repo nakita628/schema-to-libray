@@ -623,4 +623,43 @@ describe('arktype', () => {
       ).toBe('"number"')
     })
   })
+
+  describe('x-unevaluatedProperties-message', () => {
+    it('attaches the message to a narrow that rejects undeclared keys', () => {
+      expect(
+        arktype({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe(
+        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).every((k) => ["a"].includes(k)) || ctx.mustBe("no extras"))',
+      )
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('describes the tuple with the message when unevaluatedItems: false', () => {
+      expect(
+        arktype({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+          'x-unevaluatedItems-message': 'no extras',
+        }),
+      ).toBe('type(["string","boolean"]).describe("no extras")')
+    })
+
+    it('emits a variadic tuple when unevaluatedItems is a schema', () => {
+      expect(
+        arktype({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe('type(["string","boolean","...","number.integer[]"])')
+    })
+  })
 })

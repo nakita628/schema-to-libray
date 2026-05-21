@@ -44,7 +44,11 @@ export function object(
   const propNamesMessage = schema['x-propertyNames-message']
   const depReqMessage = schema['x-dependentRequired-message'] ?? errorMessage
   const depSchMessage = schema['x-dependentSchemas-message'] ?? errorMessage
+  // x-additionalProperties-message / x-unevaluatedProperties-message: specific
+  // keyword takes precedence. ArkType's `type({...})` rejects extras by default,
+  // so the narrow fires for the standalone case.
   const addlPropsMessage = schema['x-additionalProperties-message']
+  const unevalPropsRawMessage = schema['x-unevaluatedProperties-message']
 
   const propertyNamesNarrow = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -148,6 +152,25 @@ export function object(
           addlPropsMessage,
         )
       : ''
+  const unevaluatedPropertiesNarrow = (() => {
+    const u = schema.unevaluatedProperties
+    if (u === undefined || u === true) return ''
+    const declaredKeys = JSON.stringify(Object.keys(schema.properties ?? {}))
+    if (u === false) {
+      return narrowPredicate(
+        `Object.keys(o).every((k) => ${declaredKeys}.includes(k))`,
+        unevalPropsRawMessage,
+      )
+    }
+    if (typeof u === 'object') {
+      const s = ensureRuntime(arktype(u, rootName, isArktype, options))
+      return narrowPredicate(
+        `Object.entries(o).filter(([k]) => !${declaredKeys}.includes(k)).every(([,val]) => ${s}.allows(val))`,
+        unevalPropsRawMessage,
+      )
+    }
+    return ''
+  })()
 
   const ifThenElseNarrows = (() => {
     if (!schema.if) return [] as string[]
@@ -180,6 +203,7 @@ export function object(
     ...dependentRequiredNarrows,
     ...dependentSchemasNarrows,
     additionalPropertiesNarrow,
+    unevaluatedPropertiesNarrow,
     ...ifThenElseNarrows,
   ].filter((a) => a !== '')
 

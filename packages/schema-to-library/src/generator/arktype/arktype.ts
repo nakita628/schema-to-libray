@@ -177,8 +177,27 @@ export function arktype(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => arktype(s, rootName, isArktype, options))
-      const tupleExpr = `type([${items.join(',')}])`
-      return arktypeWrap(describeWithMessage(tupleExpr, schema['x-prefixItems-message']), schema)
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
+      // prefixItems. ArkType tuples reject extras by default; `unevaluatedItems`
+      // as a schema is represented as a trailing variadic `...rest[]`.
+      const u = schema.unevaluatedItems
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? (() => {
+              const rest = arktype(u, rootName, isArktype, options)
+              const restInner =
+                rest.startsWith('"') && rest.endsWith('"') ? rest.slice(1, -1) : rest
+              return `type([${items.join(',')},"...","${restInner}[]"])`
+            })()
+          : `type([${items.join(',')}])`
+      const baseTuple = arktypeWrap(
+        describeWithMessage(tupleExpr, schema['x-prefixItems-message']),
+        schema,
+      )
+      const unevalItemsMessage = schema['x-unevaluatedItems-message']
+      return u === false && unevalItemsMessage
+        ? `${baseTuple}.describe(${JSON.stringify(unevalItemsMessage)})`
+        : baseTuple
     }
     const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
     if (!isQuoted(items)) return arktypeWrap(`type(${items}).array()`, schema)
@@ -248,6 +267,8 @@ export function arktype(
           : undefined
       return [minNarrow, maxNarrow].filter((v): v is string => v !== undefined)
     })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
     const arrayExpr = containsNarrows.reduce((acc, narrow) => `${wrap(acc)}${narrow}`, uniqueExpr)
     return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }

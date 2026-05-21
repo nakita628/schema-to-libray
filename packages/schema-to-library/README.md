@@ -164,7 +164,7 @@ Each generator wires JSON Schema-style validation error messages into the target
 | Array       | `x-prefixItems-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-items-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Array       | `x-length-message`                |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Array       | `x-unevaluatedItems-message`      |     ⚪      |     ⚪      |     ⚪      |     ⚪      |     ✅      |
+| Array       | `x-unevaluatedItems-message`      |     ✅✦     |     ✅✦     |     ✅✦     |     ✅✦     |     ✅      |
 | Object      | `x-minProperties-message`         |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-maxProperties-message`         |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-additionalProperties-message`  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
@@ -173,18 +173,23 @@ Each generator wires JSON Schema-style validation error messages into the target
 | Object      | `x-dependentRequired-message`     |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-dependentSchemas-message`      |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Object      | `x-properties-message`            |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Object      | `x-unevaluatedProperties-message` |     ⚪      |     ⚪      |     ⚪      |     ⚪      |     ✅      |
+| Object      | `x-unevaluatedProperties-message` |     ✅✦     |     ✅✦     |    ✅✦⚑     |     ✅✦     |     ✅      |
 | Combinators | `x-allOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-anyOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Combinators | `x-oneOf-message`                 |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| Combinators | `x-not-message`                   |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
+| Combinators | `x-not-message`                   |     ✅      |     ✅      |     ✅      |     ✅      |     ✅✻     |
 | Combinators | `x-implication-message`           |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Conditional | `x-if-message`                    |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Conditional | `x-then-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
 | Conditional | `x-else-message`                  |     ✅      |     ✅      |     ✅      |     ✅      |     ✅      |
-| **Total**   |                                   | **37 / 39** | **37 / 39** | **37 / 39** | **37 / 39** | **39 / 39** |
+| **Total**   |                                   | **39 / 39** | **39 / 39** | **39 / 39** | **39 / 39** | **39 / 39** |
 
-Legend: ✅ = message wired into emission, ⚪ = type slot accepted but no generator-side emission yet (passes through `[k: string]: unknown`).
+Legend:
+
+- ✅ = message wired into the generator's emission path and surfaces at runtime
+- ✦ = standalone semantics only ([JSON Schema 2020-12 §11.3 / §11.4](https://json-schema.org/draft/2020-12/json-schema-core)); `allOf`/`anyOf`/`oneOf` annotation tracking is not implemented. `unevaluatedItems` requires `prefixItems` (with a single `items` schema the keyword is redundant per §11.3 and the message is a no-op)
+- ⚑ = Effect Schema surfaces the strict-extras rejection via `parseOptions:{onExcessProperty:"error"}` + the `message` annotation. The annotation lives at the schema level; default `TreeFormatter` shows the structural extras error rather than the custom string. Use `Schema.message` extraction or upgrade Effect's formatter to retrieve it
+- ✻ = cosmetic surface only; TypeBox's `Value.Check` does not evaluate the JSON Schema `not` keyword (emits `Type.Any({errorMessage:"..."})` for ajv-compatible downstream consumers — the message never fires under TypeBox's own validator)
 
 The translation strategy per generator:
 
