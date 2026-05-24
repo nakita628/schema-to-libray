@@ -48,6 +48,10 @@ export type XExtTransform = {
   /** Zod-only: `.catch(value)` — fall back to value on parse failure */
   readonly 'x-catch'?: unknown
 
+  // ── Fallback (Valibot-only) ──────────────────────────────────────
+  /** Valibot-only: `v.fallback(schema, value)` — fall back to value on parse failure */
+  readonly 'x-fallback'?: unknown
+
   // ── Format-option (Zod-only) ─────────────────────────────────────
   // No-op on validators without an equivalent format API.
   /** Zod-only: select the email regex preset for `format: email` */
