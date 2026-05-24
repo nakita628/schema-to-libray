@@ -508,7 +508,7 @@ describe('prefix-items-unevaluated', () => {
   it('invalid: too short', () => {
     const result = Tuple(['x'])
     expect(issues(result)).toStrictEqual([
-      { path: [], code: 'exactLength', message: 'must be exactly length 2 (was 1)' },
+      { path: [], code: 'minLength', message: 'must be at least length 2 (was 1)' },
     ])
   })
 
