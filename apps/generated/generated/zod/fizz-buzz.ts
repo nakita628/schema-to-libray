@@ -24,5 +24,3 @@ export const FizzBuzzString = z.object({
     'Buzz',
   ]),
 })
-
-export type FizzBuzzString = z.infer<typeof FizzBuzzString>

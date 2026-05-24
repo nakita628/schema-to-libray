@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
@@ -30,18 +30,25 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return arktype(schema, rootName, isArktype, options)
   }
 
   const errorMessage = schema['x-error-message']
-  const minimumMessage = schema['x-minimum-message']
-  const maximumMessage = schema['x-maximum-message']
-  const patternMessage = schema['x-pattern-message']
-  const propNamesMessage = schema['x-propertyNames-message'] ?? patternMessage
+  const minimumMessage = schema['x-minProperties-message']
+  const maximumMessage = schema['x-maxProperties-message']
+  // v3.0: dedicated x-patternProperties-message (split from x-pattern-message)
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const propNamesMessage = schema['x-propertyNames-message']
   const depReqMessage = schema['x-dependentRequired-message'] ?? errorMessage
+  const depSchMessage = schema['x-dependentSchemas-message'] ?? errorMessage
+  // x-additionalProperties-message / x-unevaluatedProperties-message: specific
+  // keyword takes precedence. ArkType's `type({...})` rejects extras by default,
+  // so the narrow fires for the standalone case.
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const unevalPropsRawMessage = schema['x-unevaluatedProperties-message']
 
   const propertyNamesNarrow = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -65,7 +72,7 @@ export function object(
           const s = ensureRuntime(arktype(propSchema, rootName, isArktype, options))
           return narrowPredicate(
             `Object.entries(o).every(([k, val]) => !new RegExp(${JSON.stringify(pattern)}).test(k) || ${s}.allows(val))`,
-            patternMessage,
+            patternPropsMessage,
           )
         })
       : []
@@ -128,6 +135,65 @@ export function object(
         return narrowPredicate(`!('${key}' in o) || (${depsCheck})`, depReqMessage)
       })
     : []
+  // v3.0: dependentSchemas — when key present, the whole object must
+  // additionally satisfy the named sub-schema.
+  const dependentSchemasNarrows: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = ensureRuntime(arktype(subSchema, rootName, isArktype, options))
+        return narrowPredicate(`!('${key}' in o) || ${s}.allows(o)`, depSchMessage)
+      })
+    : []
+  // v3.0: x-additionalProperties-message narrows extras-rejection
+  // when additionalProperties: false.
+  const additionalPropertiesNarrow =
+    schema.additionalProperties === false && addlPropsMessage
+      ? narrowPredicate(
+          `Object.keys(o).every((k) => ${JSON.stringify(Object.keys(schema.properties))}.includes(k))`,
+          addlPropsMessage,
+        )
+      : ''
+  const unevaluatedPropertiesNarrow = (() => {
+    const u = schema.unevaluatedProperties
+    if (u === undefined || u === true) return ''
+    const declaredKeys = JSON.stringify(Object.keys(schema.properties ?? {}))
+    if (u === false) {
+      return narrowPredicate(
+        `Object.keys(o).every((k) => ${declaredKeys}.includes(k))`,
+        unevalPropsRawMessage,
+      )
+    }
+    if (typeof u === 'object') {
+      const s = ensureRuntime(arktype(u, rootName, isArktype, options))
+      return narrowPredicate(
+        `Object.entries(o).filter(([k]) => !${declaredKeys}.includes(k)).every(([,val]) => ${s}.allows(val))`,
+        unevalPropsRawMessage,
+      )
+    }
+    return ''
+  })()
+
+  const ifThenElseNarrows = (() => {
+    if (!schema.if) return [] as string[]
+    const ifS = ensureRuntime(arktype(schema.if, rootName, isArktype, options))
+    const thenS = schema.then
+      ? ensureRuntime(arktype(schema.then, rootName, isArktype, options))
+      : undefined
+    const elseS = schema.else
+      ? ensureRuntime(arktype(schema.else, rootName, isArktype, options))
+      : undefined
+    if (!thenS && !elseS) return [] as string[]
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
+    const parts: string[] = []
+    if (thenS) {
+      parts.push(narrowPredicate(`!${ifS}.allows(o) || ${thenS}.allows(o)`, thenMessage))
+    }
+    if (elseS) {
+      parts.push(narrowPredicate(`${ifS}.allows(o) || ${elseS}.allows(o)`, elseMessage))
+    }
+    return parts
+  })()
 
   const narrows = [
     minPropertiesNarrow,
@@ -135,10 +201,20 @@ export function object(
     propertyNamesNarrow(),
     ...patternPropertiesNarrows(),
     ...dependentRequiredNarrows,
+    ...dependentSchemasNarrows,
+    additionalPropertiesNarrow,
+    unevaluatedPropertiesNarrow,
+    ...ifThenElseNarrows,
   ].filter((a) => a !== '')
 
-  if (narrows.length > 0) {
-    return composeNarrows(`type(${innerLiteral})`, narrows)
-  }
-  return isArktype ? innerLiteral : `type(${innerLiteral})`
+  const baseExpr =
+    narrows.length > 0
+      ? composeNarrows(`type(${innerLiteral})`, narrows)
+      : isArktype
+        ? innerLiteral
+        : `type(${innerLiteral})`
+  const propsMessage = schema['x-properties-message']
+  if (typeof propsMessage !== 'string') return baseExpr
+  const wrapped = baseExpr.startsWith('{') ? `type(${baseExpr})` : baseExpr
+  return `${wrapped}.describe(${JSON.stringify(propsMessage)})`
 }

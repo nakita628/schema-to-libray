@@ -57,8 +57,8 @@ describe('object', () => {
             required: ['a'],
             minProperties: 1,
             maxProperties: 3,
-            'x-minimum-message': 'too few',
-            'x-maximum-message': 'too many',
+            'x-minProperties-message': 'too few',
+            'x-maxProperties-message': 'too many',
           },
           'Schema',
           false,
@@ -198,6 +198,39 @@ describe('object', () => {
       ).toBe(
         'type({"a?":"string","b?":"string","c?":"string"}).narrow((o, ctx) => !(\'a\' in o) || (\'b\' in o && \'c\' in o) || ctx.mustBe("a needs b and c"))',
       )
+    })
+  })
+
+  describe('x-properties-message', () => {
+    it('attaches .describe to the object type', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe('type({a:"string"}).describe("bad props")')
+    })
+
+    it('composes with narrows from minProperties', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            minProperties: 1,
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe('type({a:"string"}).narrow((o) => Object.keys(o).length >= 1).describe("bad props")')
     })
   })
 })

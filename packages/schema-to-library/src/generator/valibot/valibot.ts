@@ -1,5 +1,5 @@
-import { valibotWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import { type CodeExtensionOptions, valibotWrap as _valibotWrap } from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -17,8 +17,26 @@ export function valibot(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isValibot: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const prependPipe = (prefix: readonly string[], inner: string): string => {
+    if (inner.startsWith('v.pipe(') && inner.endsWith(')')) {
+      const body = inner.slice('v.pipe('.length, -1)
+      return `v.pipe(${prefix.join(',')},${body})`
+    }
+    return `v.pipe(${prefix.join(',')},${inner})`
+  }
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const valibotWrap = (valibotStr: string, s: JSONSchema): string =>
+    _valibotWrap(valibotStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `v.pipe(${v},v.readonly())` : v)
 
   if (schema.$ref) {
@@ -87,7 +105,7 @@ export function valibot(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return valibotWrap('v.any()', schema)
     const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
-    const anyOfMessage = schema['x-anyOf-message']
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const errorPart = anyOfMessage ? `,${valibotError(anyOfMessage)}` : ''
     return valibotWrap(`v.union([${schemas.join(',')}]${errorPart})`, schema)
   }
@@ -113,7 +131,7 @@ export function valibot(
       ? (() => {
           const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
           const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-          return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const valid=v.safeParse(${intersected},dataset.value);if(!valid.success){for(const issue of valid.issues){addIssue({message:${msgExpr},path:issue.path})}}}))`
+          return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${intersected},dataset.value);if(!result.success){for(const issue of result.issues){addIssue({message:${msgExpr},path:issue.path})}}}))`
         })()
       : intersected
     if (defaultValue !== undefined) {
@@ -136,15 +154,15 @@ export function valibot(
     const custom = (predicate: string) =>
       valibotWrap(`v.custom<unknown>(${predicate}${errorPart})`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v) => typeof v !== 'string'`,
-      number: `(v) => typeof v !== 'number'`,
-      integer: `(v) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v) => typeof v !== 'boolean'`,
-      array: '(v) => !Array.isArray(v)',
-      object: `(v) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v) => v !== null',
+      string: `(val) => typeof val !== 'string'`,
+      number: `(val) => typeof val !== 'number'`,
+      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val) => typeof val !== 'boolean'`,
+      array: '(val) => !Array.isArray(val)',
+      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val) => val !== null',
     }
-    if ('const' in inner) return custom(`(v) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return custom(`(val) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return custom(predicate)
@@ -153,50 +171,146 @@ export function valibot(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
-      if (bodies.length > 0) return custom(`(v) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
+      if (bodies.length > 0) return custom(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return custom(`(v) => !${JSON.stringify(inner.enum)}.includes(v)`)
+      return custom(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
     }
     const innerExpr = valibot(inner, rootName, isValibot, options)
-    return custom(`(v) => !v.safeParse(${innerExpr},v).success`)
+    return custom(`(val) => !v.safeParse(${innerExpr},val).success`)
   }
 
-  if (schema.const !== undefined)
-    return valibotWrap(`v.literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.const !== undefined) {
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const errorPart = constMessage ? `,${valibotError(constMessage)}` : ''
+    return valibotWrap(`v.literal(${JSON.stringify(schema.const)}${errorPart})`, schema)
+  }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return valibotWrap(string(schema), schema)
-  if (types.includes('number')) return valibotWrap(number(schema), schema)
-  if (types.includes('integer')) return valibotWrap(integer(schema), schema)
-  if (types.includes('boolean')) return valibotWrap('v.boolean()', schema)
+  if (types.includes('number')) {
+    const base = number(schema)
+    if (isStringWireParam) {
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+    }
+    return valibotWrap(base, schema)
+  }
+  if (types.includes('integer')) {
+    const base = integer(schema)
+    if (isStringWireParam) {
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+    }
+    return valibotWrap(base, schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) {
+      return valibotWrap(
+        `v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))`,
+        schema,
+      )
+    }
+    return valibotWrap('v.boolean()', schema)
+  }
 
   if (types.includes('array')) {
+    const elementMessageWrap = (inner: string, msg: string) => {
+      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+      return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${inner},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
-      return readonly(valibotWrap(`v.tuple([${items.join(',')}])`, schema))
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies beyond prefixItems.
+      // `v.tuple` accepts extras by default; `v.strictTuple` rejects them.
+      // `unevaluatedItems: schema` → `v.tupleWithRest(...)`.
+      const u = schema.unevaluatedItems
+      const unevaluatedItemsMessage = schema['x-unevaluatedItems-message']
+      const unevaluatedItemsArg = unevaluatedItemsMessage
+        ? `,${valibotError(unevaluatedItemsMessage)}`
+        : ''
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? `v.tupleWithRest([${items.join(',')}],${valibot(u, rootName, isValibot, options)})`
+          : u === false
+            ? `v.strictTuple([${items.join(',')}]${unevaluatedItemsArg})`
+            : `v.tuple([${items.join(',')}])`
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const wrapped = prefixItemsMessage
+        ? elementMessageWrap(tupleExpr, prefixItemsMessage)
+        : tupleExpr
+      return readonly(valibotWrap(wrapped, schema))
     }
     const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
-    const base = `v.array(${items})`
+    const itemsMessage = schema['x-items-message']
+    const arrayBase = `v.array(${items})`
+    const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
+    // Per-keyword messages
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const minArg = minItemsMessage ? `,${valibotError(minItemsMessage)}` : ''
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
+    const maxArg = maxItemsMessage ? `,${valibotError(maxItemsMessage)}` : ''
+    const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
+    const sizeArg = tupleItemsMessage ? `,${valibotError(tupleItemsMessage)}` : ''
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueItemsMessage ? `,${valibotError(uniqueItemsMessage)}` : ''
+    // v3.0: contains / minContains / maxContains as separate checks
+    const containsActions = (() => {
+      const c = schema.contains
+      if (!c) return [] as readonly string[]
+      const containsSchema = valibot(c, rootName, isValibot, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const errorMessage = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMessage
+      const out: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const containsArg = fallback ? `,${valibotError(fallback)}` : ''
+        out.push(
+          `v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${containsArg})`,
+        )
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minContainsMessage = schema['x-minContains-message'] ?? fallback
+          const minContainsArg = minContainsMessage ? `,${valibotError(minContainsMessage)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minContainsArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
+          const maxContainsArg = maxContainsMessage ? `,${valibotError(maxContainsMessage)}` : ''
+          out.push(
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxContainsArg})`,
+          )
+        }
+      }
+      return out
+    })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
     const actions = [
-      isFixedLength ? `v.length(${schema.minItems})` : undefined,
+      isFixedLength ? `v.length(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `v.minLength(${schema.minItems})`
+        ? `v.minLength(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `v.maxLength(${schema.maxItems})`
+        ? `v.maxLength(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `v.check((items) => new Set(items).size === items.length)`
+        ? `v.check((items) => new Set(items).size === items.length${uniqueArg})`
         : undefined,
+      ...containsActions,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `v.pipe(${base},${actions.join(',')})` : base
     return readonly(valibotWrap(arrayExpr, schema))
@@ -204,7 +318,12 @@ export function valibot(
 
   if (types.includes('object'))
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
-  if (types.includes('date')) return valibotWrap('v.date()', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) {
+      return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema)
+    }
+    return valibotWrap('v.date()', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return valibotWrap('v.null()', schema)
 
   return valibotWrap('v.any()', schema)

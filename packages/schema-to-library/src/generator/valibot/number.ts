@@ -3,23 +3,41 @@ import { valibotError } from '../../utils/index.js'
 
 export function number(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
-  const baseErrorArg = errorMessage ? valibotError(errorMessage) : ''
+  const requiredMessage = schema['x-required-message']
+  const baseErrorArg = errorMessage
+    ? valibotError(errorMessage)
+    : requiredMessage
+      ? valibotError(requiredMessage)
+      : ''
   const minimumMessage = schema['x-minimum-message']
   const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maximum-message']
   const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
+  // v3.0: x-exclusiveMin/Max-message for valibot's gtValue / ltValue
+  const exMinMessage = schema['x-exclusiveMinimum-message']
+  const exMinErrorPart = exMinMessage ? `,${valibotError(exMinMessage)}` : ''
+  const exMaxMessage = schema['x-exclusiveMaximum-message']
+  const exMaxErrorPart = exMaxMessage ? `,${valibotError(exMaxMessage)}` : ''
   const multipleOfMessage = schema['x-multipleOf-message']
   const multipleOfErrorPart = multipleOfMessage ? `,${valibotError(multipleOfMessage)}` : ''
   const minimum = (() => {
-    if (schema.minimum !== undefined) return `v.minValue(${schema.minimum}${minErrorPart})`
+    if (schema.minimum !== undefined) {
+      return schema.exclusiveMinimum === true
+        ? `v.gtValue(${schema.minimum}${exMinErrorPart})`
+        : `v.minValue(${schema.minimum}${minErrorPart})`
+    }
     if (typeof schema.exclusiveMinimum === 'number')
-      return `v.minValue(${schema.exclusiveMinimum}${minErrorPart})`
+      return `v.gtValue(${schema.exclusiveMinimum}${exMinErrorPart})`
     return undefined
   })()
   const maximum = (() => {
-    if (schema.maximum !== undefined) return `v.maxValue(${schema.maximum}${maxErrorPart})`
+    if (schema.maximum !== undefined) {
+      return schema.exclusiveMaximum === true
+        ? `v.ltValue(${schema.maximum}${exMaxErrorPart})`
+        : `v.maxValue(${schema.maximum}${maxErrorPart})`
+    }
     if (typeof schema.exclusiveMaximum === 'number')
-      return `v.maxValue(${schema.exclusiveMaximum}${maxErrorPart})`
+      return `v.ltValue(${schema.exclusiveMaximum}${exMaxErrorPart})`
     return undefined
   })()
   const multipleOf =

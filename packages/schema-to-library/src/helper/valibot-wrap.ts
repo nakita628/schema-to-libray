@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
 /**
@@ -15,7 +16,11 @@ import { serializeJSValue } from './meta.js'
  * @see https://valibot.dev/api/metadata/
  * @see https://valibot.dev/api/description/
  */
-export function valibotWrap(valibotStr: string, schema: JSONSchema): string {
+export function valibotWrap(
+  valibotStr: string,
+  schema: JSONSchema,
+  options?: CodeExtensionOptions,
+): string {
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
     if (typeof value === 'number') return `${value}`
@@ -45,11 +50,25 @@ export function valibotWrap(valibotStr: string, schema: JSONSchema): string {
     actions.push(`v.metadata(${serializeJSValue(metaObj)})`)
   }
 
+  if (schema['x-readonly'] === true) {
+    actions.push('v.readonly()')
+  }
+
   const brand = schema['x-brand']
   if (typeof brand === 'string') {
     actions.push(`v.brand("${brand}")`)
   }
 
-  if (actions.length === 0) return withNullable
-  return `v.pipe(${withNullable},${actions.join(',')})`
+  const check = readCodeExtension(schema, 'x-check', options)
+  if (check) actions.push(check)
+  const transform = readCodeExtension(schema, 'x-transform', options)
+  if (transform) actions.push(transform)
+  const pipeExt = readCodeExtension(schema, 'x-pipe', options)
+  if (pipeExt) actions.push(pipeExt)
+
+  const piped = actions.length === 0 ? withNullable : `v.pipe(${withNullable},${actions.join(',')})`
+  if (schema['x-fallback'] !== undefined) {
+    return `v.fallback(${piped},${formatLiteral(schema['x-fallback'])})`
+  }
+  return piped
 }

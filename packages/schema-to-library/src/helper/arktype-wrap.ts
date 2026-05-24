@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 
 /**
  * Wraps an ArkType schema string with `.or("null")`, `.brand()` and
@@ -16,7 +17,11 @@ import type { JSONSchema } from '../parser/index.js'
  *
  * @see https://arktype.io/docs/configuration
  */
-export function arktypeWrap(arktypeStr: string, schema: JSONSchema): string {
+export function arktypeWrap(
+  arktypeStr: string,
+  schema: JSONSchema,
+  options?: CodeExtensionOptions,
+): string {
   const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
   const isNullable =
     schema.nullable === true ||
@@ -26,15 +31,30 @@ export function arktypeWrap(arktypeStr: string, schema: JSONSchema): string {
       ? `"${arktypeStr.slice(1, -1)} | null"`
       : `type(${arktypeStr}).or("null")`
     : arktypeStr
+  const withReadonly =
+    schema['x-readonly'] === true
+      ? isQuoted(withNullable)
+        ? `type(${withNullable}).readonly()`
+        : `${withNullable}.readonly()`
+      : withNullable
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string'
-      ? isQuoted(withNullable)
-        ? `type(${withNullable}).brand("${brand}")`
-        : `${withNullable}.brand("${brand}")`
-      : withNullable
+      ? isQuoted(withReadonly)
+        ? `type(${withReadonly}).brand("${brand}")`
+        : `${withReadonly}.brand("${brand}")`
+      : withReadonly
 
-  if (schema.description === undefined) return withBrand
-  const callable = isQuoted(withBrand) ? `type(${withBrand})` : withBrand
+  const narrow = readCodeExtension(schema, 'x-narrow', options)
+  const morph = readCodeExtension(schema, 'x-morph', options)
+  const pipeExt = readCodeExtension(schema, 'x-pipe', options)
+  const codeChain = [narrow, morph, pipeExt].filter((v): v is string => v !== undefined).join('')
+  const withCodeExts = codeChain
+    ? isQuoted(withBrand)
+      ? `type(${withBrand})${codeChain}`
+      : `${withBrand}${codeChain}`
+    : withBrand
+  if (schema.description === undefined) return withCodeExts
+  const callable = isQuoted(withCodeExts) ? `type(${withCodeExts})` : withCodeExts
   return `${callable}.describe(${JSON.stringify(schema.description)})`
 }

@@ -1,14 +1,33 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import {
+  hasNotKeyword,
+  NOT_KEYWORD_UNSUPPORTED_MARKER,
+  resolveSchemaDependenciesFromSchema,
+} from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
 export function schemaToTypebox(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
+  options?: {
+    exportType?: boolean
+    openapi?: boolean
+    readonly?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
-  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
-  const genOptions = { openapi, readonly: readonlyMode }
+  const {
+    exportType = true,
+    openapi = false,
+    readonly: readonlyMode = false,
+    paramIn,
+  } = options ?? {}
+  const genOptions = {
+    openapi,
+    readonly: readonlyMode,
+    ...(paramIn !== undefined && { paramIn }),
+  }
+  const notKeywordPresent = hasNotKeyword(schema)
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
@@ -47,6 +66,7 @@ export function schemaToTypebox(
 
   // Assemble output
   return [
+    ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
     `import { Type, type Static } from 'typebox'`,
     schemaDefsCode,
     rootExport,

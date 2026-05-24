@@ -1,5 +1,5 @@
 import { typeboxMetaOpts } from '../../helper/meta.js'
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
@@ -21,7 +21,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return typebox(schema, rootName, isTypebox, options)
@@ -59,9 +59,65 @@ export function object(
     })
     .filter((p) => p !== null)
 
+  // v3.0: aggregate all v3.0 object-related x-*-message extensions
+  // into a single ajv-errors–compatible `errorMessage` annotation.
+  const objectErrorMessageEntries: string[] = []
+  const objectErrorMessage = schema['x-error-message']
+  if (objectErrorMessage)
+    objectErrorMessageEntries.push(`type:${JSON.stringify(objectErrorMessage)}`)
+  const objectMinPropertiesMessage = schema['x-minProperties-message']
+  if (objectMinPropertiesMessage)
+    objectErrorMessageEntries.push(`minProperties:${JSON.stringify(objectMinPropertiesMessage)}`)
+  const objectMaxPropertiesMessage = schema['x-maxProperties-message']
+  if (objectMaxPropertiesMessage)
+    objectErrorMessageEntries.push(`maxProperties:${JSON.stringify(objectMaxPropertiesMessage)}`)
+  const objectAdditionalPropertiesMessage = schema['x-additionalProperties-message']
+  if (objectAdditionalPropertiesMessage)
+    objectErrorMessageEntries.push(
+      `additionalProperties:${JSON.stringify(objectAdditionalPropertiesMessage)}`,
+    )
+  const objectPropertyNamesMessage = schema['x-propertyNames-message']
+  if (objectPropertyNamesMessage)
+    objectErrorMessageEntries.push(`propertyNames:${JSON.stringify(objectPropertyNamesMessage)}`)
+  const objectPatternPropertiesMessage = schema['x-patternProperties-message']
+  if (objectPatternPropertiesMessage)
+    objectErrorMessageEntries.push(
+      `patternProperties:${JSON.stringify(objectPatternPropertiesMessage)}`,
+    )
+  const objectDependentRequiredMessage = schema['x-dependentRequired-message']
+  if (objectDependentRequiredMessage)
+    objectErrorMessageEntries.push(
+      `dependentRequired:${JSON.stringify(objectDependentRequiredMessage)}`,
+    )
+  const objectDependentSchemasMessage = schema['x-dependentSchemas-message']
+  if (objectDependentSchemasMessage)
+    objectErrorMessageEntries.push(
+      `dependentSchemas:${JSON.stringify(objectDependentSchemasMessage)}`,
+    )
+  const objectRequiredMessage = schema['x-required-message']
+  if (objectRequiredMessage)
+    objectErrorMessageEntries.push(`required:${JSON.stringify(objectRequiredMessage)}`)
+  const objectPropertiesMessage = schema['x-properties-message']
+  if (objectPropertiesMessage)
+    objectErrorMessageEntries.push(`properties:${JSON.stringify(objectPropertiesMessage)}`)
+  const objectIfMessage = schema['x-if-message']
+  const objectThenMessage = schema['x-then-message'] ?? objectIfMessage
+  if (objectThenMessage) objectErrorMessageEntries.push(`then:${JSON.stringify(objectThenMessage)}`)
+  const objectElseMessage = schema['x-else-message'] ?? objectIfMessage
+  if (objectElseMessage) objectErrorMessageEntries.push(`else:${JSON.stringify(objectElseMessage)}`)
+  const objectUnevaluatedPropertiesMessage = schema['x-unevaluatedProperties-message']
+  if (objectUnevaluatedPropertiesMessage)
+    objectErrorMessageEntries.push(
+      `unevaluatedProperties:${JSON.stringify(objectUnevaluatedPropertiesMessage)}`,
+    )
+  const objectErrorMessageField =
+    objectErrorMessageEntries.length > 0
+      ? `errorMessage:{${objectErrorMessageEntries.join(',')}}`
+      : undefined
   const optParts = [
     schema.additionalProperties === false ? 'additionalProperties:false' : undefined,
     ...buildAdvancedOpts(schema, rootName, isTypebox, options),
+    objectErrorMessageField,
     ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
   const opts = optParts.length > 0 ? `,{${optParts.join(',')}}` : ''
@@ -76,7 +132,7 @@ function buildAdvancedOpts(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ): readonly (string | undefined)[] {
   const propertyNamesOpt = schema.propertyNames
     ? `propertyNames:${typebox(schema.propertyNames, rootName, isTypebox, options)}`
@@ -94,11 +150,26 @@ function buildAdvancedOpts(
         .map(([key, deps]) => `${JSON.stringify(key)}:${JSON.stringify(deps)}`)
         .join(',')}}`
     : undefined
+  const ifOpt = schema.if ? `if:${typebox(schema.if, rootName, isTypebox, options)}` : undefined
+  const thenOpt = schema.then
+    ? `then:${typebox(schema.then, rootName, isTypebox, options)}`
+    : undefined
+  const elseOpt = schema.else
+    ? `else:${typebox(schema.else, rootName, isTypebox, options)}`
+    : undefined
+  const requiredOpt =
+    !schema.properties && Array.isArray(schema.required) && schema.required.length > 0
+      ? `required:${JSON.stringify(schema.required)}`
+      : undefined
   return [
     typeof schema.minProperties === 'number' ? `minProperties:${schema.minProperties}` : undefined,
     typeof schema.maxProperties === 'number' ? `maxProperties:${schema.maxProperties}` : undefined,
     propertyNamesOpt,
     patternPropertiesOpt,
     dependentRequiredOpt,
+    ifOpt,
+    thenOpt,
+    elseOpt,
+    requiredOpt,
   ]
 }

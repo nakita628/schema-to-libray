@@ -305,22 +305,22 @@ describe('valibot', () => {
 
   describe('not', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } }, "v.custom<unknown>((v) => typeof v !== 'string')"],
+      [{ not: { type: 'string' } }, "v.custom<unknown>((val) => typeof val !== 'string')"],
       [
         { not: { type: 'integer' } },
-        "v.custom<unknown>((v) => typeof v !== 'number' || !Number.isInteger(v))",
+        "v.custom<unknown>((val) => typeof val !== 'number' || !Number.isInteger(val))",
       ],
-      [{ not: { type: 'boolean' } }, "v.custom<unknown>((v) => typeof v !== 'boolean')"],
+      [{ not: { type: 'boolean' } }, "v.custom<unknown>((val) => typeof val !== 'boolean')"],
       [
         { not: { type: 'string' }, nullable: true },
-        "v.nullable(v.custom<unknown>((v) => typeof v !== 'string'))",
+        "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        "v.nullable(v.custom<unknown>((v) => typeof v !== 'string'))",
+        "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
-      [{ not: { const: 42 } }, 'v.custom<unknown>((v) => v !== 42)'],
-      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((v) => !["a","b"].includes(v))'],
+      [{ not: { const: 42 } }, 'v.custom<unknown>((val) => val !== 42)'],
+      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((val) => !["a","b"].includes(val))'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -450,8 +450,8 @@ describe('valibot', () => {
         [{ type: 'number', minimum: 100 }, 'v.pipe(v.number(),v.minValue(100))'],
         [{ type: 'number', maximum: 100 }, 'v.pipe(v.number(),v.maxValue(100))'],
         [{ type: 'number', maximum: 0 }, 'v.pipe(v.number(),v.maxValue(0))'],
-        [{ type: 'number', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.minValue(10))'],
-        [{ type: 'number', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.maxValue(10))'],
+        [{ type: 'number', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.gtValue(10))'],
+        [{ type: 'number', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.ltValue(10))'],
         [{ type: 'number', multipleOf: 2 }, 'v.pipe(v.number(),v.multipleOf(2))'],
         [{ type: 'number', default: 100 }, 'v.optional(v.number(),100)'],
         [
@@ -475,14 +475,8 @@ describe('valibot', () => {
         [{ type: 'integer', minimum: 0 }, 'v.pipe(v.number(),v.integer(),v.minValue(0))'],
         [{ type: 'integer', maximum: 100 }, 'v.pipe(v.number(),v.integer(),v.maxValue(100))'],
         [{ type: 'integer', maximum: 0 }, 'v.pipe(v.number(),v.integer(),v.maxValue(0))'],
-        [
-          { type: 'integer', exclusiveMinimum: 10 },
-          'v.pipe(v.number(),v.integer(),v.minValue(10))',
-        ],
-        [
-          { type: 'integer', exclusiveMaximum: 10 },
-          'v.pipe(v.number(),v.integer(),v.maxValue(10))',
-        ],
+        [{ type: 'integer', exclusiveMinimum: 10 }, 'v.pipe(v.number(),v.integer(),v.gtValue(10))'],
+        [{ type: 'integer', exclusiveMaximum: 10 }, 'v.pipe(v.number(),v.integer(),v.ltValue(10))'],
         [{ type: 'integer', multipleOf: 2 }, 'v.pipe(v.number(),v.integer(),v.multipleOf(2))'],
         [{ type: 'integer', default: 100 }, 'v.optional(v.pipe(v.number(),v.integer()),100)'],
         [
@@ -959,6 +953,206 @@ describe('valibot', () => {
       expect(
         valibot({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
       ).toBe('v.pipe(v.pipe(v.array(v.string()),v.minLength(1)),v.brand("Tags"))')
+    })
+  })
+
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('adds v.check action to the pipe', () => {
+      expect(
+        valibot(
+          { type: 'string', 'x-check': 'v.check((v) => v.length > 0, "non-empty")' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('v.pipe(v.string(),v.check((v) => v.length > 0, "non-empty"))')
+    })
+
+    it('adds v.transform action to the pipe', () => {
+      expect(
+        valibot(
+          { type: 'string', 'x-transform': 'v.transform((v) => v.toUpperCase())' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('v.pipe(v.string(),v.transform((v) => v.toUpperCase()))')
+    })
+
+    it('silently ignores x-check when flag is not set', () => {
+      expect(valibot({ type: 'string', 'x-check': 'v.check((v) => v.length > 0)' })).toBe(
+        'v.string()',
+      )
+    })
+
+    it('silently ignores denylisted values', () => {
+      expect(
+        valibot({ type: 'string', 'x-check': 'v.check(() => eval("x"))' }, 'Schema', false, unsafe),
+      ).toBe('v.string()')
+    })
+  })
+
+  describe('x-fallback', () => {
+    it('wraps a plain string with v.fallback()', () => {
+      expect(valibot({ type: 'string', 'x-fallback': 'guest' })).toBe(
+        'v.fallback(v.string(),"guest")',
+      )
+    })
+
+    it('wraps a numeric schema with v.fallback()', () => {
+      expect(valibot({ type: 'integer', minimum: 0, 'x-fallback': 0 })).toBe(
+        'v.fallback(v.pipe(v.number(),v.integer(),v.minValue(0)),0)',
+      )
+    })
+
+    it('wraps after v.brand() so brand is preserved on success path', () => {
+      expect(valibot({ type: 'string', 'x-brand': 'UserId', 'x-fallback': 'anon' })).toBe(
+        'v.fallback(v.pipe(v.string(),v.brand("UserId")),"anon")',
+      )
+    })
+
+    it('accepts boolean fallback value', () => {
+      expect(valibot({ type: 'boolean', 'x-fallback': false })).toBe(
+        'v.fallback(v.boolean(),false)',
+      )
+    })
+  })
+
+  describe('x-prefixItems-message', () => {
+    it('wraps tuple with rawCheck that rewrites element-level messages', () => {
+      expect(
+        valibot({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.tuple([v.string(),v.number()]),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:"bad tuple",path:issue.path})}else{addIssue(issue)}}}}))',
+      )
+    })
+
+    it('falls through to plain tuple when message is absent', () => {
+      expect(
+        valibot({ type: 'array', prefixItems: [{ type: 'string' }, { type: 'number' }] }),
+      ).toBe('v.tuple([v.string(),v.number()])')
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('wraps array with rawCheck that rewrites element-level messages', () => {
+      expect(
+        valibot({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe(
+        'v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.array(v.string()),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:"bad items",path:issue.path})}else{addIssue(issue)}}}}))',
+      )
+    })
+
+    it('preserves min/max chain after wrap', () => {
+      expect(
+        valibot({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 5,
+          'x-items-message': 'bad items',
+        }),
+      ).toBe(
+        'v.pipe(v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(v.array(v.string()),dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:"bad items",path:issue.path})}else{addIssue(issue)}}}})),v.minLength(1),v.maxLength(5))',
+      )
+    })
+  })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        valibot({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe('v.union([v.string(),v.number()],"implication failed")')
+    })
+  })
+
+  describe('x-length-message', () => {
+    it('falls back for minItems when x-minItems-message absent', () => {
+      expect(
+        valibot({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('v.pipe(v.array(v.string()),v.minLength(1,"bad length"))')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: integer → string transform', () => {
+      expect(valibot({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.integer())',
+      )
+    })
+
+    it('query: number → string transform', () => {
+      expect(valibot({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'v.pipe(v.string(),v.transform(Number),v.number())',
+      )
+    })
+
+    it("path: boolean → picklist('true'|'false') transform", () => {
+      expect(valibot({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        "v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))",
+      )
+    })
+
+    it('no paramIn: integer → v.pipe(v.number(),v.integer())', () => {
+      expect(valibot({ type: 'integer' })).toBe('v.pipe(v.number(),v.integer())')
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        valibot({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('v.pipe(v.number(),v.integer())')
+    })
+  })
+
+  describe('x-unevaluatedProperties-message', () => {
+    it('switches to v.strictObject with the message as second argument', () => {
+      expect(
+        valibot({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe('v.strictObject({a:v.string()},"no extras")')
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('emits v.strictTuple with the message when unevaluatedItems: false', () => {
+      expect(
+        valibot({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+          'x-unevaluatedItems-message': 'no extras',
+        }),
+      ).toBe('v.strictTuple([v.string(),v.boolean()],"no extras")')
+    })
+
+    it('emits v.tupleWithRest when unevaluatedItems is a schema', () => {
+      expect(
+        valibot({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe('v.tupleWithRest([v.string(),v.boolean()],v.pipe(v.number(),v.integer()))')
     })
   })
 })

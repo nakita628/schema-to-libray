@@ -56,7 +56,7 @@ describe('helper', () => {
     })
 
     it('should handle arrow function expression as-is', () => {
-      expect(zodError('(v) => `Expected ${v}`')).toBe('{error:(v) => `Expected ${v}`}')
+      expect(zodError('(val) => `Expected ${val}`')).toBe('{error:(val) => `Expected ${val}`}')
     })
 
     it('should handle arrow function with spaces', () => {

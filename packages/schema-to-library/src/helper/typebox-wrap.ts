@@ -24,5 +24,6 @@ export function typeboxWrap(typeboxStr: string, schema: JSONSchema): string {
     schema.default !== undefined
       ? `Type.Optional(${typeboxStr},{default:${formatLiteral(schema.default)}})`
       : typeboxStr
-  return isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
+  const withNullable = isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
+  return schema['x-readonly'] === true ? `Type.Readonly(${withNullable})` : withNullable
 }

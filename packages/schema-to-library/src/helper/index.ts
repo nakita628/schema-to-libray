@@ -1,4 +1,5 @@
 export * from './arktype-wrap.js'
+export * from './code-extensions.js'
 export * from './effect-wrap.js'
 export * from './meta.js'
 export * from './resolve-schema-dependencies-from-schema.js'

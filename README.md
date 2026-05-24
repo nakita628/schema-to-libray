@@ -6,8 +6,8 @@ npm install -D schema-to-library
 
 ## What is schema-to-library?
 
-**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a CLI tool that converts JSON Schema into code for validation libraries.
-It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions.
+**[schema-to-library](https://www.npmjs.com/package/schema-to-library)** is a library (with CLI) that converts JSON Schema into code for validation libraries.
+It helps you automatically generate type-safe validation schemas and TypeScript types from your existing schema definitions, either via the bundled CLI commands or programmatically by importing `schemaToZod` / `schemaToValibot` / `schemaToEffect` / `schemaToTypebox` / `schemaToArktype`.
 
 ## Supported Libraries
 
@@ -95,7 +95,7 @@ export const User = Schema.Struct({
 #### TypeBox
 
 ```ts
-import { Type, type Static } from '@sinclair/typebox'
+import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({
   name: Type.String(),

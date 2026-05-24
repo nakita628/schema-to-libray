@@ -106,28 +106,31 @@ describe('arktype', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { not: { type: 'string' } } as JSONSchema,
-        `type("unknown").narrow((v: unknown) => typeof v !== 'string')`,
+        `type("unknown").narrow((val: unknown) => typeof val !== 'string')`,
       ],
       [
         { not: { type: 'integer' } } as JSONSchema,
-        `type("unknown").narrow((v: unknown) => typeof v !== 'number' || !Number.isInteger(v))`,
+        `type("unknown").narrow((val: unknown) => typeof val !== 'number' || !Number.isInteger(val))`,
       ],
       [
         { not: { type: 'boolean' } } as JSONSchema,
-        `type("unknown").narrow((v: unknown) => typeof v !== 'boolean')`,
+        `type("unknown").narrow((val: unknown) => typeof val !== 'boolean')`,
       ],
       [
         { not: { type: 'string' }, nullable: true } as JSONSchema,
-        `type(type("unknown").narrow((v: unknown) => typeof v !== 'string')).or("null")`,
+        `type(type("unknown").narrow((val: unknown) => typeof val !== 'string')).or("null")`,
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        `type(type("unknown").narrow((v: unknown) => typeof v !== 'string')).or("null")`,
+        `type(type("unknown").narrow((val: unknown) => typeof val !== 'string')).or("null")`,
       ],
-      [{ not: { const: 42 } } as JSONSchema, `type("unknown").narrow((v: unknown) => v !== 42)`],
+      [
+        { not: { const: 42 } } as JSONSchema,
+        `type("unknown").narrow((val: unknown) => val !== 42)`,
+      ],
       [
         { not: { enum: ['a', 'b'] } } as JSONSchema,
-        `type("unknown").narrow((v: unknown) => !["a","b"].includes(v as never))`,
+        `type("unknown").narrow((val: unknown) => !["a","b"].includes(val as never))`,
       ],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
@@ -465,6 +468,38 @@ describe('arktype', () => {
     })
   })
 
+  describe('code-emitting extensions (unsafeCodeExtensions)', () => {
+    const unsafe = { unsafeCodeExtensions: true }
+
+    it('appends x-narrow chain after type literal', () => {
+      expect(
+        arktype(
+          { type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('type("string").narrow((v) => v.length > 0)')
+    })
+
+    it('silently ignores x-narrow when flag is not set', () => {
+      expect(arktype({ type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' })).toBe(
+        '"string"',
+      )
+    })
+
+    it('silently ignores denylisted code', () => {
+      expect(
+        arktype(
+          { type: 'string', 'x-narrow': '.narrow(() => eval("x"))' },
+          'Schema',
+          false,
+          unsafe,
+        ),
+      ).toBe('"string"')
+    })
+  })
+
   describe('x-brand', () => {
     it('should add .brand() for string', () => {
       expect(arktype({ type: 'string', 'x-brand': 'UserId' })).toBe(
@@ -505,6 +540,126 @@ describe('arktype', () => {
           'x-brand': 'User',
         }),
       ).toBe('type({name:"string"}).brand("User")')
+    })
+  })
+
+  describe('x-prefixItems-message', () => {
+    it('attaches .describe to the tuple type', () => {
+      expect(
+        arktype({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe('type(["string","number"]).describe("bad tuple")')
+    })
+
+    it('falls through to plain tuple when message is absent', () => {
+      expect(
+        arktype({ type: 'array', prefixItems: [{ type: 'string' }, { type: 'number' }] }),
+      ).toBe('type(["string","number"])')
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('attaches .describe to the array type', () => {
+      expect(
+        arktype({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe('type("string[]").describe("bad items")')
+    })
+
+    it('composes with min/max narrows', () => {
+      expect(
+        arktype({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-items-message': 'bad items',
+        }),
+      ).toBe('type("string[]").and(type("unknown[] >= 1")).describe("bad items")')
+    })
+  })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        arktype({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe('type("string | number").describe("implication failed")')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: number → "string.numeric.parse"', () => {
+      expect(arktype({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.numeric.parse"',
+      )
+    })
+
+    it('query: integer → "string.integer.parse"', () => {
+      expect(arktype({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.integer.parse"',
+      )
+    })
+
+    it("path: boolean → type(\"'true' | 'false'\").pipe", () => {
+      expect(arktype({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        `type("'true' | 'false'").pipe((s) => s === 'true')`,
+      )
+    })
+
+    it('query: date → "string.date.parse"', () => {
+      expect(arktype({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        '"string.date.parse"',
+      )
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        arktype({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('"number"')
+    })
+  })
+
+  describe('x-unevaluatedProperties-message', () => {
+    it('attaches the message to a narrow that rejects undeclared keys', () => {
+      expect(
+        arktype({
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          unevaluatedProperties: false,
+          'x-unevaluatedProperties-message': 'no extras',
+        }),
+      ).toBe(
+        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).every((k) => ["a"].includes(k)) || ctx.mustBe("no extras"))',
+      )
+    })
+  })
+
+  describe('x-unevaluatedItems-message (prefixItems tuple)', () => {
+    it('describes the tuple with the message when unevaluatedItems: false', () => {
+      expect(
+        arktype({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: false,
+          'x-unevaluatedItems-message': 'no extras',
+        }),
+      ).toBe('type(["string","boolean"]).describe("no extras")')
+    })
+
+    it('emits a variadic tuple when unevaluatedItems is a schema', () => {
+      expect(
+        arktype({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'boolean' }],
+          unevaluatedItems: { type: 'integer' },
+        }),
+      ).toBe('type(["string","boolean","...","number.integer[]"])')
     })
   })
 })

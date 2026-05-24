@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
 /**
@@ -15,7 +16,11 @@ import { serializeJSValue } from './meta.js'
  *
  * @see https://effect.website/docs/schema/annotations/
  */
-export function effectWrap(effectStr: string, schema: JSONSchema): string {
+export function effectWrap(
+  effectStr: string,
+  schema: JSONSchema,
+  options?: CodeExtensionOptions,
+): string {
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
     if (typeof value === 'number') return `${value}`
@@ -24,14 +29,23 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  const withDefault =
-    schema.default !== undefined
-      ? `Schema.optionalWith(${effectStr},{default:() => ${formatLiteral(schema.default)}})`
-      : effectStr
-  const withNullable = isNullable ? `Schema.NullOr(${withDefault})` : withDefault
+  // NullOr must wrap a Schema, not a PropertySignature. When both nullable and
+  // default are present, NullOr goes inside optionalWith so the inner argument
+  // is still a Schema and the outer optionalWith yields a valid PropertySignature.
+  const withNullable = isNullable ? `Schema.NullOr(${effectStr})` : effectStr
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string' ? `${withNullable}.pipe(Schema.brand("${brand}"))` : withNullable
+  const filter = readCodeExtension(schema, 'x-filter', options)
+  const transformExt = readCodeExtension(schema, 'x-transform', options)
+  const pipeExt = readCodeExtension(schema, 'x-pipe', options)
+  const codeChain = [filter, transformExt, pipeExt].filter((v): v is string => v !== undefined)
+  const withCodeExts = codeChain.length === 0 ? withBrand : `${withBrand}${codeChain.join('')}`
+  // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
+  const withDefault =
+    schema.default !== undefined
+      ? `Schema.optionalWith(${withCodeExts},{default:() => ${formatLiteral(schema.default)}})`
+      : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
@@ -45,6 +59,6 @@ export function effectWrap(effectStr: string, schema: JSONSchema): string {
   if (Object.keys(jsonSchemaAnn).length > 0) {
     ann.jsonSchema = jsonSchemaAnn
   }
-  if (Object.keys(ann).length === 0) return withBrand
-  return `${withBrand}.annotations(${serializeJSValue(ann)})`
+  if (Object.keys(ann).length === 0) return withDefault
+  return `${withDefault}.annotations(${serializeJSValue(ann)})`
 }

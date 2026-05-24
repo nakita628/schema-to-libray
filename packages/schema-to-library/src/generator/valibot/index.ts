@@ -1,5 +1,9 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import {
+  findCodeExtensionKeysInSchema,
+  resolveSchemaDependenciesFromSchema,
+  UNSAFE_GENERATED_MARKER,
+} from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
 import { valibot } from './valibot.js'
@@ -39,10 +43,29 @@ function hasSelfReference(schema: JSONSchema): boolean {
  */
 export function schemaToValibot(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
+  options?: {
+    exportType?: boolean
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
-  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
-  const genOptions = { openapi, readonly: readonlyMode }
+  const {
+    exportType = true,
+    openapi = false,
+    readonly: readonlyMode = false,
+    unsafeCodeExtensions = false,
+    paramIn,
+  } = options ?? {}
+  const genOptions = {
+    openapi,
+    readonly: readonlyMode,
+    unsafeCodeExtensions,
+    ...(paramIn !== undefined && { paramIn }),
+  }
+  const codeExtensionsPresent =
+    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
@@ -98,6 +121,7 @@ export function schemaToValibot(
 
   // Assemble output
   return [
+    ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     `import * as v from 'valibot'`,
     typeDefsCode,
     schemaDefsCode,

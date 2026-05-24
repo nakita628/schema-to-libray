@@ -1,13 +1,21 @@
 /**
- * Convert string to PascalCase (first character uppercase)
+ * Convert string to PascalCase (first character uppercase).
+ *
+ * When the input contains characters that are not valid in a TypeScript
+ * identifier (whitespace, dots, slashes, etc.) the input is routed through
+ * {@link toIdentifierPascalCase} so the generated variable name remains
+ * parseable. Hyphens and underscores are preserved for back-compat with
+ * upstream titles that already generated working code.
  *
  * @example
  * ```ts
- * toPascalCase('animal')      // 'Animal'
- * toPascalCase('userProfile') // 'UserProfile'
+ * toPascalCase('animal')                     // 'Animal'
+ * toPascalCase('userProfile')                // 'UserProfile'
+ * toPascalCase('Self-Referencing Entities')  // 'SelfReferencingEntities'
  * ```
  */
 export function toPascalCase(name: string) {
+  if (/[^A-Za-z0-9_-]/.test(name)) return toIdentifierPascalCase(name)
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
@@ -58,12 +66,29 @@ export function normalizeTypes(t?: string | readonly string[]) {
  * @example
  * ```ts
  * zodError('Name must be 3-20 characters') // '{error:"Name must be 3-20 characters"}'
- * zodError('(v) => `Expected ${v}`')        // '{error:(v) => `Expected ${v}`}'
+ * zodError('(val) => `Expected ${val}`')   // '{error:(val) => `Expected ${val}`}'
  * ```
  */
 export function zodError(message: string) {
   const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
   return isArrowExpression(message) ? `{error:${message}}` : `{error:${JSON.stringify(message)}}`
+}
+
+/**
+ * Build the base `{error:...}` argument for a Zod v4 schema constructor when
+ * `x-error-message` (type / generic) and/or `x-required-message`
+ * (`issue.input === undefined`) are present.
+ */
+export function zodBaseError(
+  typeMessage: string | undefined,
+  requiredMessage: string | undefined,
+): string {
+  if (typeMessage === undefined && requiredMessage === undefined) return ''
+  if (requiredMessage === undefined && typeMessage !== undefined) return zodError(typeMessage)
+  if (requiredMessage !== undefined && typeMessage === undefined) {
+    return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:undefined}`
+  }
+  return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:${JSON.stringify(typeMessage as string)}}`
 }
 
 /**

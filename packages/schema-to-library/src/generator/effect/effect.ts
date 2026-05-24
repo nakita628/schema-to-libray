@@ -1,5 +1,5 @@
-import { effectWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import { type CodeExtensionOptions, effectWrap as _effectWrap } from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   effectError,
   normalizeTypes,
@@ -26,8 +26,20 @@ export function effect(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isEffect: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const replaceBase = (inner: string, from: string, to: string): string => inner.replace(from, to)
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const effectWrap = (effectStr: string, s: JSONSchema): string =>
+    _effectWrap(effectStr, s, codeExtOpts)
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
@@ -92,7 +104,7 @@ export function effect(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
-    const anyOfMessage = schema['x-anyOf-message']
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const expr = `Schema.Union(${schemas.join(',')})`
     return effectWrap(
       anyOfMessage ? `${expr}.annotations(${effectError(anyOfMessage)})` : expr,
@@ -121,7 +133,7 @@ export function effect(
       ? (() => {
           const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
           const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const valid=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(valid)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(valid.right)},encode:ParseResult.succeed})`
+          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
         })()
       : intersected
     if (defaultValue !== undefined) {
@@ -130,8 +142,11 @@ export function effect(
         if (typeof value === 'number') return `${value}`
         return JSON.stringify(value)
       }
-      const withDefault = `Schema.optional(${baseResult},{default:() => ${formatLiteral(defaultValue)}})`
-      return nullable ? `Schema.NullOr(${withDefault})` : withDefault
+      // NullOr must wrap a Schema; optionalWith returns PropertySignature, so it
+      // must be the outermost wrap. Use Schema.optionalWith (Schema.optional with
+      // options is deprecated in Effect Schema 3.x).
+      const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
+      return `Schema.optionalWith(${withNullable},{default:() => ${formatLiteral(defaultValue)}})`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
@@ -144,15 +159,15 @@ export function effect(
     const filtered = (predicate: string) =>
       effectWrap(`Schema.Unknown.pipe(Schema.filter(${predicate}${filterOpts}))`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v) => typeof v !== 'string'`,
-      number: `(v) => typeof v !== 'number'`,
-      integer: `(v) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v) => typeof v !== 'boolean'`,
-      array: '(v) => !Array.isArray(v)',
-      object: `(v) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v) => v !== null',
+      string: `(val) => typeof val !== 'string'`,
+      number: `(val) => typeof val !== 'number'`,
+      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val) => typeof val !== 'boolean'`,
+      array: '(val) => !Array.isArray(val)',
+      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val) => val !== null',
     }
-    if ('const' in inner) return filtered(`(v) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return filtered(`(val) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return filtered(predicate)
@@ -161,50 +176,139 @@ export function effect(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v\) => /, '')})`)
-      if (bodies.length > 0) return filtered(`(v) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
+      if (bodies.length > 0) return filtered(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return filtered(`(v) => !${JSON.stringify(inner.enum)}.includes(v)`)
+      return filtered(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
     }
     return effectWrap('Schema.Unknown', schema)
   }
 
-  if (schema.const !== undefined)
-    return effectWrap(`Schema.Literal(${JSON.stringify(schema.const)})`, schema)
+  if (schema.const !== undefined) {
+    // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const literalCode = `Schema.Literal(${JSON.stringify(schema.const)})`
+    const withMessage = constMessage
+      ? `${literalCode}.annotations(${effectError(constMessage)})`
+      : literalCode
+    return effectWrap(withMessage, schema)
+  }
   if (schema.enum) return effectWrap(_enum(schema), schema)
   if (schema.properties) return effectWrap(object(schema, rootName, isEffect, options), schema)
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return effectWrap(string(schema), schema)
-  if (types.includes('number')) return effectWrap(number(schema), schema)
-  if (types.includes('integer')) return effectWrap(integer(schema), schema)
-  if (types.includes('boolean')) return effectWrap('Schema.Boolean', schema)
+  if (types.includes('number')) {
+    const base = number(schema)
+    if (isStringWireParam) {
+      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
+    }
+    return effectWrap(base, schema)
+  }
+  if (types.includes('integer')) {
+    const base = integer(schema)
+    if (isStringWireParam) {
+      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
+    }
+    return effectWrap(base, schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) return effectWrap('Schema.BooleanFromString', schema)
+    return effectWrap('Schema.Boolean', schema)
+  }
 
   if (types.includes('array')) {
+    const elementMessageWrap = (inner: string, msg: string) => {
+      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+      return `Schema.transformOrFail(Schema.Unknown,${inner},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${inner})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
+    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => effect(s, rootName, isEffect, options))
-      return effectWrap(`Schema.Tuple(${items.join(',')})`, schema)
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
+      // prefixItems. `false` → fixed tuple (default rejects extras);
+      // schema → `Schema.Tuple(prefix, Schema.Element(rest))` form via
+      // `Schema.NonEmptyTupleType` not supported in v3; use `Schema.Array` rest.
+      const u = schema.unevaluatedItems
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? `Schema.Tuple({elements:[${items.join(',')}],rest:[${effect(u, rootName, isEffect, options)}]})`
+          : `Schema.Tuple(${items.join(',')})`
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const wrapped = prefixItemsMessage
+        ? elementMessageWrap(tupleExpr, prefixItemsMessage)
+        : tupleExpr
+      return effectWrap(wrapped, schema)
     }
     const items = schema.items
       ? effect(schema.items, rootName, isEffect, options)
       : 'Schema.Unknown'
-    const base = `Schema.Array(${items})`
+    const itemsMessage = schema['x-items-message']
+    const arrayBase = `Schema.Array(${items})`
+    const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
+    // Per-keyword array messages
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const minArg = minItemsMessage ? `,${effectError(minItemsMessage)}` : ''
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
+    const maxArg = maxItemsMessage ? `,${effectError(maxItemsMessage)}` : ''
+    const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
+    const sizeArg = tupleItemsMessage ? `,${effectError(tupleItemsMessage)}` : ''
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueItemsMessage ? `,${effectError(uniqueItemsMessage)}` : ''
+    // v3.0: contains / minContains / maxContains as separate filters
+    const containsActions = (() => {
+      const c = schema.contains
+      if (!c) return [] as readonly string[]
+      const containsSchema = effect(c, rootName, isEffect, options)
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      const errorMessage = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMessage
+      const out: string[] = []
+      if (minC === undefined && maxC === undefined) {
+        const containsArg = fallback ? `,${effectError(fallback)}` : ''
+        out.push(
+          `Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${containsArg})`,
+        )
+      } else {
+        const effectiveMin = minC ?? 1
+        if (effectiveMin > 0) {
+          const minContainsMessage = schema['x-minContains-message'] ?? fallback
+          const minContainsArg = minContainsMessage ? `,${effectError(minContainsMessage)}` : ''
+          out.push(
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minContainsArg})`,
+          )
+        }
+        if (maxC !== undefined) {
+          const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
+          const maxContainsArg = maxContainsMessage ? `,${effectError(maxContainsMessage)}` : ''
+          out.push(
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxContainsArg})`,
+          )
+        }
+      }
+      return out
+    })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
     const actions = [
-      isFixedLength ? `Schema.itemsCount(${schema.minItems})` : undefined,
+      isFixedLength ? `Schema.itemsCount(${schema.minItems}${sizeArg})` : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `Schema.minItems(${schema.minItems})`
+        ? `Schema.minItems(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `Schema.maxItems(${schema.maxItems})`
+        ? `Schema.maxItems(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `Schema.filter((items) => new Set(items).size === items.length)`
+        ? `Schema.filter((items) => new Set(items).size === items.length${uniqueArg})`
         : undefined,
+      ...containsActions,
     ].filter((v) => v !== undefined)
     const arrayExpr = actions.length > 0 ? `${base}.pipe(${actions.join(',')})` : base
     return effectWrap(arrayExpr, schema)
@@ -212,7 +316,10 @@ export function effect(
 
   if (types.includes('object'))
     return effectWrap(object(schema, rootName, isEffect, options), schema)
-  if (types.includes('date')) return effectWrap('Schema.Date', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) return effectWrap('Schema.DateFromString', schema)
+    return effectWrap('Schema.Date', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return effectWrap('Schema.Null', schema)
 
   return effectWrap('Schema.Unknown', schema)

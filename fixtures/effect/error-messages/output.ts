@@ -12,7 +12,10 @@ export const User = Schema.Struct({
     Schema.lessThanOrEqualTo(120, { message: () => 'Age too large' }),
     Schema.multipleOf(1, { message: () => 'Age must be integer' }),
   ),
-  tags: Schema.Array(Schema.String).pipe(Schema.minItems(1), Schema.maxItems(5)),
+  tags: Schema.Array(Schema.String).pipe(
+    Schema.minItems(1, { message: () => 'Need at least one tag' }),
+    Schema.maxItems(5, { message: () => 'Too many tags' }),
+  ),
 })
 
 export type UserEncoded = typeof User.Encoded

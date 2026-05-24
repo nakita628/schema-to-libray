@@ -8,15 +8,15 @@ export const Merged = Schema.transformOrFail(
   ),
   {
     decode: (input, _opts, ast) => {
-      const valid = Schema.decodeUnknownEither(
+      const result = Schema.decodeUnknownEither(
         Schema.extend(
           Schema.Struct({ name: Schema.String.pipe(Schema.minLength(3)) }),
           Schema.Struct({ age: Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(0)) }),
         ),
       )(input)
-      return Either.isLeft(valid)
+      return Either.isLeft(result)
         ? ParseResult.fail(new ParseResult.Type(ast, input, 'merged validation failed'))
-        : ParseResult.succeed(valid.right)
+        : ParseResult.succeed(result.right)
     },
     encode: ParseResult.succeed,
   },

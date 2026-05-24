@@ -1,5 +1,5 @@
-import { arktypeWrap } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import { arktypeWrap as _arktypeWrap, type CodeExtensionOptions } from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
   resolveOpenAPIRef,
@@ -28,8 +28,17 @@ export function arktype(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isArktype: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: {
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
+  const codeExtOpts: CodeExtensionOptions =
+    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const arktypeWrap = (arktypeStr: string, s: JSONSchema): string =>
+    _arktypeWrap(arktypeStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
 
   if (schema.$ref) {
@@ -70,7 +79,8 @@ export function arktype(
   if (schema.anyOf) {
     if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
-    return arktypeWrap(describeWithMessage(unionStr(schemas), schema['x-anyOf-message']), schema)
+    const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
+    return arktypeWrap(describeWithMessage(unionStr(schemas), anyOfMessage), schema)
   }
 
   if (schema.allOf) {
@@ -101,15 +111,15 @@ export function arktype(
       return arktypeWrap(expr, schema)
     }
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(v: unknown) => typeof v !== 'string'`,
-      number: `(v: unknown) => typeof v !== 'number'`,
-      integer: `(v: unknown) => typeof v !== 'number' || !Number.isInteger(v)`,
-      boolean: `(v: unknown) => typeof v !== 'boolean'`,
-      array: '(v: unknown) => !Array.isArray(v)',
-      object: `(v: unknown) => typeof v !== 'object' || v === null || Array.isArray(v)`,
-      null: '(v: unknown) => v !== null',
+      string: `(val: unknown) => typeof val !== 'string'`,
+      number: `(val: unknown) => typeof val !== 'number'`,
+      integer: `(val: unknown) => typeof val !== 'number' || !Number.isInteger(val)`,
+      boolean: `(val: unknown) => typeof val !== 'boolean'`,
+      array: '(val: unknown) => !Array.isArray(val)',
+      object: `(val: unknown) => typeof val !== 'object' || val === null || Array.isArray(val)`,
+      null: '(val: unknown) => val !== null',
     }
-    if ('const' in inner) return narrow(`(v: unknown) => v !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return narrow(`(val: unknown) => val !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return narrow(predicate)
@@ -118,11 +128,11 @@ export function arktype(
       const bodies = inner.type
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(v: unknown\) => /, '')})`)
-      if (bodies.length > 0) return narrow(`(v: unknown) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(val: unknown\) => /, '')})`)
+      if (bodies.length > 0) return narrow(`(val: unknown) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return narrow(`(v: unknown) => !${JSON.stringify(inner.enum)}.includes(v as never)`)
+      return narrow(`(val: unknown) => !${JSON.stringify(inner.enum)}.includes(val as never)`)
     }
     return arktypeWrap('"unknown"', schema)
   }
@@ -133,25 +143,61 @@ export function arktype(
       if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
       return `"${JSON.stringify(value) ?? 'null'}"`
     }
-    return arktypeWrap(formatConst(schema.const), schema)
+    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    const constExpr = formatConst(schema.const)
+    if (constMessage) {
+      return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)
+    }
+    return arktypeWrap(constExpr, schema)
   }
   if (schema.enum) return arktypeWrap(_enum(schema), schema)
   if (schema.properties)
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
 
   const types = normalizeTypes(schema.type)
+  const isStringWireParam =
+    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
-  if (types.includes('number')) return arktypeWrap(number(schema), schema)
-  if (types.includes('integer')) return arktypeWrap(integer(schema), schema)
-  if (types.includes('boolean')) return arktypeWrap('"boolean"', schema)
+  if (types.includes('number')) {
+    if (isStringWireParam) return arktypeWrap('"string.numeric.parse"', schema)
+    return arktypeWrap(number(schema), schema)
+  }
+  if (types.includes('integer')) {
+    if (isStringWireParam) return arktypeWrap('"string.integer.parse"', schema)
+    return arktypeWrap(integer(schema), schema)
+  }
+  if (types.includes('boolean')) {
+    if (isStringWireParam) {
+      return arktypeWrap(`type("'true' | 'false'").pipe((s) => s === 'true')`, schema)
+    }
+    return arktypeWrap('"boolean"', schema)
+  }
 
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => arktype(s, rootName, isArktype, options))
-      const tupleExpr = items.every(isQuoted)
-        ? `"[${items.map((s) => s.slice(1, -1)).join(', ')}]"`
-        : `type([${items.join(',')}])`
-      return arktypeWrap(tupleExpr, schema)
+      // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
+      // prefixItems. ArkType tuples reject extras by default; `unevaluatedItems`
+      // as a schema is represented as a trailing variadic `...rest[]`.
+      const u = schema.unevaluatedItems
+      const tupleExpr =
+        u !== undefined && u !== true && typeof u === 'object'
+          ? (() => {
+              const rest = arktype(u, rootName, isArktype, options)
+              const restInner =
+                rest.startsWith('"') && rest.endsWith('"') ? rest.slice(1, -1) : rest
+              return `type([${items.join(',')},"...","${restInner}[]"])`
+            })()
+          : `type([${items.join(',')}])`
+      const baseTuple = arktypeWrap(
+        describeWithMessage(tupleExpr, schema['x-prefixItems-message']),
+        schema,
+      )
+      const unevalItemsMessage = schema['x-unevaluatedItems-message']
+      return u === false && unevalItemsMessage
+        ? `${baseTuple}.describe(${JSON.stringify(unevalItemsMessage)})`
+        : baseTuple
     }
     const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
     if (!isQuoted(items)) return arktypeWrap(`type(${items}).array()`, schema)
@@ -160,25 +206,79 @@ export function arktype(
     const { minItems, maxItems } = schema
     const isFixedLength =
       typeof minItems === 'number' && typeof maxItems === 'number' && minItems === maxItems
+    // Per-keyword array messages via .narrow() with ctx.mustBe.
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const containsMessage = schema['x-contains-message']
+    const minContainsMessage = schema['x-minContains-message']
+    const maxContainsMessage = schema['x-maxContains-message']
+    const fixedItemsMessage = minItemsMessage ?? maxItemsMessage
+    const hasArrayMessage =
+      minItemsMessage ||
+      maxItemsMessage ||
+      uniqueItemsMessage ||
+      containsMessage ||
+      minContainsMessage ||
+      maxContainsMessage
     const lengthExpr = isFixedLength
-      ? `type(${base}).and(type("unknown[] == ${minItems}"))`
+      ? hasArrayMessage
+        ? `type(${base}).narrow((items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)}))`
+        : `type(${base}).and(type("unknown[] == ${minItems}"))`
       : typeof minItems === 'number' && typeof maxItems === 'number'
-        ? `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
+        ? hasArrayMessage
+          ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
+          : `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
         : typeof minItems === 'number'
-          ? `type(${base}).and(type("unknown[] >= ${minItems}"))`
+          ? hasArrayMessage
+            ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)}))`
+            : `type(${base}).and(type("unknown[] >= ${minItems}"))`
           : typeof maxItems === 'number'
-            ? `type(${base}).and(type("unknown[] <= ${maxItems}"))`
+            ? hasArrayMessage
+              ? `type(${base}).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
+              : `type(${base}).and(type("unknown[] <= ${maxItems}"))`
             : base
-    const arrayExpr =
+    const uniqueExpr =
       schema.uniqueItems === true
-        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[]) => new Set(items).size === items.length)`
+        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''})`
         : lengthExpr
-    return arktypeWrap(arrayExpr, schema)
+    const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
+    const containsNarrows = ((): readonly string[] => {
+      if (!schema.contains) return []
+      const containsSchema = arktype(schema.contains, rootName, isArktype, options)
+      const containsRt = isQuoted(containsSchema) ? `type(${containsSchema})` : containsSchema
+      const minC = schema.minContains
+      const maxC = schema.maxContains
+      if (minC === undefined && maxC === undefined) {
+        const msg = containsMessage ?? 'must contain at least one matching item'
+        return [
+          `.narrow((arr: unknown[], ctx) => arr.some((i) => ${containsRt}.allows(i)) || ctx.mustBe(${JSON.stringify(msg)}))`,
+        ]
+      }
+      const effectiveMin = minC ?? 1
+      const minNarrow =
+        effectiveMin > 0
+          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(minContainsMessage ?? `must contain at least ${effectiveMin} matching items`)}))`
+          : undefined
+      const maxNarrow =
+        maxC !== undefined
+          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(maxContainsMessage ?? `must contain at most ${maxC} matching items`)}))`
+          : undefined
+      return [minNarrow, maxNarrow].filter((v): v is string => v !== undefined)
+    })()
+    // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
+    // JSON Schema 2020-12 §11.3 makes the keyword redundant.
+    const arrayExpr = containsNarrows.reduce((acc, narrow) => `${wrap(acc)}${narrow}`, uniqueExpr)
+    return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }
 
   if (types.includes('object'))
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
-  if (types.includes('date')) return arktypeWrap('"Date"', schema)
+  if (types.includes('date')) {
+    if (isStringWireParam) return arktypeWrap('"string.date.parse"', schema)
+    return arktypeWrap('"Date"', schema)
+  }
   if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 
   return arktypeWrap('"unknown"', schema)

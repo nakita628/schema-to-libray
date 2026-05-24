@@ -1,30 +1,48 @@
 import * as z from 'zod'
 
-type MemberType = {
-  userId: string
-  role: 'admin' | 'member' | 'guest'
-  joinedAt: string
-  invitedBy?: MemberType
-}
-type OrganizationType = {
+type _Organization = {
   id: string
   name: string
-  members?: MemberType[]
+  members?: _Member[]
   parent?: z.infer<typeof Organization>
 }
 
-export const Member: z.ZodType<MemberType> = z.strictObject({
-  userId: z.uuid(),
-  role: z.enum(['admin', 'member', 'guest']),
-  joinedAt: z.iso.datetime(),
-  invitedBy: z.lazy(() => Member).optional(),
-})
+type _Member = {
+  userId: string
+  role: 'admin' | 'member' | 'guest'
+  joinedAt: string
+  invitedBy?: _Member
+}
 
-export const Organization: z.ZodType<OrganizationType> = z.strictObject({
-  id: z.uuid(),
-  name: z.string().min(1),
-  members: z.array(z.lazy(() => Member)).optional(),
-  parent: z.lazy(() => Organization).optional(),
-})
+const Member: z.ZodType<_Member> = z
+  .strictObject({
+    userId: z.uuid().meta({ description: 'The unique identifier of the user.' }),
+    role: z
+      .enum(['admin', 'member', 'guest'])
+      .meta({ description: 'The role of the user in the organization.' }),
+    joinedAt: z.iso
+      .datetime()
+      .meta({ description: 'The timestamp when the user joined the organization.' }),
+    invitedBy: z
+      .lazy(() => Member)
+      .meta({ description: 'The member who invited this user (recursive reference).' })
+      .meta({ description: 'The member who invited this user (recursive reference).' })
+      .optional(),
+  })
+  .meta({ description: 'A person who is a member of the organization.' })
 
-export type Organization = z.infer<typeof Organization>
+export const Organization: z.ZodType<_Organization> = z
+  .strictObject({
+    id: z.uuid().meta({ description: 'The UUID of the organization.' }),
+    name: z.string().min(1).meta({ description: 'The name of the organization.' }),
+    members: z
+      .array(z.lazy(() => Member))
+      .meta({ description: 'A list of members belonging to the organization.' })
+      .optional(),
+    parent: z
+      .lazy(() => Organization)
+      .meta({ description: 'An optional reference to a parent organization (recursive).' })
+      .meta({ description: 'An optional reference to a parent organization (recursive).' })
+      .optional(),
+  })
+  .meta({ description: 'A recursive schema representing an organization and its members.' })

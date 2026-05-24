@@ -1,14 +1,38 @@
-import { resolveSchemaDependenciesFromSchema } from '../../helper/index.js'
-import type { JSONSchema } from '../../parser/index.js'
+import {
+  findCodeExtensionKeysInSchema,
+  resolveSchemaDependenciesFromSchema,
+  UNSAFE_GENERATED_MARKER,
+} from '../../helper/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
 export function schemaToArktype(
   schema: JSONSchema,
-  options?: { exportType?: boolean; openapi?: boolean; readonly?: boolean },
+  options?: {
+    exportType?: boolean
+    openapi?: boolean
+    readonly?: boolean
+    unsafeCodeExtensions?: boolean
+    paramIn?: ParamIn
+  },
 ): string {
-  const { exportType = true, openapi = false, readonly: readonlyMode = false } = options ?? {}
-  const genOptions = { openapi, readonly: readonlyMode }
+  const {
+    exportType = true,
+    openapi = false,
+    readonly: readonlyMode = false,
+    unsafeCodeExtensions = false,
+    paramIn,
+  } = options ?? {}
+  const genOptions = {
+    openapi,
+    readonly: readonlyMode,
+    unsafeCodeExtensions,
+    ...(paramIn !== undefined && { paramIn }),
+  }
+  const codeExtensionsPresent =
+    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
+  const prefix = codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
 
@@ -37,6 +61,7 @@ export function schemaToArktype(
       : [...defEntries, `${rootName}:${arktype(schema, rootName, true, genOptions)}`]
 
     return [
+      ...prefix,
       `import { scope } from "arktype"`,
       `const types = scope({${scopeEntries.join(',')}}).export()`,
       `export const ${rootName} = types.${rootName}`,
@@ -63,8 +88,9 @@ export function schemaToArktype(
     const innerName = `${rootName}Inner`
     const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
     const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-    const wrapped = `type('unknown').narrow((v, ctx) => {const valid = ${innerName}(v); if (valid instanceof type.errors) {for (const issue of valid) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
+    const wrapped = `type('unknown').narrow((val, ctx) => {const result = ${innerName}(val); if (result instanceof type.errors) {for (const issue of result) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
     return [
+      ...prefix,
       `import { type } from "arktype"`,
       `const ${innerName} = ${rootExpr}`,
       `export const ${rootName} = ${wrapped}`,
@@ -75,6 +101,7 @@ export function schemaToArktype(
   }
 
   return [
+    ...prefix,
     `import { type } from "arktype"`,
     `export const ${rootName} = ${rootExpr}`,
     ...(exportType ? [`export type ${rootName} = typeof ${rootName}.infer`] : []),

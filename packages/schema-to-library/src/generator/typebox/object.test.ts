@@ -144,4 +144,40 @@ describe('object', () => {
       )
     })
   })
+
+  describe('x-properties-message', () => {
+    it('aggregates into ajv-errors errorMessage.properties', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe('Type.Object({a:Type.String()},{errorMessage:{properties:"bad props"}})')
+    })
+
+    it('coexists with other ajv-errors keyword messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            minProperties: 1,
+            'x-properties-message': 'bad props',
+            'x-minProperties-message': 'too few',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'Type.Object({a:Type.String()},{minProperties:1,errorMessage:{minProperties:"too few",properties:"bad props"}})',
+      )
+    })
+  })
 })

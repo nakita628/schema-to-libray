@@ -38,7 +38,10 @@ export async function cli(
   if (!schemaResult.ok) {
     return { ok: false, error: schemaResult.error } as const
   }
-  const result = fn(schemaResult.value, { exportType, readonly: readonlyMode })
+  const result = fn(schemaResult.value, {
+    exportType,
+    readonly: readonlyMode,
+  })
   const fmtResult = await fmt(result)
   if (!fmtResult.ok) {
     return { ok: false, error: fmtResult.error } as const

@@ -8,8 +8,9 @@ import { schemaToZod } from './generator/zod/index.js'
 const HELP_TEXT = `Usage: schema-to-zod <input.{json,yaml}> -o <output.ts>
 
 Options:
-  --export-type        include type export in output
-  -h, --help           display help for command`
+  --export-type   include type export in output
+  --readonly      generate readonly types
+  -h, --help      display help for command`
 
 /**
  * Main entry point for the schema-to-zod CLI tool
@@ -19,7 +20,8 @@ Options:
 void cli(schemaToZod, HELP_TEXT).then((result) => {
   if (result?.ok) {
     console.log(result.value)
-  } else {
-    console.error(result?.error)
+    return
   }
+  console.error(result?.error)
+  process.exit(1)
 })

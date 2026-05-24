@@ -147,30 +147,27 @@ describe('typebox', () => {
     })
   })
 
-  describe('not', () => {
+  describe('not (TypeBox v1 has no runtime Type.Not — falls back to Type.Any())', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ not: { type: 'string' } } as JSONSchema, 'Type.Not(Type.String())'],
-      [{ not: { type: 'integer' } } as JSONSchema, 'Type.Not(Type.Integer())'],
-      [{ not: { type: 'boolean' } } as JSONSchema, 'Type.Not(Type.Boolean())'],
-      [{ not: { type: 'number' } } as JSONSchema, 'Type.Not(Type.Number())'],
+      [{ not: { type: 'string' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'integer' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'boolean' } } as JSONSchema, 'Type.Any()'],
+      [{ not: { type: 'number' } } as JSONSchema, 'Type.Any()'],
       [
         { not: { type: 'string' }, nullable: true } as JSONSchema,
-        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+        'Type.Union([Type.Any(),Type.Null()])',
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        'Type.Union([Type.Not(Type.String()),Type.Null()])',
+        'Type.Union([Type.Any(),Type.Null()])',
       ],
       [
         {
           not: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
         } as JSONSchema,
-        'Type.Not(Type.Object({a:Type.String()}))',
+        'Type.Any()',
       ],
-      [
-        { not: { enum: ['admin', 'root'] } } as JSONSchema,
-        'Type.Not(Type.Union([Type.Literal("admin"),Type.Literal("root")]))',
-      ],
+      [{ not: { enum: ['admin', 'root'] } } as JSONSchema, 'Type.Any()'],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })
@@ -629,6 +626,101 @@ describe('typebox', () => {
 
     it('should not wrap string', () => {
       expect(typebox({ type: 'string' }, 'Schema', false, { readonly: true })).toBe('Type.String()')
+    })
+  })
+
+  describe('x-prefixItems-message', () => {
+    it('emits errorMessage.prefixItems and errorMessage.items for ajv-errors compatibility', () => {
+      expect(
+        typebox({
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          'x-prefixItems-message': 'bad tuple',
+        }),
+      ).toBe(
+        'Type.Tuple([Type.String(),Type.Number()],{errorMessage:{prefixItems:"bad tuple",items:"bad tuple"}})',
+      )
+    })
+  })
+
+  describe('x-items-message', () => {
+    it('emits errorMessage.items for ajv-errors compatibility', () => {
+      expect(
+        typebox({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
+      ).toBe('Type.Array(Type.String(),{errorMessage:{items:"bad items"}})')
+    })
+
+    it('coexists with other array errorMessage entries', () => {
+      expect(
+        typebox({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-items-message': 'bad items',
+          'x-minItems-message': 'too few',
+        }),
+      ).toBe(
+        'Type.Array(Type.String(),{minItems:1,errorMessage:{minItems:"too few",items:"bad items"}})',
+      )
+    })
+  })
+
+  describe('x-implication-message', () => {
+    it('takes precedence over x-anyOf-message', () => {
+      expect(
+        typebox({
+          anyOf: [{ type: 'string' }, { type: 'number' }],
+          'x-anyOf-message': 'any',
+          'x-implication-message': 'implication failed',
+        } as JSONSchema),
+      ).toBe('Type.Union([Type.String(),Type.Number()],{errorMessage:"implication failed"})')
+    })
+  })
+
+  describe('x-length-message', () => {
+    it('falls back for minItems when x-minItems-message absent', () => {
+      expect(
+        typebox({
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          'x-length-message': 'bad length',
+        }),
+      ).toBe('Type.Array(Type.String(),{minItems:1,errorMessage:{minItems:"bad length"}})')
+    })
+  })
+
+  describe('paramIn coercion', () => {
+    it('query: number → Type.Transform decode Number', () => {
+      expect(typebox({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'Type.Transform(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))',
+      )
+    })
+
+    it("path: boolean → Type.Transform decode 'true'|'false'", () => {
+      expect(typebox({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        "Type.Transform(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')",
+      )
+    })
+
+    it('query: date → Type.Transform decode new Date', () => {
+      expect(typebox({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'Type.Transform(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
+      )
+    })
+
+    it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
+      expect(
+        typebox({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('Type.Number()')
+    })
+  })
+
+  describe('x-not-message', () => {
+    it('rides through Type.Any errorMessage for ajv-compatible downstreams', () => {
+      expect(
+        typebox({ type: 'string', not: { type: 'number' }, 'x-not-message': 'cannot be number' }),
+      ).toBe('Type.Any({errorMessage:"cannot be number"})')
     })
   })
 })

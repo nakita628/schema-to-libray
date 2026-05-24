@@ -2,15 +2,15 @@ import * as z from 'zod'
 
 export const Merged = (() => {
   const Schema = z.intersection(
-    z.object({ name: z.string().min(3, { error: 'name must be at least 3 chars' }) }),
+    z.object({ name: z.string().min(3) }),
     z.object({ age: z.int().min(0, { error: 'age must be >= 0' }) }),
   )
   return z
     .unknown()
     .check((ctx) => {
-      const valid = Schema.safeParse(ctx.value)
-      if (!valid.success) {
-        for (const issue of valid.error.issues) {
+      const result = Schema.safeParse(ctx.value)
+      if (!result.success) {
+        for (const issue of result.error.issues) {
           if (issue.code === 'invalid_type') {
             ctx.issues.push({ ...issue, input: issue.input, message: 'merged validation failed' })
           } else if (issue.code === 'too_big') {

@@ -1,4 +1,4 @@
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey, valibotError } from '../../utils/index.js'
 import { valibot } from './valibot.js'
 
@@ -19,7 +19,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean,
-  options?: { openapi?: boolean; readonly?: boolean },
+  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return valibot(schema, rootName, isValibot, options)
@@ -27,18 +27,26 @@ export function object(
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
-  const minimumMessage = schema['x-minimum-message']
+  const minimumMessage = schema['x-minProperties-message']
   const minErrorArg = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
-  const maximumMessage = schema['x-maximum-message']
+  const maximumMessage = schema['x-maxProperties-message']
   const maxErrorArg = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
-  const patternMessage = schema['x-pattern-message']
-  const patternErrorArg = patternMessage ? `,${valibotError(patternMessage)}` : ''
+  // v3.0: 1 keyword = 1 message
+  const patternPropsMessage = schema['x-patternProperties-message']
+  const patternErrorArg = patternPropsMessage ? `,${valibotError(patternPropsMessage)}` : ''
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage
-    ? `,${valibotError(propNamesMessage)}`
-    : patternErrorArg
+  const propNamesErrorArg = propNamesMessage ? `,${valibotError(propNamesMessage)}` : ''
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${valibotError(depReqMessage)}` : errorArg
+  const depSchMessage = schema['x-dependentSchemas-message']
+  const depSchErrorArg = depSchMessage ? `,${valibotError(depSchMessage)}` : errorArg
+  // x-additionalProperties-message / x-unevaluatedProperties-message both
+  // attach to the strictObject "extra key" rejection. Specific keyword takes
+  // precedence (additionalProperties > unevaluatedProperties).
+  const addlPropsMessage = schema['x-additionalProperties-message']
+  const unevalPropsMessage =
+    schema.unevaluatedProperties === false ? schema['x-unevaluatedProperties-message'] : undefined
+  const strictExtrasMessage = addlPropsMessage ?? unevalPropsMessage
 
   const propertyNamesCheck = (): string => {
     if (schema.propertyNames?.pattern) {
@@ -66,16 +74,24 @@ export function object(
   }
 
   if (!schema.properties) {
+    if (schema.patternProperties) {
+      const record = `v.record(v.string(),v.unknown())`
+      const actions = [propertyNamesCheck(), ...patternPropertiesChecks()].filter((a) => a !== '')
+      return actions.length > 0 ? `v.pipe(${record},${actions.join(',')})` : record
+    }
     if (schema.additionalProperties === true) return 'v.any()'
     return 'v.object({})'
   }
 
+  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
   const objectKind =
     schema.additionalProperties === true
       ? 'looseObject'
-      : schema.additionalProperties === false
+      : schema.additionalProperties === false || schema.unevaluatedProperties === false
         ? 'strictObject'
-        : 'object'
+        : conditionalKeysReferenced
+          ? 'looseObject'
+          : 'object'
   const required = Array.isArray(schema.required) ? schema.required : []
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
@@ -87,12 +103,25 @@ export function object(
     })
     .filter((p) => p !== null)
 
-  const partialBase =
+  // `v.strictObject(entries, message)` surfaces the custom message on extras.
+  const strictMessageArg =
+    objectKind === 'strictObject' && strictExtrasMessage
+      ? `,${valibotError(strictExtrasMessage)}`
+      : ''
+  const rawBase =
     required.length === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
-          .join(',')}}))`
-      : `v.${objectKind}({${props.join(',')}})`
+          .join(',')}}${strictMessageArg}))`
+      : `v.${objectKind}({${props.join(',')}}${strictMessageArg})`
+  const propsMessage = schema['x-properties-message']
+  const partialBase = propsMessage
+    ? (() => {
+        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
+        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${rawBase},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+      })()
+    : rawBase
 
   const minPropertiesCheck =
     typeof schema.minProperties === 'number'
@@ -108,6 +137,41 @@ export function object(
         return `v.check((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
       })
     : []
+  // v3.0: dependentSchemas
+  const dependentSchemasChecks: readonly string[] = schema.dependentSchemas
+    ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
+        const s = valibot(subSchema, rootName, isValibot, options)
+        return `v.check((o)=>!('${key}' in o)||v.safeParse(${s},o).success${depSchErrorArg})`
+      })
+    : []
+  // Extras rejection is wired into `v.strictObject` directly via its second
+  // argument (see `strictMessageArg` above). No separate check needed.
+  const additionalPropertiesCheck = ''
+  // v3.0: if/then/else (Draft-07+)
+  const ifThenElseChecks = (() => {
+    if (!schema.if) return [] as string[]
+    const ifSchema = valibot(schema.if, rootName, isValibot, options)
+    const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
+    const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
+    if (!thenSchema && !elseSchema) return [] as string[]
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
+    const parts: string[] = []
+    if (thenSchema) {
+      const arg = thenMessage ? `,${valibotError(thenMessage)}` : ''
+      parts.push(
+        `v.check((o)=>!v.safeParse(${ifSchema},o).success||v.safeParse(${thenSchema},o).success${arg})`,
+      )
+    }
+    if (elseSchema) {
+      const arg = elseMessage ? `,${valibotError(elseMessage)}` : ''
+      parts.push(
+        `v.check((o)=>v.safeParse(${ifSchema},o).success||v.safeParse(${elseSchema},o).success${arg})`,
+      )
+    }
+    return parts
+  })()
 
   const actions = [
     minPropertiesCheck,
@@ -115,6 +179,9 @@ export function object(
     propertyNamesCheck(),
     ...patternPropertiesChecks(),
     ...dependentRequiredChecks,
+    ...dependentSchemasChecks,
+    additionalPropertiesCheck,
+    ...ifThenElseChecks,
   ].filter((a) => a !== '')
 
   return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase

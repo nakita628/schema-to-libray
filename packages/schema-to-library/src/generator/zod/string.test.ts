@@ -25,6 +25,7 @@ describe('string', () => {
     [{ type: 'string', format: 'ulid' }, 'z.ulid()'],
     [{ type: 'string', format: 'ipv4' }, 'z.ipv4()'],
     [{ type: 'string', format: 'ipv6' }, 'z.ipv6()'],
+    [{ type: 'string', format: 'mac' }, 'z.mac()'],
     [{ type: 'string', format: 'cidrv4' }, 'z.cidrv4()'],
     [{ type: 'string', format: 'cidrv6' }, 'z.cidrv6()'],
     [{ type: 'string', format: 'date' }, 'z.iso.date()'],
@@ -63,8 +64,8 @@ describe('string', () => {
           type: 'string',
           minLength: 3,
           maxLength: 20,
-          'x-minimum-message': 'Min 3 chars',
-          'x-maximum-message': 'Max 20 chars',
+          'x-minLength-message': 'Min 3 chars',
+          'x-maxLength-message': 'Max 20 chars',
         },
         'z.string().min(3,{error:"Min 3 chars"}).max(20,{error:"Max 20 chars"})',
       ],
@@ -73,10 +74,213 @@ describe('string', () => {
           type: 'string',
           minLength: 10,
           maxLength: 10,
-          'x-size-message': 'Must be exactly 10 characters',
+          'x-minLength-message': 'Must be exactly 10 characters',
+          'x-maxLength-message': 'Must be exactly 10 characters',
         },
         'z.string().length(10,{error:"Must be exactly 10 characters"})',
       ],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('format-specific options', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'html5' },
+        'z.email({pattern:z.regexes.html5Email})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'browser' },
+        'z.email({pattern:z.regexes.browserEmail})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailPattern': 'unicode' },
+        'z.email({pattern:z.regexes.unicodeEmail})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '^[a-z]+@example\\.com$' },
+        'z.email({pattern:/^[a-z]+@example\\.com$/})',
+      ],
+      [
+        {
+          type: 'string',
+          format: 'email',
+          'x-emailPattern': 'html5',
+          'x-error-message': 'Invalid email',
+        },
+        'z.email({pattern:z.regexes.html5Email,error:"Invalid email"})',
+      ],
+      [{ type: 'string', format: 'uuid', 'x-uuidVersion': 'v7' }, 'z.uuid({version:"v7"})'],
+      [{ type: 'string', format: 'uuid', 'x-uuidVersion': 'v4' }, 'z.uuid({version:"v4"})'],
+      [
+        { type: 'string', format: 'uri', 'x-urlProtocol': '^https$' },
+        'z.url({protocol:/^https$/})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlHostname': '^[a-z.]+$' },
+        'z.url({hostname:/^[a-z.]+$/})',
+      ],
+      [{ type: 'string', format: 'uri', 'x-urlNormalize': true }, 'z.url({normalize:true})'],
+      [{ type: 'string', format: 'uri', 'x-urlNormalize': false }, 'z.url({normalize:false})'],
+      [
+        {
+          type: 'string',
+          format: 'uri',
+          'x-urlProtocol': '^https$',
+          'x-urlNormalize': true,
+        },
+        'z.url({protocol:/^https$/,normalize:true})',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoPrecision': 3 },
+        'z.iso.datetime({precision:3})',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoOffset': true },
+        'z.iso.datetime({offset:true})',
+      ],
+      [{ type: 'string', format: 'date-time', 'x-isoLocal': true }, 'z.iso.datetime({local:true})'],
+      [
+        {
+          type: 'string',
+          format: 'date-time',
+          'x-isoPrecision': 3,
+          'x-isoOffset': true,
+          'x-isoLocal': false,
+        },
+        'z.iso.datetime({precision:3,offset:true,local:false})',
+      ],
+      [{ type: 'string', format: 'jwt', 'x-jwtAlg': 'HS256' }, 'z.jwt({alg:"HS256"})'],
+      [
+        {
+          type: 'string',
+          format: 'jwt',
+          'x-jwtAlg': 'HS256',
+          'x-error-message': 'Invalid token',
+        },
+        'z.jwt({alg:"HS256",error:"Invalid token"})',
+      ],
+      [{ type: 'string', format: 'mac', 'x-macDelimiter': ':' }, 'z.mac({delimiter:":"})'],
+      [{ type: 'string', format: 'mac', 'x-macDelimiter': '-' }, 'z.mac({delimiter:"-"})'],
+      [
+        {
+          type: 'string',
+          format: 'mac',
+          'x-macDelimiter': ':',
+          'x-error-message': 'Invalid MAC',
+        },
+        'z.mac({delimiter:":",error:"Invalid MAC"})',
+      ],
+      [{ type: 'string', format: 'hash', 'x-hashAlg': 'sha256' }, 'z.hash("sha256")'],
+      [{ type: 'string', format: 'hash', 'x-hashAlg': 'md5' }, 'z.hash("md5")'],
+      [
+        { type: 'string', format: 'hash', 'x-hashAlg': 'sha256', 'x-hashEnc': 'hex' },
+        'z.hash("sha256",{enc:"hex"})',
+      ],
+      [
+        { type: 'string', format: 'hash', 'x-hashAlg': 'sha512', 'x-hashEnc': 'base64url' },
+        'z.hash("sha512",{enc:"base64url"})',
+      ],
+      [
+        {
+          type: 'string',
+          format: 'hash',
+          'x-hashAlg': 'sha256',
+          'x-hashEnc': 'hex',
+          'x-error-message': 'Invalid digest',
+        },
+        'z.hash("sha256",{enc:"hex",error:"Invalid digest"})',
+      ],
+      [{ type: 'string', format: 'hash' }, 'z.string()'],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('declarative behavior extensions', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'string', 'x-trim': true }, 'z.string().trim()'],
+      [{ type: 'string', 'x-toLowerCase': true }, 'z.string().toLowerCase()'],
+      [{ type: 'string', 'x-toUpperCase': true }, 'z.string().toUpperCase()'],
+      [{ type: 'string', 'x-normalize': 'NFC' }, 'z.string().normalize("NFC")'],
+      [{ type: 'string', 'x-normalize': 'NFKC' }, 'z.string().normalize("NFKC")'],
+      [{ type: 'string', 'x-startsWith': 'https://' }, 'z.string().startsWith("https://")'],
+      [{ type: 'string', 'x-endsWith': '.com' }, 'z.string().endsWith(".com")'],
+      [{ type: 'string', 'x-includes': '/api/' }, 'z.string().includes("/api/")'],
+      [
+        { type: 'string', 'x-trim': true, 'x-toLowerCase': true },
+        'z.string().trim().toLowerCase()',
+      ],
+      [{ type: 'string', format: 'email', 'x-toLowerCase': true }, 'z.email().toLowerCase()'],
+      [
+        { type: 'string', 'x-startsWith': 'https://', 'x-endsWith': '.com' },
+        'z.string().startsWith("https://").endsWith(".com")',
+      ],
+      [{ type: 'string', 'x-lowercase': true }, 'z.string().lowercase()'],
+      [{ type: 'string', 'x-uppercase': true }, 'z.string().uppercase()'],
+      [
+        { type: 'string', 'x-toLowerCase': true, 'x-lowercase': true },
+        'z.string().toLowerCase().lowercase()',
+      ],
+      [
+        { type: 'string', 'x-toUpperCase': true, 'x-uppercase': true },
+        'z.string().toUpperCase().uppercase()',
+      ],
+    ])('string(%o) → %s', (input, expected) => {
+      expect(string(input)).toBe(expected)
+    })
+  })
+
+  describe('x-stringbool', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'string', 'x-stringbool': true }, 'z.stringbool()'],
+      [{ type: 'string', 'x-stringbool': {} }, 'z.stringbool()'],
+      [
+        { type: 'string', 'x-stringbool': true, 'x-error-message': 'Must be "true" or "false"' },
+        'z.stringbool({error:"Must be \\"true\\" or \\"false\\""})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { truthy: ['yes'], falsy: ['no'] } },
+        'z.stringbool({truthy:["yes"],falsy:["no"]})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { case: 'sensitive' } },
+        'z.stringbool({case:"sensitive"})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': { case: 'insensitive' } },
+        'z.stringbool({case:"insensitive"})',
+      ],
+      [
+        {
+          type: 'string',
+          'x-stringbool': {
+            truthy: ['yes', 'y'],
+            falsy: ['no', 'n'],
+            case: 'sensitive',
+            error: 'bad flag',
+          },
+        },
+        'z.stringbool({truthy:["yes","y"],falsy:["no","n"],case:"sensitive",error:"bad flag"})',
+      ],
+      [
+        {
+          type: 'string',
+          'x-stringbool': { error: 'inner wins' },
+          'x-error-message': 'outer loses',
+        },
+        'z.stringbool({error:"inner wins"})',
+      ],
+      [
+        { type: 'string', 'x-stringbool': true, 'x-coerce': true, format: 'email' },
+        'z.stringbool()',
+      ],
+      [
+        { type: 'string', 'x-stringbool': true, minLength: 1, maxLength: 10, pattern: '^a$' },
+        'z.stringbool()',
+      ],
+      [{ type: 'string', 'x-stringbool': false }, 'z.string()'],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)
     })

@@ -1,5 +1,14 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser'
 
+import type { XExtCode } from './x-ext/code.js'
+import type { XExtMessages } from './x-ext/messages.js'
+import type { XExtTransform } from './x-ext/transform.js'
+
+export type { XExtCode } from './x-ext/code.js'
+export type { XExtMessages } from './x-ext/messages.js'
+export type { XExtTransform } from './x-ext/transform.js'
+export type { ParamIn } from './x-ext/param.js'
+
 /**
  * Parse and resolve a JSON Schema file using @apidevtools/json-schema-ref-parser.
  *
@@ -15,10 +24,20 @@ import $RefParser from '@apidevtools/json-schema-ref-parser'
  * @param input - File path to JSON/YAML schema
  * @returns Bundled JSON Schema or error
  */
+function isJSONSchema(value: unknown): value is JSONSchema {
+  return typeof value === 'object' && value !== null
+}
+
 export async function parseSchemaFile(input: string) {
   try {
     const schema = await $RefParser.bundle(input)
-    return { ok: true, value: schema as JSONSchema } as const
+    if (!isJSONSchema(schema)) {
+      return {
+        ok: false,
+        error: 'Failed to parse schema: bundle did not return an object',
+      } as const
+    }
+    return { ok: true, value: schema } as const
   } catch (e) {
     return {
       ok: false,
@@ -108,7 +127,7 @@ export type JSONSchemaFormat =
  * @see https://json-schema.org/draft/2020-12/json-schema-core
  * @see https://json-schema.org/draft/2020-12/json-schema-validation
  */
-export type JSONSchema = {
+type JSONSchemaCore = {
   // ── Core (Draft 2020-12) ──────────────────────────────────────────
   /** JSON Schema dialect identifier */
   readonly $schema?: string
@@ -211,7 +230,7 @@ export type JSONSchema = {
   /** Array item schema */
   readonly items?: JSONSchema
   /** Positional item schemas (Draft 2020-12) */
-  readonly prefixItems?: JSONSchema[]
+  readonly prefixItems?: readonly JSONSchema[]
   /** Contains constraint */
   readonly contains?: JSONSchema
   /** Minimum number of items */
@@ -229,11 +248,11 @@ export type JSONSchema = {
 
   // ── Composition ───────────────────────────────────────────────────
   /** Must match all schemas */
-  readonly allOf?: JSONSchema[]
+  readonly allOf?: readonly JSONSchema[]
   /** Must match at least one schema */
-  readonly anyOf?: JSONSchema[]
+  readonly anyOf?: readonly JSONSchema[]
   /** Must match exactly one schema */
-  readonly oneOf?: JSONSchema[]
+  readonly oneOf?: readonly JSONSchema[]
   /** Must not match the schema */
   readonly not?: JSONSchema
 
@@ -267,40 +286,11 @@ export type JSONSchema = {
     readonly description?: string
   }
 
-  // ── Vendor Extensions (x-*) ──────────────────────────────────────
-  /** General error message */
-  readonly 'x-error-message'?: string
-  /** Pattern validation error message */
-  readonly 'x-pattern-message'?: string
-  /** Minimum constraint error message */
-  readonly 'x-minimum-message'?: string
-  /** Maximum constraint error message */
-  readonly 'x-maximum-message'?: string
-  /** Size constraint error message */
-  readonly 'x-size-message'?: string
-  /** MultipleOf constraint error message */
-  'x-multipleOf-message'?: string
-  /** oneOf combinator error message */
-  readonly 'x-oneOf-message'?: string
-  /** anyOf combinator error message */
-  readonly 'x-anyOf-message'?: string
-  /** allOf combinator error message */
-  readonly 'x-allOf-message'?: string
-  /** not combinator error message */
-  readonly 'x-not-message'?: string
-  /** propertyNames constraint error message */
-  readonly 'x-propertyNames-message'?: string
-  /** dependentRequired constraint error message */
-  readonly 'x-dependentRequired-message'?: string
-  // x-enum-error-messages was removed: by design `enum` lists *allowed*
-  // values, so a per-value "cannot be ..." message is dead code — when the
-  // input matches an enum entry, validation passes (no error to display);
-  // when it doesn't match, it's some other value and per-value lookup
-  // can't fire. Use `x-error-message` for the whole-enum message instead.
-
   // ── Draft-04 Compatibility ────────────────────────────────────────
   /** Schema name (non-standard) */
   readonly name?: string
   /** Allow additional properties via index signature */
   readonly [k: string]: unknown
 }
+
+export type JSONSchema = JSONSchemaCore & XExtMessages & XExtTransform & XExtCode

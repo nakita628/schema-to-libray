@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
 /**
@@ -6,16 +7,18 @@ import { serializeJSValue } from './meta.js'
  * and a single Zod v4 metadata chain (`.meta({ ... })`) based on the JSON
  * Schema's `default` / `nullable` / `x-brand` and OpenAPI metadata fields.
  *
- * All metadata fields (`description`, `examples`/`example`, `deprecated`,
- * `externalDocs`, `readOnly`, `writeOnly`) are consolidated into a single
- * `.meta({...})` call. Per Zod v4, `.describe(text)` is functionally
- * identical to `.meta({description: text})` (both register into
- * `z.globalRegistry`); using a single `.meta()` keeps generated code
- * consistent regardless of which fields are present.
+ * When `options.unsafeCodeExtensions` is true, chain-term extensions
+ * (`x-refine` / `x-transform` / `x-pipe`) are appended between brand and
+ * meta, and the outermost extensions (`x-codec` / `x-preprocess`) replace
+ * the final result with their raw expression value.
  *
  * @see https://zod.dev/metadata
  */
-export function zodWrap(zodStr: string, schema: JSONSchema): string {
+export function zodWrap(
+  zodStr: string,
+  schema: JSONSchema,
+  options?: CodeExtensionOptions,
+): string {
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
     if (typeof value === 'number') {
@@ -33,8 +36,24 @@ export function zodWrap(zodStr: string, schema: JSONSchema): string {
   const withDefault =
     schema.default !== undefined ? `${zodStr}.default(${formatLiteral(schema.default)})` : zodStr
   const withNullable = isNullable ? `${withDefault}.nullable()` : withDefault
+  const withReadonly = schema['x-readonly'] === true ? `${withNullable}.readonly()` : withNullable
+  const withPrefault =
+    schema['x-prefault'] !== undefined
+      ? `${withReadonly}.prefault(${formatLiteral(schema['x-prefault'])})`
+      : withReadonly
+  const withCatch =
+    schema['x-catch'] !== undefined
+      ? `${withPrefault}.catch(${formatLiteral(schema['x-catch'])})`
+      : withPrefault
   const brand = schema['x-brand']
-  const withBrand = typeof brand === 'string' ? `${withNullable}.brand<"${brand}">()` : withNullable
+  const withBrand = typeof brand === 'string' ? `${withCatch}.brand<"${brand}">()` : withCatch
+
+  const refine = readCodeExtension(schema, 'x-refine', options)
+  const transform = readCodeExtension(schema, 'x-transform', options)
+  const pipe = readCodeExtension(schema, 'x-pipe', options)
+  const withRefine = refine ? `${withBrand}${refine}` : withBrand
+  const withTransform = transform ? `${withRefine}${transform}` : withRefine
+  const withPipe = pipe ? `${withTransform}${pipe}` : withTransform
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const metaObj: Record<string, unknown> = {}
@@ -44,6 +63,12 @@ export function zodWrap(zodStr: string, schema: JSONSchema): string {
   if (schema.externalDocs !== undefined) metaObj.externalDocs = schema.externalDocs
   if (schema.readOnly !== undefined) metaObj.readOnly = schema.readOnly
   if (schema.writeOnly !== undefined) metaObj.writeOnly = schema.writeOnly
-  if (Object.keys(metaObj).length === 0) return withBrand
-  return `${withBrand}.meta(${serializeJSValue(metaObj)})`
+  const withMeta =
+    Object.keys(metaObj).length === 0 ? withPipe : `${withPipe}.meta(${serializeJSValue(metaObj)})`
+
+  const codec = readCodeExtension(schema, 'x-codec', options)
+  const preprocess = readCodeExtension(schema, 'x-preprocess', options)
+  if (codec) return codec
+  if (preprocess) return preprocess
+  return withMeta
 }

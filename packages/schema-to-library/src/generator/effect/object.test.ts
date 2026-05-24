@@ -64,8 +64,8 @@ describe('object', () => {
             required: ['a'],
             minProperties: 1,
             maxProperties: 3,
-            'x-minimum-message': 'too few',
-            'x-maximum-message': 'too many',
+            'x-minProperties-message': 'too few',
+            'x-maxProperties-message': 'too many',
           },
           'Schema',
           false,
@@ -204,6 +204,25 @@ describe('object', () => {
         ),
       ).toBe(
         "Schema.partial(Schema.Struct({a:Schema.String,b:Schema.String,c:Schema.String})).pipe(Schema.filter((o)=>!('a' in o)||('b' in o&&'c' in o),{message:()=>\"a needs b and c\"}))",
+      )
+    })
+  })
+
+  describe('x-properties-message', () => {
+    it('wraps struct with transformOrFail that rewrites property-level messages', () => {
+      expect(
+        object(
+          {
+            type: 'object',
+            properties: { a: { type: 'string' } },
+            required: ['a'],
+            'x-properties-message': 'bad props',
+          },
+          'Schema',
+          false,
+        ),
+      ).toBe(
+        'Schema.transformOrFail(Schema.Unknown,Schema.Struct({a:Schema.String}),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Struct({a:Schema.String}))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad props")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
       )
     })
   })
