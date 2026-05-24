@@ -278,6 +278,30 @@ describe('zod', () => {
           },
           'z.intersection(z.object({a:z.string()}),z.object({b:z.string()})).nullable()',
         ],
+        // 3+ element allOf is left-folded into nested binary intersections because
+        // Zod's `z.intersection(a, b)` API is strictly 2-ary.
+        // Flat `z.intersection(a, b, c)` was emitted before but errored at runtime.
+        [
+          {
+            allOf: [
+              { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+              { type: 'object', required: ['b'], properties: { b: { type: 'string' } } },
+              { type: 'object', required: ['c'], properties: { c: { type: 'string' } } },
+            ],
+          },
+          'z.intersection(z.intersection(z.object({a:z.string()}),z.object({b:z.string()})),z.object({c:z.string()}))',
+        ],
+        [
+          {
+            allOf: [
+              { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+              { type: 'object', required: ['b'], properties: { b: { type: 'string' } } },
+              { type: 'object', required: ['c'], properties: { c: { type: 'string' } } },
+              { type: 'object', required: ['d'], properties: { d: { type: 'string' } } },
+            ],
+          },
+          'z.intersection(z.intersection(z.intersection(z.object({a:z.string()}),z.object({b:z.string()})),z.object({c:z.string()})),z.object({d:z.string()}))',
+        ],
       ])('zod(%o) → %s', (input, expected) => {
         expect(zod(input)).toBe(expected)
       })

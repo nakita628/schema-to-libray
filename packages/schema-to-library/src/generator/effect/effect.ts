@@ -127,7 +127,8 @@ export function effect(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => effect(s, rootName, isEffect, options))
     if (!schemas.length) return effectWrap('Schema.Unknown', { ...schema, nullable })
-    const intersected = schemas.length === 1 ? schemas[0] : `Schema.extend(${schemas.join(',')})`
+    const intersected =
+      schemas.length === 1 ? schemas[0] : schemas.reduce((acc, s) => `Schema.extend(${acc},${s})`)
     const allOfMessage = schema['x-allOf-message']
     const baseResult = allOfMessage
       ? (() => {

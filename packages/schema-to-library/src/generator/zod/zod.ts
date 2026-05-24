@@ -128,7 +128,8 @@ export function zod(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => zod(s, rootName, isZod, options))
     if (!schemas.length) return zodWrap('z.any()', { ...schema, nullable })
-    const intersected = schemas.length === 1 ? schemas[0] : `z.intersection(${schemas.join(',')})`
+    const intersected =
+      schemas.length === 1 ? schemas[0] : schemas.reduce((acc, s) => `z.intersection(${acc},${s})`)
     const allOfMessage = schema['x-allOf-message']
     const baseResult = allOfMessage
       ? (() => {

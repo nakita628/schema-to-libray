@@ -244,6 +244,30 @@ describe('effect', () => {
         },
         'Schema.optionalWith(Schema.Struct({a:Schema.String}),{default:() => "hello"})',
       ],
+      // 3+ element allOf is left-folded into nested binary Schema.extend because
+      // effect's `Schema.extend(a, b)` API is strictly 2-ary.
+      // Flat `Schema.extend(a, b, c)` was emitted before but errored at runtime.
+      [
+        {
+          allOf: [
+            { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+            { type: 'object', required: ['b'], properties: { b: { type: 'string' } } },
+            { type: 'object', required: ['c'], properties: { c: { type: 'string' } } },
+          ],
+        },
+        'Schema.extend(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})),Schema.Struct({c:Schema.String}))',
+      ],
+      [
+        {
+          allOf: [
+            { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+            { type: 'object', required: ['b'], properties: { b: { type: 'string' } } },
+            { type: 'object', required: ['c'], properties: { c: { type: 'string' } } },
+            { type: 'object', required: ['d'], properties: { d: { type: 'string' } } },
+          ],
+        },
+        'Schema.extend(Schema.extend(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})),Schema.Struct({c:Schema.String})),Schema.Struct({d:Schema.String}))',
+      ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })
