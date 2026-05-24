@@ -229,36 +229,40 @@ export function valibot(
       // `v.tuple` accepts extras by default; `v.strictTuple` rejects them.
       // `unevaluatedItems: schema` → `v.tupleWithRest(...)`.
       const u = schema.unevaluatedItems
-      const unevalItemsMsg = schema['x-unevaluatedItems-message']
-      const unevalItemsArg = unevalItemsMsg ? `,${valibotError(unevalItemsMsg)}` : ''
+      const unevaluatedItemsMessage = schema['x-unevaluatedItems-message']
+      const unevaluatedItemsArg = unevaluatedItemsMessage
+        ? `,${valibotError(unevaluatedItemsMessage)}`
+        : ''
       const tupleExpr =
         u !== undefined && u !== true && typeof u === 'object'
           ? `v.tupleWithRest([${items.join(',')}],${valibot(u, rootName, isValibot, options)})`
           : u === false
-            ? `v.strictTuple([${items.join(',')}]${unevalItemsArg})`
+            ? `v.strictTuple([${items.join(',')}]${unevaluatedItemsArg})`
             : `v.tuple([${items.join(',')}])`
-      const prefixMsg = schema['x-prefixItems-message']
-      const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const wrapped = prefixItemsMessage
+        ? elementMessageWrap(tupleExpr, prefixItemsMessage)
+        : tupleExpr
       return readonly(valibotWrap(wrapped, schema))
     }
     const items = schema.items ? valibot(schema.items, rootName, isValibot, options) : 'v.any()'
-    const itemsMsg = schema['x-items-message']
+    const itemsMessage = schema['x-items-message']
     const arrayBase = `v.array(${items})`
-    const base = itemsMsg ? elementMessageWrap(arrayBase, itemsMsg) : arrayBase
+    const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
     // Per-keyword messages
-    const lengthMsg = schema['x-length-message']
-    const minItemsMsg = schema['x-minItems-message'] ?? lengthMsg
-    const minArg = minItemsMsg ? `,${valibotError(minItemsMsg)}` : ''
-    const maxItemsMsg = schema['x-maxItems-message'] ?? lengthMsg
-    const maxArg = maxItemsMsg ? `,${valibotError(maxItemsMsg)}` : ''
-    const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
-    const sizeArg = fixedItemsMsg ? `,${valibotError(fixedItemsMsg)}` : ''
-    const uniqueMsg = schema['x-uniqueItems-message']
-    const uniqueArg = uniqueMsg ? `,${valibotError(uniqueMsg)}` : ''
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const minArg = minItemsMessage ? `,${valibotError(minItemsMessage)}` : ''
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
+    const maxArg = maxItemsMessage ? `,${valibotError(maxItemsMessage)}` : ''
+    const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
+    const sizeArg = tupleItemsMessage ? `,${valibotError(tupleItemsMessage)}` : ''
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueItemsMessage ? `,${valibotError(uniqueItemsMessage)}` : ''
     // v3.0: contains / minContains / maxContains as separate checks
     const containsActions = (() => {
       const c = schema.contains
@@ -266,26 +270,28 @@ export function valibot(
       const containsSchema = valibot(c, rootName, isValibot, options)
       const minC = schema.minContains
       const maxC = schema.maxContains
-      const errorMsg = schema['x-error-message']
-      const fallback = schema['x-contains-message'] ?? errorMsg
+      const errorMessage = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMessage
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
-        const msg = fallback ? `,${valibotError(fallback)}` : ''
-        out.push(`v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${msg})`)
+        const containsArg = fallback ? `,${valibotError(fallback)}` : ''
+        out.push(
+          `v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${containsArg})`,
+        )
       } else {
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {
-          const minMsg = schema['x-minContains-message'] ?? fallback
-          const minMsgArg = minMsg ? `,${valibotError(minMsg)}` : ''
+          const minContainsMessage = schema['x-minContains-message'] ?? fallback
+          const minContainsArg = minContainsMessage ? `,${valibotError(minContainsMessage)}` : ''
           out.push(
-            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minMsgArg})`,
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
-          const maxMsg = schema['x-maxContains-message'] ?? fallback
-          const maxMsgArg = maxMsg ? `,${valibotError(maxMsg)}` : ''
+          const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
+          const maxContainsArg = maxContainsMessage ? `,${valibotError(maxContainsMessage)}` : ''
           out.push(
-            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxMsgArg})`,
+            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxContainsArg})`,
           )
         }
       }

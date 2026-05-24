@@ -199,10 +199,10 @@ export function typebox(
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
-      const prefixMsg = schema['x-prefixItems-message']
-      const tupleOpts = prefixMsg
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const tupleOpts = prefixItemsMessage
         ? [
-            `errorMessage:{prefixItems:${JSON.stringify(prefixMsg)},items:${JSON.stringify(prefixMsg)}}`,
+            `errorMessage:{prefixItems:${JSON.stringify(prefixItemsMessage)},items:${JSON.stringify(prefixItemsMessage)}}`,
           ]
         : []
       return readonly(
@@ -211,38 +211,48 @@ export function typebox(
     }
     const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
     // v3.0: per-keyword array messages aggregated into ajv-errors errorMessage.
-    const arrayErrMsgEntries: string[] = []
-    const arrErrorMsg = schema['x-error-message']
-    if (arrErrorMsg) arrayErrMsgEntries.push(`type:${JSON.stringify(arrErrorMsg)}`)
-    const arrLengthMsg = schema['x-length-message']
-    const arrMinItemsMsg =
+    const arrayErrorMessageEntries: string[] = []
+    const arrayErrorMessage = schema['x-error-message']
+    if (arrayErrorMessage)
+      arrayErrorMessageEntries.push(`type:${JSON.stringify(arrayErrorMessage)}`)
+    const arrayLengthMessage = schema['x-length-message']
+    const arrayMinItemsMessage =
       schema['x-minItems-message'] ??
-      (typeof schema.minItems === 'number' ? arrLengthMsg : undefined)
-    if (arrMinItemsMsg) arrayErrMsgEntries.push(`minItems:${JSON.stringify(arrMinItemsMsg)}`)
-    const arrMaxItemsMsg =
+      (typeof schema.minItems === 'number' ? arrayLengthMessage : undefined)
+    if (arrayMinItemsMessage)
+      arrayErrorMessageEntries.push(`minItems:${JSON.stringify(arrayMinItemsMessage)}`)
+    const arrayMaxItemsMessage =
       schema['x-maxItems-message'] ??
-      (typeof schema.maxItems === 'number' ? arrLengthMsg : undefined)
-    if (arrMaxItemsMsg) arrayErrMsgEntries.push(`maxItems:${JSON.stringify(arrMaxItemsMsg)}`)
-    const arrUniqueMsg = schema['x-uniqueItems-message']
-    if (arrUniqueMsg) arrayErrMsgEntries.push(`uniqueItems:${JSON.stringify(arrUniqueMsg)}`)
-    const arrContainsMsg = schema['x-contains-message']
-    if (arrContainsMsg) arrayErrMsgEntries.push(`contains:${JSON.stringify(arrContainsMsg)}`)
-    const arrMinContainsMsg = schema['x-minContains-message']
-    if (arrMinContainsMsg)
-      arrayErrMsgEntries.push(`minContains:${JSON.stringify(arrMinContainsMsg)}`)
-    const arrMaxContainsMsg = schema['x-maxContains-message']
-    if (arrMaxContainsMsg)
-      arrayErrMsgEntries.push(`maxContains:${JSON.stringify(arrMaxContainsMsg)}`)
-    const arrItemsMsg = schema['x-items-message']
-    if (arrItemsMsg) arrayErrMsgEntries.push(`items:${JSON.stringify(arrItemsMsg)}`)
-    const arrUnevalItemsMsg = schema['x-unevaluatedItems-message']
-    if (arrUnevalItemsMsg)
-      arrayErrMsgEntries.push(`unevaluatedItems:${JSON.stringify(arrUnevalItemsMsg)}`)
+      (typeof schema.maxItems === 'number' ? arrayLengthMessage : undefined)
+    if (arrayMaxItemsMessage)
+      arrayErrorMessageEntries.push(`maxItems:${JSON.stringify(arrayMaxItemsMessage)}`)
+    const arrayUniqueItemsMessage = schema['x-uniqueItems-message']
+    if (arrayUniqueItemsMessage)
+      arrayErrorMessageEntries.push(`uniqueItems:${JSON.stringify(arrayUniqueItemsMessage)}`)
+    const arrayContainsMessage = schema['x-contains-message']
+    if (arrayContainsMessage)
+      arrayErrorMessageEntries.push(`contains:${JSON.stringify(arrayContainsMessage)}`)
+    const arrayMinContainsMessage = schema['x-minContains-message']
+    if (arrayMinContainsMessage)
+      arrayErrorMessageEntries.push(`minContains:${JSON.stringify(arrayMinContainsMessage)}`)
+    const arrayMaxContainsMessage = schema['x-maxContains-message']
+    if (arrayMaxContainsMessage)
+      arrayErrorMessageEntries.push(`maxContains:${JSON.stringify(arrayMaxContainsMessage)}`)
+    const arrayItemsMessage = schema['x-items-message']
+    if (arrayItemsMessage)
+      arrayErrorMessageEntries.push(`items:${JSON.stringify(arrayItemsMessage)}`)
+    const arrayUnevaluatedItemsMessage = schema['x-unevaluatedItems-message']
+    if (arrayUnevaluatedItemsMessage)
+      arrayErrorMessageEntries.push(
+        `unevaluatedItems:${JSON.stringify(arrayUnevaluatedItemsMessage)}`,
+      )
     const arrayOpts = [
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
       schema.uniqueItems === true ? `uniqueItems:true` : undefined,
-      arrayErrMsgEntries.length > 0 ? `errorMessage:{${arrayErrMsgEntries.join(',')}}` : undefined,
+      arrayErrorMessageEntries.length > 0
+        ? `errorMessage:{${arrayErrorMessageEntries.join(',')}}`
+        : undefined,
     ].filter((v) => v !== undefined)
     return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
   }

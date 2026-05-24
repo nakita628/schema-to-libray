@@ -30,7 +30,7 @@ export function string(schema: JSONSchema) {
   if (patternMessage) perKeywordEntries.push(`pattern:${JSON.stringify(patternMessage)}`)
   if (minLengthMessage) perKeywordEntries.push(`minLength:${JSON.stringify(minLengthMessage)}`)
   if (maxLengthMessage) perKeywordEntries.push(`maxLength:${JSON.stringify(maxLengthMessage)}`)
-  const errMsg =
+  const errorMessageField =
     perKeywordEntries.length === 0
       ? errorMessage
         ? `errorMessage:${JSON.stringify(errorMessage)}`
@@ -77,7 +77,7 @@ export function string(schema: JSONSchema) {
     isFixedLength ? `maxLength:${schema.maxLength}` : undefined,
     !isFixedLength && schema.minLength !== undefined ? `minLength:${schema.minLength}` : undefined,
     !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
-    errMsg,
+    errorMessageField,
     ...typeboxMetaOpts(schema),
   ].filter((v) => v !== undefined)
 

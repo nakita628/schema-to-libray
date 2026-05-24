@@ -274,24 +274,28 @@ export function zod(
       // prefixItems. With `false` we keep the fixed tuple (default rejects extras);
       // with a schema we emit a rest argument (`z.tuple([...], rest)`).
       const u = schema.unevaluatedItems
-      const unevalItemsMsg = schema['x-unevaluatedItems-message']
-      const unevalItemsError = unevalItemsMsg ? `,${zodError(unevalItemsMsg)}` : ''
+      const unevaluatedItemsMessage = schema['x-unevaluatedItems-message']
+      const unevaluatedItemsError = unevaluatedItemsMessage
+        ? `,${zodError(unevaluatedItemsMessage)}`
+        : ''
       const rest =
         u !== undefined && u !== true && typeof u === 'object'
           ? zod(u, rootName, isZod, options)
           : undefined
       const tupleArgs = rest ? `[${items.join(',')}],${rest}` : `[${items.join(',')}]`
-      const tupleError = u === false && unevalItemsMsg ? unevalItemsError : baseError
+      const tupleError = u === false && unevaluatedItemsMessage ? unevaluatedItemsError : baseError
       const tupleExpr = `z.tuple(${tupleArgs}${tupleError})`
-      const prefixMsg = schema['x-prefixItems-message']
-      const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const wrapped = prefixItemsMessage
+        ? elementMessageWrap(tupleExpr, prefixItemsMessage)
+        : tupleExpr
       return readonly(zodWrap(wrapped, schema))
     }
     const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
     const item = itemSchema ? zod(itemSchema, rootName, isZod, options) : 'z.any()'
-    const itemsMsg = schema['x-items-message']
+    const itemsMessage = schema['x-items-message']
     const arrayBase = `z.array(${item}${baseError})`
-    const base = itemsMsg ? elementMessageWrap(arrayBase, itemsMsg) : arrayBase
+    const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const unique =
       schema.uniqueItems === true
         ? `.refine((items)=>new Set(items).size===items.length${uniqueError})`
@@ -307,24 +311,24 @@ export function zod(
       const fallback = schema['x-contains-message'] ?? errorMessage
       const parts: string[] = []
       if (minC === undefined && maxC === undefined) {
-        const msg = fallback ? `,${zodError(fallback)}` : ''
+        const containsArg = fallback ? `,${zodError(fallback)}` : ''
         parts.push(
-          `.refine((arr)=>{const Schema=${containsZod};return arr.some((i)=>Schema.safeParse(i).success)}${msg})`,
+          `.refine((arr)=>{const Schema=${containsZod};return arr.some((i)=>Schema.safeParse(i).success)}${containsArg})`,
         )
       } else {
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {
-          const minMsg = schema['x-minContains-message'] ?? fallback
-          const minMsgArg = minMsg ? `,${zodError(minMsg)}` : ''
+          const minContainsMessage = schema['x-minContains-message'] ?? fallback
+          const minContainsArg = minContainsMessage ? `,${zodError(minContainsMessage)}` : ''
           parts.push(
-            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length>=${effectiveMin}}${minMsgArg})`,
+            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length>=${effectiveMin}}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
-          const maxMsg = schema['x-maxContains-message'] ?? fallback
-          const maxMsgArg = maxMsg ? `,${zodError(maxMsg)}` : ''
+          const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
+          const maxContainsArg = maxContainsMessage ? `,${zodError(maxContainsMessage)}` : ''
           parts.push(
-            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length<=${maxC}}${maxMsgArg})`,
+            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length<=${maxC}}${maxContainsArg})`,
           )
         }
       }

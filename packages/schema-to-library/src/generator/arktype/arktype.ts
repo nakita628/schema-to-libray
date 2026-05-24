@@ -215,7 +215,7 @@ export function arktype(
     const minContainsMessage = schema['x-minContains-message']
     const maxContainsMessage = schema['x-maxContains-message']
     const fixedItemsMessage = minItemsMessage ?? maxItemsMessage
-    const hasArrayMsg =
+    const hasArrayMessage =
       minItemsMessage ||
       maxItemsMessage ||
       uniqueItemsMessage ||
@@ -223,19 +223,19 @@ export function arktype(
       minContainsMessage ||
       maxContainsMessage
     const lengthExpr = isFixedLength
-      ? hasArrayMsg
+      ? hasArrayMessage
         ? `type(${base}).narrow((items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)}))`
         : `type(${base}).and(type("unknown[] == ${minItems}"))`
       : typeof minItems === 'number' && typeof maxItems === 'number'
-        ? hasArrayMsg
+        ? hasArrayMessage
           ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
           : `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
         : typeof minItems === 'number'
-          ? hasArrayMsg
+          ? hasArrayMessage
             ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)}))`
             : `type(${base}).and(type("unknown[] >= ${minItems}"))`
           : typeof maxItems === 'number'
-            ? hasArrayMsg
+            ? hasArrayMessage
               ? `type(${base}).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
               : `type(${base}).and(type("unknown[] <= ${maxItems}"))`
             : base

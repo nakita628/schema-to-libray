@@ -160,18 +160,18 @@ export function object(
     const thenSchema = schema.then ? effect(schema.then, rootName, isEffect, options) : ''
     const elseSchema = schema.else ? effect(schema.else, rootName, isEffect, options) : ''
     if (!thenSchema && !elseSchema) return [] as string[]
-    const ifMsg = schema['x-if-message']
-    const thenMsg = schema['x-then-message'] ?? ifMsg
-    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenSchema) {
-      const arg = thenMsg ? `,${effectError(thenMsg)}` : errorArg
+      const arg = thenMessage ? `,${effectError(thenMessage)}` : errorArg
       parts.push(
         `Schema.filter((o)=>!Schema.is(${ifSchema})(o)||Schema.is(${thenSchema})(o)${arg})`,
       )
     }
     if (elseSchema) {
-      const arg = elseMsg ? `,${effectError(elseMsg)}` : errorArg
+      const arg = elseMessage ? `,${effectError(elseMessage)}` : errorArg
       parts.push(`Schema.filter((o)=>Schema.is(${ifSchema})(o)||Schema.is(${elseSchema})(o)${arg})`)
     }
     return parts

@@ -88,17 +88,17 @@ export function string(schema: JSONSchema) {
     if (minLengthMessage || maxLengthMessage) {
       const narrows: string[] = []
       if (hasMin) {
-        const minMsg =
+        const minLengthMessageResolved =
           minLengthMessage ?? errorMessage ?? `must be at least ${schema.minLength} chars`
         narrows.push(
-          `.narrow((s, ctx) => s.length >= ${schema.minLength} || ctx.mustBe(${JSON.stringify(minMsg)}))`,
+          `.narrow((s, ctx) => s.length >= ${schema.minLength} || ctx.mustBe(${JSON.stringify(minLengthMessageResolved)}))`,
         )
       }
       if (hasMax) {
-        const maxMsg =
+        const maxLengthMessageResolved =
           maxLengthMessage ?? errorMessage ?? `must be at most ${schema.maxLength} chars`
         narrows.push(
-          `.narrow((s, ctx) => s.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxMsg)}))`,
+          `.narrow((s, ctx) => s.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxLengthMessageResolved)}))`,
         )
       }
       return finalize(`type(${base})${narrows.join('')}`)

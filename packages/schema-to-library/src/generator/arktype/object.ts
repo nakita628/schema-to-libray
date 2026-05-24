@@ -182,15 +182,15 @@ export function object(
       ? ensureRuntime(arktype(schema.else, rootName, isArktype, options))
       : undefined
     if (!thenS && !elseS) return [] as string[]
-    const ifMsg = schema['x-if-message']
-    const thenMsg = schema['x-then-message'] ?? ifMsg
-    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenS) {
-      parts.push(narrowPredicate(`!${ifS}.allows(o) || ${thenS}.allows(o)`, thenMsg))
+      parts.push(narrowPredicate(`!${ifS}.allows(o) || ${thenS}.allows(o)`, thenMessage))
     }
     if (elseS) {
-      parts.push(narrowPredicate(`${ifS}.allows(o) || ${elseS}.allows(o)`, elseMsg))
+      parts.push(narrowPredicate(`${ifS}.allows(o) || ${elseS}.allows(o)`, elseMessage))
     }
     return parts
   })()

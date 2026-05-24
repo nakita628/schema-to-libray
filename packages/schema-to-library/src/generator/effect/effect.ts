@@ -189,10 +189,10 @@ export function effect(
     // v3.0: x-const-message overrides x-error-message for `const` mismatch.
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const literalCode = `Schema.Literal(${JSON.stringify(schema.const)})`
-    const withMsg = constMessage
+    const withMessage = constMessage
       ? `${literalCode}.annotations(${effectError(constMessage)})`
       : literalCode
-    return effectWrap(withMsg, schema)
+    return effectWrap(withMessage, schema)
   }
   if (schema.enum) return effectWrap(_enum(schema), schema)
   if (schema.properties) return effectWrap(object(schema, rootName, isEffect, options), schema)
@@ -235,30 +235,32 @@ export function effect(
         u !== undefined && u !== true && typeof u === 'object'
           ? `Schema.Tuple({elements:[${items.join(',')}],rest:[${effect(u, rootName, isEffect, options)}]})`
           : `Schema.Tuple(${items.join(',')})`
-      const prefixMsg = schema['x-prefixItems-message']
-      const wrapped = prefixMsg ? elementMessageWrap(tupleExpr, prefixMsg) : tupleExpr
+      const prefixItemsMessage = schema['x-prefixItems-message']
+      const wrapped = prefixItemsMessage
+        ? elementMessageWrap(tupleExpr, prefixItemsMessage)
+        : tupleExpr
       return effectWrap(wrapped, schema)
     }
     const items = schema.items
       ? effect(schema.items, rootName, isEffect, options)
       : 'Schema.Unknown'
-    const itemsMsg = schema['x-items-message']
+    const itemsMessage = schema['x-items-message']
     const arrayBase = `Schema.Array(${items})`
-    const base = itemsMsg ? elementMessageWrap(arrayBase, itemsMsg) : arrayBase
+    const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const isFixedLength =
       typeof schema.minItems === 'number' &&
       typeof schema.maxItems === 'number' &&
       schema.minItems === schema.maxItems
     // Per-keyword array messages
-    const lengthMsg = schema['x-length-message']
-    const minItemsMsg = schema['x-minItems-message'] ?? lengthMsg
-    const minArg = minItemsMsg ? `,${effectError(minItemsMsg)}` : ''
-    const maxItemsMsg = schema['x-maxItems-message'] ?? lengthMsg
-    const maxArg = maxItemsMsg ? `,${effectError(maxItemsMsg)}` : ''
-    const fixedItemsMsg = minItemsMsg ?? maxItemsMsg
-    const sizeArg = fixedItemsMsg ? `,${effectError(fixedItemsMsg)}` : ''
-    const uniqueMsg = schema['x-uniqueItems-message']
-    const uniqueArg = uniqueMsg ? `,${effectError(uniqueMsg)}` : ''
+    const lengthMessage = schema['x-length-message']
+    const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
+    const minArg = minItemsMessage ? `,${effectError(minItemsMessage)}` : ''
+    const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
+    const maxArg = maxItemsMessage ? `,${effectError(maxItemsMessage)}` : ''
+    const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
+    const sizeArg = tupleItemsMessage ? `,${effectError(tupleItemsMessage)}` : ''
+    const uniqueItemsMessage = schema['x-uniqueItems-message']
+    const uniqueArg = uniqueItemsMessage ? `,${effectError(uniqueItemsMessage)}` : ''
     // v3.0: contains / minContains / maxContains as separate filters
     const containsActions = (() => {
       const c = schema.contains
@@ -266,26 +268,28 @@ export function effect(
       const containsSchema = effect(c, rootName, isEffect, options)
       const minC = schema.minContains
       const maxC = schema.maxContains
-      const errorMsg = schema['x-error-message']
-      const fallback = schema['x-contains-message'] ?? errorMsg
+      const errorMessage = schema['x-error-message']
+      const fallback = schema['x-contains-message'] ?? errorMessage
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
-        const msg = fallback ? `,${effectError(fallback)}` : ''
-        out.push(`Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${msg})`)
+        const containsArg = fallback ? `,${effectError(fallback)}` : ''
+        out.push(
+          `Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${containsArg})`,
+        )
       } else {
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {
-          const minMsg = schema['x-minContains-message'] ?? fallback
-          const minMsgArg = minMsg ? `,${effectError(minMsg)}` : ''
+          const minContainsMessage = schema['x-minContains-message'] ?? fallback
+          const minContainsArg = minContainsMessage ? `,${effectError(minContainsMessage)}` : ''
           out.push(
-            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minMsgArg})`,
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
-          const maxMsg = schema['x-maxContains-message'] ?? fallback
-          const maxMsgArg = maxMsg ? `,${effectError(maxMsg)}` : ''
+          const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
+          const maxContainsArg = maxContainsMessage ? `,${effectError(maxContainsMessage)}` : ''
           out.push(
-            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxMsgArg})`,
+            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxContainsArg})`,
           )
         }
       }

@@ -104,7 +104,7 @@ export function object(
     .filter((p) => p !== null)
 
   // `v.strictObject(entries, message)` surfaces the custom message on extras.
-  const strictMsgArg =
+  const strictMessageArg =
     objectKind === 'strictObject' && strictExtrasMessage
       ? `,${valibotError(strictExtrasMessage)}`
       : ''
@@ -112,8 +112,8 @@ export function object(
     required.length === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
-          .join(',')}}${strictMsgArg}))`
-      : `v.${objectKind}({${props.join(',')}}${strictMsgArg})`
+          .join(',')}}${strictMessageArg}))`
+      : `v.${objectKind}({${props.join(',')}}${strictMessageArg})`
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {
@@ -145,7 +145,7 @@ export function object(
       })
     : []
   // Extras rejection is wired into `v.strictObject` directly via its second
-  // argument (see `strictMsgArg` above). No separate check needed.
+  // argument (see `strictMessageArg` above). No separate check needed.
   const additionalPropertiesCheck = ''
   // v3.0: if/then/else (Draft-07+)
   const ifThenElseChecks = (() => {
@@ -154,18 +154,18 @@ export function object(
     const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
     const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
     if (!thenSchema && !elseSchema) return [] as string[]
-    const ifMsg = schema['x-if-message']
-    const thenMsg = schema['x-then-message'] ?? ifMsg
-    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenSchema) {
-      const arg = thenMsg ? `,${valibotError(thenMsg)}` : ''
+      const arg = thenMessage ? `,${valibotError(thenMessage)}` : ''
       parts.push(
         `v.check((o)=>!v.safeParse(${ifSchema},o).success||v.safeParse(${thenSchema},o).success${arg})`,
       )
     }
     if (elseSchema) {
-      const arg = elseMsg ? `,${valibotError(elseMsg)}` : ''
+      const arg = elseMessage ? `,${valibotError(elseMessage)}` : ''
       parts.push(
         `v.check((o)=>v.safeParse(${ifSchema},o).success||v.safeParse(${elseSchema},o).success${arg})`,
       )

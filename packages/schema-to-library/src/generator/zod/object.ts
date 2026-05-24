@@ -156,16 +156,16 @@ export function object(
     const thenS = schema.then ? zod(schema.then, rootName, isZod, options) : undefined
     const elseS = schema.else ? zod(schema.else, rootName, isZod, options) : undefined
     if (!thenS && !elseS) return ''
-    const ifMsg = schema['x-if-message']
-    const thenMsg = schema['x-then-message'] ?? ifMsg
-    const elseMsg = schema['x-else-message'] ?? ifMsg
+    const ifMessage = schema['x-if-message']
+    const thenMessage = schema['x-then-message'] ?? ifMessage
+    const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenS) {
-      const arg = thenMsg ? `,${zodError(thenMsg)}` : ''
+      const arg = thenMessage ? `,${zodError(thenMessage)}` : ''
       parts.push(`.refine((o)=>!${ifS}.safeParse(o).success||${thenS}.safeParse(o).success${arg})`)
     }
     if (elseS) {
-      const arg = elseMsg ? `,${zodError(elseMsg)}` : ''
+      const arg = elseMessage ? `,${zodError(elseMessage)}` : ''
       parts.push(`.refine((o)=>${ifS}.safeParse(o).success||${elseS}.safeParse(o).success${arg})`)
     }
     return parts.join('')
