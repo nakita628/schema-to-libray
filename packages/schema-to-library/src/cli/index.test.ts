@@ -443,7 +443,11 @@ describe('x-error-message: schema-to-zod', () => {
 export const UserForm = z.object({
   name: z.string({ error: 'Name is required' }).min(1),
   email: z.email({ error: 'Invalid email' }),
-  age: z.int({ error: 'Invalid age' }).min(0).max(150).optional(),
+  age: z
+    .int({ error: 'Invalid age' })
+    .min(0, { error: 'Invalid age' })
+    .max(150, { error: 'Invalid age' })
+    .optional(),
   role: z.enum(['admin', 'user'], { error: 'Invalid role' }).optional(),
 })
 `

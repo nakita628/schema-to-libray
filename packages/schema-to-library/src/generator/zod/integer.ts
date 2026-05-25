@@ -10,23 +10,30 @@ export function integer(schema: JSONSchema): string {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
-  const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
-  const base =
-    schema.format === 'int32'
-      ? `z.${coercePrefix}int32(${baseErrorArg})`
-      : schema.format === 'int64'
-        ? `z.${coercePrefix}int64(${baseErrorArg})`
-        : schema.format === 'bigint'
-          ? `z.${coercePrefix}bigint(${baseErrorArg})`
-          : `z.${coercePrefix}int(${baseErrorArg})`
+  const isCoerce = schema['x-coerce'] === true
+  const isBigint = schema.format === 'bigint'
+  const isInt32 = schema.format === 'int32'
+  const isInt64 = schema.format === 'int64'
+  const bigintBase = isCoerce && isBigint
+  const bigintPipe = isCoerce && isInt64
+  const numberPipe = isCoerce && isInt32
+  const numberChain = isCoerce && !isBigint && !isInt64 && !isInt32
+  const base = bigintBase
+    ? `z.coerce.bigint(${baseErrorArg})`
+    : isInt32
+      ? `z.int32(${baseErrorArg})`
+      : isInt64
+        ? `z.int64(${baseErrorArg})`
+        : isBigint
+          ? `z.bigint(${baseErrorArg})`
+          : `z.int(${baseErrorArg})`
   const lit = (n: number): string => {
     if (schema.format === 'bigint') return `BigInt(${n})`
     if (schema.format === 'int64') return `${n}n`
     return `${n}`
   }
-  // v3.0: separate inclusive (.min()) / exclusive (.gt() / .positive()) slots
-  const minimumMessage = schema['x-minimum-message']
-  const exclusiveMinMessage = schema['x-exclusiveMinimum-message']
+  const minimumMessage = schema['x-minimum-message'] ?? errorMessage
+  const exclusiveMinMessage = schema['x-exclusiveMinimum-message'] ?? errorMessage
   const minErrorArg = minimumMessage ? zodError(minimumMessage) : ''
   const minErrorPart = minErrorArg ? `,${minErrorArg}` : ''
   const exMinErrorArg = exclusiveMinMessage ? zodError(exclusiveMinMessage) : ''
@@ -53,8 +60,8 @@ export function integer(schema: JSONSchema): string {
     }
     return undefined
   })()
-  const maximumMessage = schema['x-maximum-message']
-  const exclusiveMaxMessage = schema['x-exclusiveMaximum-message']
+  const maximumMessage = schema['x-maximum-message'] ?? errorMessage
+  const exclusiveMaxMessage = schema['x-exclusiveMaximum-message'] ?? errorMessage
   const maxErrorArg = maximumMessage ? zodError(maximumMessage) : ''
   const maxErrorPart = maxErrorArg ? `,${maxErrorArg}` : ''
   const exMaxErrorArg = exclusiveMaxMessage ? zodError(exclusiveMaxMessage) : ''
@@ -81,15 +88,18 @@ export function integer(schema: JSONSchema): string {
     }
     return undefined
   })()
-  const multipleOfMessage = schema['x-multipleOf-message']
-  const multipleOfErrorArg = multipleOfMessage
-    ? `,${zodError(multipleOfMessage)}`
-    : baseErrorArg
-      ? `,${baseErrorArg}`
-      : ''
+  const multipleOfMessage = schema['x-multipleOf-message'] ?? errorMessage
+  const multipleOfErrorArg = multipleOfMessage ? `,${zodError(multipleOfMessage)}` : ''
   const multipleOf =
     typeof schema.multipleOf === 'number'
       ? `.multipleOf(${lit(schema.multipleOf)}${multipleOfErrorArg})`
       : undefined
-  return [base, minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
+  const innerChain = [base, minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
+  if (numberChain) {
+    const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
+    return `z.coerce.number(${baseErrorArg}).int()${constraints}`
+  }
+  if (numberPipe) return `z.coerce.number().pipe(${innerChain})`
+  if (bigintPipe) return `z.coerce.bigint().pipe(${innerChain})`
+  return innerChain
 }

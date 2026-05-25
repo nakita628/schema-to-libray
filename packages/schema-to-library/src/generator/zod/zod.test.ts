@@ -1517,8 +1517,8 @@ describe('zod', () => {
       it('emits z.coerce.number()', () => {
         expect(zod({ type: 'number', 'x-coerce': true })).toBe('z.coerce.number()')
       })
-      it('emits z.coerce.int()', () => {
-        expect(zod({ type: 'integer', 'x-coerce': true })).toBe('z.coerce.int()')
+      it('emits z.coerce.number().int()', () => {
+        expect(zod({ type: 'integer', 'x-coerce': true })).toBe('z.coerce.number().int()')
       })
       it('emits z.coerce.boolean()', () => {
         expect(zod({ type: 'boolean', 'x-coerce': true })).toBe('z.coerce.boolean()')
@@ -1532,8 +1532,35 @@ describe('zod', () => {
       it('does not coerce when format is set (format-specific API has no coerce variant)', () => {
         expect(zod({ type: 'string', format: 'email', 'x-coerce': true })).toBe('z.email()')
       })
-      it('emits z.coerce.int32() for format int32', () => {
-        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true })).toBe('z.coerce.int32()')
+      it('emits z.coerce.number().pipe(z.int32()) for format int32', () => {
+        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true })).toBe(
+          'z.coerce.number().pipe(z.int32())',
+        )
+      })
+      it('emits z.coerce.bigint().pipe(z.int64()) for format int64', () => {
+        expect(zod({ type: 'integer', format: 'int64', 'x-coerce': true })).toBe(
+          'z.coerce.bigint().pipe(z.int64())',
+        )
+      })
+      it('emits z.coerce.bigint() for format bigint', () => {
+        expect(zod({ type: 'integer', format: 'bigint', 'x-coerce': true })).toBe(
+          'z.coerce.bigint()',
+        )
+      })
+      it('emits z.coerce.number({error}).int() with x-error-message', () => {
+        expect(
+          zod({ type: 'integer', 'x-coerce': true, 'x-error-message': 'Must be integer' }),
+        ).toBe('z.coerce.number({error:"Must be integer"}).int()')
+      })
+      it('emits z.coerce.number().int().min(0) with x-coerce + minimum', () => {
+        expect(zod({ type: 'integer', 'x-coerce': true, minimum: 0 })).toBe(
+          'z.coerce.number().int().min(0)',
+        )
+      })
+      it('x-coerce + int32 + minimum: constraints inside pipe', () => {
+        expect(
+          zod({ type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 }),
+        ).toBe('z.coerce.number().pipe(z.int32().min(100))')
       })
     })
 
@@ -1672,8 +1699,10 @@ describe('zod', () => {
   })
 
   describe('paramIn coercion', () => {
-    it('query: integer → z.coerce.int()', () => {
-      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe('z.coerce.int()')
+    it('query: integer → z.coerce.number().int()', () => {
+      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.number().int()',
+      )
     })
 
     it('query: number → z.coerce.number()', () => {
@@ -1710,25 +1739,43 @@ describe('zod', () => {
           false,
           { paramIn: 'query' },
         ),
-      ).toBe('z.object({page:z.coerce.int(),q:z.string().optional()})')
+      ).toBe('z.object({page:z.coerce.number().int(),q:z.string().optional()})')
     })
 
     it('nested in array: items coerced too', () => {
       expect(
         zod({ type: 'array', items: { type: 'integer' } }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.array(z.coerce.int())')
+      ).toBe('z.array(z.coerce.number().int())')
     })
 
     it('integer with min/max: constraints preserved after coerce', () => {
       expect(
         zod({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.coerce.int().min(1).max(100)')
+      ).toBe('z.coerce.number().int().min(1).max(100)')
     })
 
     it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
       expect(
         zod({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('z.int()')
+    })
+
+    it('paramIn query + format int32 → pipe preserves range constraint', () => {
+      expect(
+        zod({ type: 'integer', format: 'int32' }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('z.coerce.number().pipe(z.int32())')
+    })
+
+    it('paramIn query + format int64 → pipe preserves BigInt semantics', () => {
+      expect(
+        zod({ type: 'integer', format: 'int64' }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('z.coerce.bigint().pipe(z.int64())')
+    })
+
+    it('paramIn path + format bigint → z.coerce.bigint()', () => {
+      expect(
+        zod({ type: 'integer', format: 'bigint' }, 'Schema', false, { paramIn: 'path' }),
+      ).toBe('z.coerce.bigint()')
     })
   })
 })

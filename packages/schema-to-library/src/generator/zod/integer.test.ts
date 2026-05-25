@@ -132,6 +132,43 @@ describe('integer', () => {
     })
   })
 
+  describe('x-coerce', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'integer', 'x-coerce': true }, 'z.coerce.number().int()'],
+      [
+        { type: 'integer', 'x-coerce': true, 'x-error-message': 'Must be integer' },
+        'z.coerce.number({error:"Must be integer"}).int()',
+      ],
+      [{ type: 'integer', 'x-coerce': true, minimum: 0 }, 'z.coerce.number().int().min(0)'],
+      [
+        { type: 'integer', 'x-coerce': true, minimum: 1, maximum: 100 },
+        'z.coerce.number().int().min(1).max(100)',
+      ],
+      [
+        { type: 'integer', format: 'int32', 'x-coerce': true },
+        'z.coerce.number().pipe(z.int32())',
+      ],
+      [
+        { type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 },
+        'z.coerce.number().pipe(z.int32().min(100))',
+      ],
+      [
+        { type: 'integer', format: 'int64', 'x-coerce': true },
+        'z.coerce.bigint().pipe(z.int64())',
+      ],
+      [
+        { type: 'integer', format: 'bigint', 'x-coerce': true },
+        'z.coerce.bigint()',
+      ],
+      [
+        { type: 'integer', format: 'bigint', 'x-coerce': true, 'x-error-message': 'bigint only' },
+        'z.coerce.bigint({error:"bigint only"})',
+      ],
+    ])('integer(%o) → %s', (input, expected) => {
+      expect(integer(input)).toBe(expected)
+    })
+  })
+
   describe('x-error-message', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
@@ -159,6 +196,15 @@ describe('integer', () => {
           'x-multipleOf-message': 'Must be a multiple of 10',
         },
         'z.int().multipleOf(10,{error:"Must be a multiple of 10"})',
+      ],
+      // x-error-message falls back to min/max/multipleOf when no specific message
+      [
+        { type: 'integer', minimum: 0, 'x-error-message': '整数必須' },
+        'z.int({error:"整数必須"}).min(0,{error:"整数必須"})',
+      ],
+      [
+        { type: 'integer', multipleOf: 2, 'x-error-message': '偶数のみ' },
+        'z.int({error:"偶数のみ"}).multipleOf(2,{error:"偶数のみ"})',
       ],
     ])('integer(%o) → %s', (input, expected) => {
       expect(integer(input)).toBe(expected)
