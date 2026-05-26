@@ -9,8 +9,10 @@ import { zodBaseError, zodError } from '../../utils/index.js'
 export function integer(schema: JSONSchema): string {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
-  const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
   const isCoerce = schema['x-coerce'] === true
+  // coerce converts undefined → NaN/BigInt error before the error handler runs,
+  // so issue.input === undefined is unreachable — drop x-required-message.
+  const baseErrorArg = zodBaseError(errorMessage, isCoerce ? undefined : requiredMessage)
   const isBigint = schema.format === 'bigint'
   const isInt32 = schema.format === 'int32'
   const isInt64 = schema.format === 'int64'
@@ -97,9 +99,10 @@ export function integer(schema: JSONSchema): string {
   const innerChain = [base, minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
   if (numberChain) {
     const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
-    return `z.coerce.number(${baseErrorArg}).int()${constraints}`
+    const intErrorArg = errorMessage ? zodError(errorMessage) : ''
+    return `z.coerce.number(${baseErrorArg}).int(${intErrorArg})${constraints}`
   }
-  if (numberPipe) return `z.coerce.number().pipe(${innerChain})`
-  if (bigintPipe) return `z.coerce.bigint().pipe(${innerChain})`
+  if (numberPipe) return `z.coerce.number(${baseErrorArg}).pipe(${innerChain})`
+  if (bigintPipe) return `z.coerce.bigint(${baseErrorArg}).pipe(${innerChain})`
   return innerChain
 }

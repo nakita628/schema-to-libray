@@ -137,32 +137,60 @@ describe('integer', () => {
       [{ type: 'integer', 'x-coerce': true }, 'z.coerce.number().int()'],
       [
         { type: 'integer', 'x-coerce': true, 'x-error-message': 'Must be integer' },
-        'z.coerce.number({error:"Must be integer"}).int()',
+        'z.coerce.number({error:"Must be integer"}).int({error:"Must be integer"})',
       ],
       [{ type: 'integer', 'x-coerce': true, minimum: 0 }, 'z.coerce.number().int().min(0)'],
       [
         { type: 'integer', 'x-coerce': true, minimum: 1, maximum: 100 },
         'z.coerce.number().int().min(1).max(100)',
       ],
-      [
-        { type: 'integer', format: 'int32', 'x-coerce': true },
-        'z.coerce.number().pipe(z.int32())',
-      ],
+      [{ type: 'integer', format: 'int32', 'x-coerce': true }, 'z.coerce.number().pipe(z.int32())'],
       [
         { type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 },
         'z.coerce.number().pipe(z.int32().min(100))',
       ],
-      [
-        { type: 'integer', format: 'int64', 'x-coerce': true },
-        'z.coerce.bigint().pipe(z.int64())',
-      ],
-      [
-        { type: 'integer', format: 'bigint', 'x-coerce': true },
-        'z.coerce.bigint()',
-      ],
+      [{ type: 'integer', format: 'int64', 'x-coerce': true }, 'z.coerce.bigint().pipe(z.int64())'],
+      [{ type: 'integer', format: 'bigint', 'x-coerce': true }, 'z.coerce.bigint()'],
       [
         { type: 'integer', format: 'bigint', 'x-coerce': true, 'x-error-message': 'bigint only' },
         'z.coerce.bigint({error:"bigint only"})',
+      ],
+      // coerce + error-message on pipe paths
+      [
+        { type: 'integer', format: 'int32', 'x-coerce': true, 'x-error-message': 'int32必須' },
+        'z.coerce.number({error:"int32必須"}).pipe(z.int32({error:"int32必須"}))',
+      ],
+      [
+        { type: 'integer', format: 'int64', 'x-coerce': true, 'x-error-message': 'int64必須' },
+        'z.coerce.bigint({error:"int64必須"}).pipe(z.int64({error:"int64必須"}))',
+      ],
+      // coerce + error-message + constraints
+      [
+        {
+          type: 'integer',
+          'x-coerce': true,
+          minimum: 0,
+          'x-error-message': '整数必須',
+        },
+        'z.coerce.number({error:"整数必須"}).int({error:"整数必須"}).min(0,{error:"整数必須"})',
+      ],
+      // coerce + x-required-message dropped (unreachable under coerce)
+      [
+        {
+          type: 'integer',
+          'x-coerce': true,
+          'x-required-message': '必須です',
+          'x-error-message': '整数必須',
+        },
+        'z.coerce.number({error:"整数必須"}).int({error:"整数必須"})',
+      ],
+      [
+        {
+          type: 'integer',
+          'x-coerce': true,
+          'x-required-message': '必須です',
+        },
+        'z.coerce.number().int()',
       ],
     ])('integer(%o) → %s', (input, expected) => {
       expect(integer(input)).toBe(expected)

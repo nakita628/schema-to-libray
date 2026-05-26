@@ -9,14 +9,21 @@ import { zodBaseError, zodError } from '../../utils/index.js'
 export function number(schema: JSONSchema): string {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
-  const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
-  const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
-  const base =
-    schema.format === 'float' || schema.format === 'float32'
-      ? `z.${coercePrefix}float32(${baseErrorArg})`
-      : schema.format === 'float64'
-        ? `z.${coercePrefix}float64(${baseErrorArg})`
-        : `z.${coercePrefix}number(${baseErrorArg})`
+  const isCoerce = schema['x-coerce'] === true
+  // coerce converts undefined → NaN before the error handler runs,
+  // so issue.input === undefined is unreachable — drop x-required-message.
+  const baseErrorArg = zodBaseError(errorMessage, isCoerce ? undefined : requiredMessage)
+  const isFloat32 = schema.format === 'float' || schema.format === 'float32'
+  const isFloat64 = schema.format === 'float64'
+  const wirePipe = isCoerce && (isFloat32 || isFloat64)
+  const wirePlain = isCoerce && !isFloat32 && !isFloat64
+  const base = wirePlain
+    ? `z.coerce.number(${baseErrorArg})`
+    : isFloat32
+      ? `z.float32(${baseErrorArg})`
+      : isFloat64
+        ? `z.float64(${baseErrorArg})`
+        : `z.number(${baseErrorArg})`
   // v3.0: separate inclusive (.min()) / exclusive (.gt() / .positive()) slots
   const minimumMessage = schema['x-minimum-message']
   const exclusiveMinMessage = schema['x-exclusiveMinimum-message']
@@ -76,5 +83,6 @@ export function number(schema: JSONSchema): string {
     schema.multipleOf !== undefined
       ? `.multipleOf(${schema.multipleOf}${multipleOfErrorArg})`
       : undefined
-  return [base, minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
+  const innerChain = [base, minimum, maximum, multipleOf].filter((v) => v !== undefined).join('')
+  return wirePipe ? `z.coerce.number(${baseErrorArg}).pipe(${innerChain})` : innerChain
 }

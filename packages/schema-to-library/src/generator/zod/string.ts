@@ -137,7 +137,10 @@ export function string(schema: JSONSchema) {
   if (stringboolExpr !== undefined) return stringboolExpr
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
-  const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
+  const coerce = schema['x-coerce'] === true
+  // coerce converts undefined → "undefined" (string success) before the error
+  // handler runs, so issue.input === undefined is unreachable — drop x-required-message.
+  const baseErrorArg = zodBaseError(errorMessage, coerce ? undefined : requiredMessage)
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
   const minLengthMessage = schema['x-minLength-message']
@@ -148,7 +151,7 @@ export function string(schema: JSONSchema) {
   const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
   const hash = hashBase(schema, baseErrorArg)
   const format = schema.format && FORMAT_STRING[schema.format]
-  const coercePrefix = schema['x-coerce'] === true && !format ? 'coerce.' : ''
+  const coercePrefix = coerce && !format ? 'coerce.' : ''
   const formatOptions = format ? buildFormatOptions(schema) : []
   const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
   const base = hash

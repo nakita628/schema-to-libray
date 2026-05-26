@@ -1547,10 +1547,10 @@ describe('zod', () => {
           'z.coerce.bigint()',
         )
       })
-      it('emits z.coerce.number({error}).int() with x-error-message', () => {
+      it('emits z.coerce.number({error}).int({error}) with x-error-message', () => {
         expect(
           zod({ type: 'integer', 'x-coerce': true, 'x-error-message': 'Must be integer' }),
-        ).toBe('z.coerce.number({error:"Must be integer"}).int()')
+        ).toBe('z.coerce.number({error:"Must be integer"}).int({error:"Must be integer"})')
       })
       it('emits z.coerce.number().int().min(0) with x-coerce + minimum', () => {
         expect(zod({ type: 'integer', 'x-coerce': true, minimum: 0 })).toBe(
@@ -1558,9 +1558,9 @@ describe('zod', () => {
         )
       })
       it('x-coerce + int32 + minimum: constraints inside pipe', () => {
-        expect(
-          zod({ type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 }),
-        ).toBe('z.coerce.number().pipe(z.int32().min(100))')
+        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 })).toBe(
+          'z.coerce.number().pipe(z.int32().min(100))',
+        )
       })
     })
 
@@ -1761,21 +1761,21 @@ describe('zod', () => {
     })
 
     it('paramIn query + format int32 → pipe preserves range constraint', () => {
-      expect(
-        zod({ type: 'integer', format: 'int32' }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.coerce.number().pipe(z.int32())')
+      expect(zod({ type: 'integer', format: 'int32' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.number().pipe(z.int32())',
+      )
     })
 
     it('paramIn query + format int64 → pipe preserves BigInt semantics', () => {
-      expect(
-        zod({ type: 'integer', format: 'int64' }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.coerce.bigint().pipe(z.int64())')
+      expect(zod({ type: 'integer', format: 'int64' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.bigint().pipe(z.int64())',
+      )
     })
 
     it('paramIn path + format bigint → z.coerce.bigint()', () => {
-      expect(
-        zod({ type: 'integer', format: 'bigint' }, 'Schema', false, { paramIn: 'path' }),
-      ).toBe('z.coerce.bigint()')
+      expect(zod({ type: 'integer', format: 'bigint' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        'z.coerce.bigint()',
+      )
     })
   })
 })

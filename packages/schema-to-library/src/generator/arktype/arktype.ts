@@ -160,11 +160,21 @@ export function arktype(
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
   if (types.includes('number')) {
-    if (isStringWireParam) return arktypeWrap('"string.numeric.parse"', schema)
+    if (isStringWireParam) {
+      const constraint = buildNumericConstraint(schema, 'number')
+      return constraint
+        ? arktypeWrap(`type("string.numeric.parse").to(${constraint})`, schema)
+        : arktypeWrap('"string.numeric.parse"', schema)
+    }
     return arktypeWrap(number(schema), schema)
   }
   if (types.includes('integer')) {
-    if (isStringWireParam) return arktypeWrap('"string.integer.parse"', schema)
+    if (isStringWireParam) {
+      const constraint = buildNumericConstraint(schema, 'number.integer')
+      return constraint
+        ? arktypeWrap(`type("string.integer.parse").to(${constraint})`, schema)
+        : arktypeWrap('"string.integer.parse"', schema)
+    }
     return arktypeWrap(integer(schema), schema)
   }
   if (types.includes('boolean')) {
@@ -282,4 +292,24 @@ export function arktype(
   if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 
   return arktypeWrap('"unknown"', schema)
+}
+
+function buildNumericConstraint(
+  schema: JSONSchema,
+  baseType: 'number' | 'number.integer',
+): string | undefined {
+  const minimum = (() => {
+    if (schema.minimum !== undefined) return `>= ${schema.minimum}`
+    if (typeof schema.exclusiveMinimum === 'number') return `> ${schema.exclusiveMinimum}`
+    return undefined
+  })()
+  const maximum = (() => {
+    if (schema.maximum !== undefined) return `<= ${schema.maximum}`
+    if (typeof schema.exclusiveMaximum === 'number') return `< ${schema.exclusiveMaximum}`
+    return undefined
+  })()
+  const multipleOf = schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
+  const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
+  if (constraints.length === 0) return undefined
+  return `"${baseType} ${constraints.join(' ')}"`
 }

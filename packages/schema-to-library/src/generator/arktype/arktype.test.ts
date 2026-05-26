@@ -622,6 +622,24 @@ describe('arktype', () => {
         arktype({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('"number"')
     })
+
+    it('query: integer with minimum → .to() constraint', () => {
+      expect(
+        arktype({ type: 'integer', minimum: 1 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('type("string.integer.parse").to("number.integer >= 1")')
+    })
+
+    it('query: integer with minimum+maximum → .to() constraint', () => {
+      expect(
+        arktype({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('type("string.integer.parse").to("number.integer >= 1 <= 100")')
+    })
+
+    it('query: number with minimum → .to() constraint', () => {
+      expect(
+        arktype({ type: 'number', minimum: 0 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('type("string.numeric.parse").to("number >= 0")')
+    })
   })
 
   describe('x-unevaluatedProperties-message', () => {
