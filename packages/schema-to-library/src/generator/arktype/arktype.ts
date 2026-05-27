@@ -311,5 +311,7 @@ function buildNumericConstraint(
   const multipleOf = schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
   const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
   if (constraints.length === 0) return undefined
-  return `"${baseType} ${constraints.join(' ')}"`
+  if (constraints.length === 1) return `"${baseType} ${constraints[0]}"`
+  const parts = constraints.map((c) => `type("${baseType} ${c}")`)
+  return `${parts[0]}${parts.slice(1).map((p) => `.and(${p})`).join('')}`
 }

@@ -573,7 +573,7 @@ describe('x-error-message: schema-to-arktype', () => {
 export const UserForm = type({
   name: type('string >= 1').describe('Name is required'),
   email: type('string.email').describe('Invalid email'),
-  'age?': type('number.integer >= 0 <= 150').describe('Invalid age'),
+  'age?': type('number.integer >= 0').and(type('number.integer <= 150')).describe('Invalid age'),
   'role?': type("'admin' | 'user'").describe('Invalid role'),
 })
 `

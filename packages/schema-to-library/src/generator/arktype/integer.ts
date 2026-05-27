@@ -83,8 +83,15 @@ export function integer(schema: JSONSchema) {
 
   const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
 
-  if (constraints.length > 0) {
-    const expr = `"number.integer ${constraints.join(' ')}"`
+  if (constraints.length > 1) {
+    const parts = constraints.map((c) => `type("number.integer ${c}")`)
+    const expr = `${parts[0]}${parts.slice(1).map((p) => `.and(${p})`).join('')}`
+    if (errorMessage) return `${expr}${describe}`
+    return expr
+  }
+
+  if (constraints.length === 1) {
+    const expr = `"number.integer ${constraints[0]}"`
     if (errorMessage) return `type(${expr})${describe}`
     return expr
   }
