@@ -7,4 +7,4 @@ export const Profile = Schema.Struct({
   }),
 })
 
-export type ProfileEncoded = typeof Profile.Encoded
+export type Profile = typeof Profile.Type

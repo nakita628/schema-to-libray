@@ -15,4 +15,4 @@ export const Bag = Schema.Array(Schema.Number.pipe(Schema.int())).pipe(
   ),
 )
 
-export type BagEncoded = typeof Bag.Encoded
+export type Bag = typeof Bag.Type

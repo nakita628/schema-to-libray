@@ -9,7 +9,7 @@ describe('effect type', () => {
 
   describe('$ref cases', () => {
     it('should handle self reference #', () => {
-      expect(type({ $ref: '#' }, 'Schema_')).toBe('typeof Schema_.Encoded')
+      expect(type({ $ref: '#' }, 'Schema_')).toBe('typeof Schema_.Type')
     })
 
     it('should handle empty reference as unknown (falsy)', () => {
@@ -17,7 +17,7 @@ describe('effect type', () => {
     })
 
     it('should handle self reference with custom name', () => {
-      expect(type({ $ref: '#' }, 'Node')).toBe('typeof Node.Encoded')
+      expect(type({ $ref: '#' }, 'Node')).toBe('typeof Node.Type')
     })
 
     it('should handle #/definitions/ reference', () => {

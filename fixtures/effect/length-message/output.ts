@@ -6,4 +6,4 @@ export const Code = Schema.Struct({
   ),
 })
 
-export type CodeEncoded = typeof Code.Encoded
+export type Code = typeof Code.Type

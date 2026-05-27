@@ -13,4 +13,4 @@ export const Mixed = Schema.Record({ key: Schema.String, value: Schema.Unknown }
   ),
 )
 
-export type MixedEncoded = typeof Mixed.Encoded
+export type Mixed = typeof Mixed.Type

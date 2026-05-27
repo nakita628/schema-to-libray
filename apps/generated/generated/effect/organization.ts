@@ -4,7 +4,7 @@ type _Organization = {
   readonly id: string
   readonly name: string
   readonly members?: readonly _Member[]
-  readonly parent?: typeof Organization.Encoded
+  readonly parent?: typeof Organization.Type
 }
 
 type _Member = {

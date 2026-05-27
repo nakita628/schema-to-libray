@@ -11,4 +11,4 @@ export const Address = Schema.Struct(
   ),
 )
 
-export type AddressEncoded = typeof Address.Encoded
+export type Address = typeof Address.Type
