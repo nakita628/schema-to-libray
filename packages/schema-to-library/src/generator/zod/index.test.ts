@@ -17,7 +17,7 @@ describe('schemaToZod', () => {
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string(),age:z.number().optional()})
+export const Schema = z.object({name:z.string(),age:z.number().exactOptional()})
 
 export type Schema = z.infer<typeof Schema>`
     expect(result).toBe(expected)
@@ -33,7 +33,7 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const User = z.object({name:z.string()}).partial()
+export const User = z.object({name:z.string().exactOptional()})
 
 export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
@@ -59,7 +59,7 @@ export type User = z.infer<typeof User>`
 
 type _Node = {children?: _Node[]}
 
-export const Node: z.ZodType<_Node> = z.object({children:z.array(z.lazy(() => Node))}).partial()
+export const Node: z.ZodType<_Node> = z.object({children:z.array(z.lazy(() => Node)).exactOptional()})
 
 export type Node = z.infer<typeof Node>`
     expect(result).toBe(expected)
@@ -92,9 +92,9 @@ type _B = {c?: _C}
 
 const C: z.ZodType<_C> = z.string()
 
-const B: z.ZodType<_B> = z.object({c:z.lazy(() => C)}).partial()
+const B: z.ZodType<_B> = z.object({c:z.lazy(() => C).exactOptional()})
 
-export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B).exactOptional()})
 
 export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
@@ -122,9 +122,9 @@ type _User = {address?: _Address}
 
 type _Address = {street?: string}
 
-const Address: z.ZodType<_Address> = z.object({street:z.string()}).partial()
+const Address: z.ZodType<_Address> = z.object({street:z.string().exactOptional()})
 
-export const User: z.ZodType<_User> = z.object({address:z.lazy(() => Address)}).partial()
+export const User: z.ZodType<_User> = z.object({address:z.lazy(() => Address).exactOptional()})
 
 export type User = z.infer<typeof User>`
     expect(result).toBe(expected)
@@ -155,9 +155,9 @@ type _A = {b?: _B}
 
 type _B = {a?: _A}
 
-const B: z.ZodType<_B> = z.object({a:z.lazy(() => A)}).partial()
+const B: z.ZodType<_B> = z.object({a:z.lazy(() => A).exactOptional()})
 
-export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B).exactOptional()})
 
 export type A = z.infer<typeof A>`
     expect(result).toBe(expected)
@@ -178,7 +178,7 @@ export type A = z.infer<typeof A>`
 
 type _Schema = {children?: z.infer<typeof Schema>[]}
 
-export const Schema: z.ZodType<_Schema> = z.object({children:z.array(z.lazy(() => Schema))}).partial()
+export const Schema: z.ZodType<_Schema> = z.object({children:z.array(z.lazy(() => Schema)).exactOptional()})
 
 export type Schema = z.infer<typeof Schema>`
     expect(result).toBe(expected)
@@ -193,7 +193,7 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string()}).partial()
+export const Schema = z.object({name:z.string().exactOptional()})
 
 export type Schema = z.infer<typeof Schema>`
     expect(result).toBe(expected)
@@ -211,7 +211,7 @@ export type Schema = z.infer<typeof Schema>`
     })
     const expected = `import * as z from 'zod'
 
-export const Union = z.object({value:z.xor([z.string(),z.number()])}).partial()
+export const Union = z.object({value:z.xor([z.string(),z.number()]).exactOptional()})
 
 export type Union = z.infer<typeof Union>`
     expect(result).toBe(expected)
@@ -229,7 +229,7 @@ export type Union = z.infer<typeof Union>`
     })
     const expected = `import * as z from 'zod'
 
-export const AnyOf = z.object({value:z.union([z.string(),z.number()])}).partial()
+export const AnyOf = z.object({value:z.union([z.string(),z.number()]).exactOptional()})
 
 export type AnyOf = z.infer<typeof AnyOf>`
     expect(result).toBe(expected)
@@ -250,7 +250,7 @@ export type AnyOf = z.infer<typeof AnyOf>`
     })
     const expected = `import * as z from 'zod'
 
-export const AllOf = z.object({value:z.intersection(z.object({name:z.string()}).partial(),z.object({age:z.number()}).partial())}).partial()
+export const AllOf = z.object({value:z.intersection(z.object({name:z.string().exactOptional()}),z.object({age:z.number().exactOptional()})).exactOptional()})
 
 export type AllOf = z.infer<typeof AllOf>`
     expect(result).toBe(expected)
@@ -269,7 +269,7 @@ export type AllOf = z.infer<typeof AllOf>`
     })
     const expected = `import * as z from 'zod'
 
-export const Enum = z.object({status:z.enum(["active","inactive"])}).partial()
+export const Enum = z.object({status:z.enum(["active","inactive"]).exactOptional()})
 
 export type Enum = z.infer<typeof Enum>`
     expect(result).toBe(expected)
@@ -287,7 +287,7 @@ export type Enum = z.infer<typeof Enum>`
     })
     const expected = `import * as z from 'zod'
 
-export const Const = z.object({type:z.literal("user")}).partial()
+export const Const = z.object({type:z.literal("user").exactOptional()})
 
 export type Const = z.infer<typeof Const>`
     expect(result).toBe(expected)
@@ -306,7 +306,7 @@ export type Const = z.infer<typeof Const>`
     })
     const expected = `import * as z from 'zod'
 
-export const Array = z.object({items:z.array(z.string())}).partial()
+export const Array = z.object({items:z.array(z.string()).exactOptional()})
 
 export type Array = z.infer<typeof Array>`
     expect(result).toBe(expected)
@@ -328,7 +328,7 @@ export type Array = z.infer<typeof Array>`
     })
     const expected = `import * as z from 'zod'
 
-export const Nested = z.object({user:z.object({name:z.string(),age:z.number()}).partial()}).partial()
+export const Nested = z.object({user:z.object({name:z.string().exactOptional(),age:z.number().exactOptional()}).exactOptional()})
 
 export type Nested = z.infer<typeof Nested>`
     expect(result).toBe(expected)
@@ -383,7 +383,7 @@ export type Additional = z.infer<typeof Additional>`
     })
     const expected = `import * as z from 'zod'
 
-export const Format = z.object({email:z.email(),uuid:z.uuid()}).partial()
+export const Format = z.object({email:z.email().exactOptional(),uuid:z.uuid().exactOptional()})
 
 export type Format = z.infer<typeof Format>`
     expect(result).toBe(expected)
@@ -403,7 +403,7 @@ export type Format = z.infer<typeof Format>`
 
     const expected = `import * as z from 'zod'
 
-export const Pattern = z.object({phone:z.string().regex(/^d+$/)}).partial()
+export const Pattern = z.object({phone:z.string().regex(/^d+$/).exactOptional()})
 
 export type Pattern = z.infer<typeof Pattern>`
     expect(result).toBe(expected)
@@ -423,7 +423,7 @@ export type Pattern = z.infer<typeof Pattern>`
     })
     const expected = `import * as z from 'zod'
 
-export const MinMax = z.object({age:z.number().min(0).max(120)}).partial()
+export const MinMax = z.object({age:z.number().min(0).max(120).exactOptional()})
 
 export type MinMax = z.infer<typeof MinMax>`
     expect(result).toBe(expected)
@@ -443,7 +443,7 @@ export type MinMax = z.infer<typeof MinMax>`
     })
     const expected = `import * as z from 'zod'
 
-export const Length = z.object({name:z.string().min(1).max(100)}).partial()
+export const Length = z.object({name:z.string().min(1).max(100).exactOptional()})
 
 export type Length = z.infer<typeof Length>`
     expect(result).toBe(expected)
@@ -461,7 +461,7 @@ export type Length = z.infer<typeof Length>`
     )
     const expected = `import * as z from 'zod'
 
-export const Schema = z.object({name:z.string()}).partial()`
+export const Schema = z.object({name:z.string().exactOptional()})`
     expect(result).toBe(expected)
   })
 
@@ -477,7 +477,7 @@ export const Schema = z.object({name:z.string()}).partial()`
     })
     const expected = `import * as z from 'zod'
 
-export const WithDefault = z.object({status:z.string().default("active")}).partial()
+export const WithDefault = z.object({status:z.string().default("active").exactOptional()})
 
 export type WithDefault = z.infer<typeof WithDefault>`
     expect(result).toBe(expected)
@@ -495,7 +495,7 @@ export type WithDefault = z.infer<typeof WithDefault>`
     })
     const expected = `import * as z from 'zod'
 
-export const NullDefault = z.object({value:z.string().default("x").nullable()}).partial()
+export const NullDefault = z.object({value:z.string().default("x").nullable().exactOptional()})
 
 export type NullDefault = z.infer<typeof NullDefault>`
     expect(result).toBe(expected)
@@ -539,7 +539,7 @@ export type N = z.infer<typeof N>`
     })
     const expected = `import * as z from 'zod'
 
-export const AnyOf = z.object({value:z.union([z.string(),z.number()])}).partial()
+export const AnyOf = z.object({value:z.union([z.string(),z.number()]).exactOptional()})
 
 export type AnyOf = z.infer<typeof AnyOf>`
     expect(result).toBe(expected)
@@ -589,7 +589,7 @@ export type Fixed = z.infer<typeof Fixed>`
     })
     const expected = `import * as z from 'zod'
 
-export const Def = z.object({enabled:z.boolean().default(true)}).partial()
+export const Def = z.object({enabled:z.boolean().default(true).exactOptional()})
 
 export type Def = z.infer<typeof Def>`
     expect(result).toBe(expected)
@@ -796,7 +796,7 @@ export type RootSchema = z.infer<typeof RootSchema>`
 
 type _Tree = {children?: z.infer<typeof Tree>[]}
 
-export const Tree: z.ZodType<_Tree> = z.object({children:z.array(z.lazy(() => Tree))}).partial()
+export const Tree: z.ZodType<_Tree> = z.object({children:z.array(z.lazy(() => Tree)).exactOptional()})
 
 export type Tree = z.infer<typeof Tree>`
       expect(result).toBe(expected)
@@ -826,9 +826,9 @@ type _A = {b?: _B}
 
 type _B = {a?: _A}
 
-const B: z.ZodType<_B> = z.object({a:z.lazy(() => A)}).partial()
+const B: z.ZodType<_B> = z.object({a:z.lazy(() => A).exactOptional()})
 
-export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B)}).partial()`
+export const A: z.ZodType<_A> = z.object({b:z.lazy(() => B).exactOptional()})`
       expect(result).toBe(expected)
     })
 
@@ -860,9 +860,9 @@ type _Middle = {inner?: _Inner}
 
 const Inner: z.ZodType<_Inner> = z.string()
 
-const Middle: z.ZodType<_Middle> = z.object({inner:z.lazy(() => Inner)}).partial()
+const Middle: z.ZodType<_Middle> = z.object({inner:z.lazy(() => Inner).exactOptional()})
 
-export const Root: z.ZodType<_Root> = z.object({mid:z.lazy(() => Middle)}).partial()`
+export const Root: z.ZodType<_Root> = z.object({mid:z.lazy(() => Middle).exactOptional()})`
       expect(result).toBe(expected)
     })
 
@@ -888,7 +888,7 @@ export const Root: z.ZodType<_Root> = z.object({mid:z.lazy(() => Middle)}).parti
 
 type _Node = {value: string; next?: _Node}
 
-export const Node: z.ZodType<_Node> = z.object({value:z.string(),next:z.lazy(() => Node).optional()})`
+export const Node: z.ZodType<_Node> = z.object({value:z.string(),next:z.lazy(() => Node).exactOptional()})`
       expect(result).toBe(expected)
     })
 
@@ -936,7 +936,7 @@ export const Doc: z.ZodType<_Doc> = z.object({tags:z.array(z.lazy(() => Tag))})`
       )
       const expected = `import * as z from 'zod'
 
-export const Status = z.object({role:z.enum(["admin","user"]).default("user"),active:z.boolean().default(true).nullable().optional()})`
+export const Status = z.object({role:z.enum(["admin","user"]).default("user"),active:z.boolean().default(true).nullable().exactOptional()})`
       expect(result).toBe(expected)
     })
 

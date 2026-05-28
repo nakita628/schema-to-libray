@@ -8,7 +8,7 @@ const Address: z.ZodType<_Address> = z.object({ street: z.string(), city: z.stri
 
 export const User: z.ZodType<_User> = z.object({
   name: z.string(),
-  address: z.lazy(() => Address).optional(),
+  address: z.lazy(() => Address).exactOptional(),
 })
 
 export type User = z.infer<typeof User>

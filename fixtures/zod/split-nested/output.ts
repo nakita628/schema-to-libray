@@ -5,7 +5,7 @@ export const Order = z.object({
   customer: z.object({
     name: z.string(),
     email: z.email(),
-    address: z.object({ street: z.string(), city: z.string() }).optional(),
+    address: z.object({ street: z.string(), city: z.string() }).exactOptional(),
   }),
   status: z.enum(['pending', 'shipped', 'delivered']),
 })

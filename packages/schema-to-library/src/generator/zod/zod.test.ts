@@ -199,7 +199,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).optional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
+          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).exactOptional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
         ],
         [
           {
@@ -1163,7 +1163,7 @@ describe('zod', () => {
           required: ['pet'],
         }
         expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
-          'z.object({pet:PetSchema,owner:UserProfileSchema.optional()})',
+          'z.object({pet:PetSchema,owner:UserProfileSchema.exactOptional()})',
         )
       })
     })
@@ -1673,13 +1673,13 @@ describe('zod', () => {
 
     it('emits then refine with x-then-message', () => {
       expect(zod(buildSchema({ 'x-then-message': 'then failed' }))).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
       )
     })
 
     it('falls back to x-if-message for then when x-then-message absent', () => {
       expect(zod(buildSchema({ 'x-if-message': 'if shared' }))).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
       )
     })
 
@@ -1693,7 +1693,7 @@ describe('zod', () => {
           }),
         ),
       ).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
       )
     })
   })
@@ -1739,7 +1739,7 @@ describe('zod', () => {
           false,
           { paramIn: 'query' },
         ),
-      ).toBe('z.object({page:z.coerce.number().int(),q:z.string().optional()})')
+      ).toBe('z.object({page:z.coerce.number().int(),q:z.string().exactOptional()})')
     })
 
     it('nested in array: items coerced too', () => {

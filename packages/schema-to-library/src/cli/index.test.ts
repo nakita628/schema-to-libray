@@ -149,7 +149,7 @@ describe('schema-to-zod', () => {
     const generatedCode = fs.readFileSync('test-output-zod.ts', 'utf-8')
     const expectedCode = `import * as z from 'zod'
 
-export const User = z.object({ name: z.string(), age: z.int().optional() })
+export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
 `
     expect(generatedCode).toBe(expectedCode)
   })
@@ -179,7 +179,7 @@ describe('schema-to-zod --export-type', () => {
     const generatedCode = fs.readFileSync('test-output-zod-et.ts', 'utf-8')
     const expectedCode = `import * as z from 'zod'
 
-export const User = z.object({ name: z.string(), age: z.int().optional() })
+export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
 
 export type User = z.infer<typeof User>
 `
@@ -447,8 +447,8 @@ export const UserForm = z.object({
     .int({ error: 'Invalid age' })
     .min(0, { error: 'Invalid age' })
     .max(150, { error: 'Invalid age' })
-    .optional(),
-  role: z.enum(['admin', 'user'], { error: 'Invalid role' }).optional(),
+    .exactOptional(),
+  role: z.enum(['admin', 'user'], { error: 'Invalid role' }).exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -608,7 +608,7 @@ export const Product = z.object({
     .int()
     .min(0, { error: 'Quantity cannot be negative' })
     .multipleOf(1, { error: 'Quantity must be whole number' })
-    .optional(),
+    .exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -716,9 +716,9 @@ describe('array/nullable/default: schema-to-zod', () => {
 
 export const Config = z.object({
   tags: z.array(z.string()).min(1),
-  enabled: z.boolean().default(true).optional(),
-  count: z.int().nullable().optional(),
-  label: z.string().default('untitled').optional(),
+  enabled: z.boolean().default(true).exactOptional(),
+  count: z.int().nullable().exactOptional(),
+  label: z.string().default('untitled').exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)

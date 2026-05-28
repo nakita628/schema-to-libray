@@ -223,6 +223,7 @@ describe('zod fixtures: oneof runtime', () => {
           errors: [],
           note: 'No matching discriminator',
           discriminator: 'kind',
+          options: ['circle', 'rectangle'],
           path: ['kind'],
           message: 'Must be a valid shape',
         },
@@ -616,8 +617,9 @@ describe('zod fixtures: discriminated-union runtime', () => {
           errors: [],
           note: 'No matching discriminator',
           discriminator: 'kind',
+          options: ['cat', 'dog'],
           path: ['kind'],
-          message: 'Invalid input',
+          message: "Invalid discriminator value. Expected 'cat' | 'dog'",
         },
       ])
     }
