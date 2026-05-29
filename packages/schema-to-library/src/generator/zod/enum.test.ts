@@ -25,6 +25,11 @@ describe('_enum', () => {
       'z.union([z.tuple([z.literal(1),z.literal(2)]),z.tuple([z.literal(3),z.literal(4)])])',
     ],
     [{ enum: [1, 'a', true] }, "z.union([z.literal(1),z.literal('a'),z.literal(true)])"],
+    // Non-primitive enum members use structural matchers (Zod v4 z.literal is primitive-only)
+    [{ type: 'object', enum: [{ a: 1 }] }, 'z.strictObject({a:z.literal(1)})'],
+    [{ enum: [{}, []] }, 'z.union([z.strictObject({}),z.tuple([])])'],
+    [{ enum: [{ 'x-foo': 1 }] }, 'z.strictObject({"x-foo":z.literal(1)})'],
+    [{ enum: [{ a: [1] }] }, 'z.strictObject({a:z.tuple([z.literal(1)])})'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)
   })

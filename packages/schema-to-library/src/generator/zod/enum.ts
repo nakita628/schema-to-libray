@@ -1,5 +1,5 @@
 import type { JSONSchema } from '../../parser/index.js'
-import { zodError } from '../../utils/index.js'
+import { makeSafeKey, zodError } from '../../utils/index.js'
 
 /**
  * Generates a Zod enum schema. String enums map to `z.enum`, number/integer/
@@ -35,11 +35,27 @@ export function _enum(schema: JSONSchema) {
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
   const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
+  const isRecord = (v: unknown): v is { readonly [k: string]: unknown } =>
+    v !== null && typeof v === 'object' && !Array.isArray(v)
+  const isComposite = (v: unknown): boolean => Array.isArray(v) || isRecord(v)
+  // Zod v4 `z.literal` is primitive-only; array/object enum members need a
+  // structural matcher (`z.tuple` / `z.strictObject`). Primitives and `null`
+  // keep their `z.literal(...)` output byte-for-byte.
+  const valueSchema = (v: unknown): string => {
+    if (Array.isArray(v)) return `z.tuple([${v.map(valueSchema).join(',')}])`
+    if (isRecord(v)) {
+      const entries = Object.entries(v)
+      return `z.strictObject({${entries.map(([k, val]) => `${makeSafeKey(k)}:${valueSchema(val)}`).join(',')}})`
+    }
+    return `z.literal(${lit(v)})`
+  }
   // Inner literal — used inside a wrapper (z.union / z.tuple) that
   // already carries `errorArg`, so we don't repeat it.
-  const innerLit = (v: unknown): string => `z.literal(${lit(v)})`
+  const innerLit = (v: unknown): string => valueSchema(v)
   // Outer literal — used when the literal is the entire schema output.
-  const outerLit = (v: unknown): string => `z.literal(${lit(v)}${errorArg})`
+  // Composite single values carry no error arg (rare; structural matcher only).
+  const outerLit = (v: unknown): string =>
+    isComposite(v) ? valueSchema(v) : `z.literal(${lit(v)}${errorArg})`
   // Inner tuple — used inside a z.union of multiple tuples; the outer
   // union's errorArg covers this tuple too, so neither the tuple wrapper
   // nor its inner literals receive errorArg.

@@ -1222,6 +1222,28 @@ describe('zod', () => {
     })
   })
 
+  describe('deep local JSON Pointer refs', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ $ref: '#/components/schemas/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/components/schemas/Foo/items' }, 'z.unknown()'],
+      [{ $ref: '#/$defs/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/definitions/Foo/properties/bar' }, 'z.unknown()'],
+    ])('zod(%o) → %s', (input, expected) => {
+      expect(zod(input)).toBe(expected)
+    })
+
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ $ref: '#/components/schemas/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/$defs/Foo/properties/bar' }, 'z.unknown()'],
+    ])('zod(%o, "TestSchema", false, { openapi: true }) → %s', (input, expected) => {
+      expect(zod(input, 'TestSchema', false, { openapi: true })).toBe(expected)
+    })
+
+    it.concurrent('top-level ref is unchanged', () => {
+      expect(zod({ $ref: '#/components/schemas/Foo' })).toBe('FooSchema')
+    })
+  })
+
   describe('$ref edge cases', () => {
     it('should handle self reference #', () => {
       expect(zod({ $ref: '#' }, 'Schema')).toBe('z.lazy(() => Schema)')

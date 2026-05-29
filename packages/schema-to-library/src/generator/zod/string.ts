@@ -159,8 +159,9 @@ export function string(schema: JSONSchema) {
     : format
       ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
       : `z.${coercePrefix}string(${baseCallArg})`
+  const needsUnicodeFlag = schema.pattern ? /\\[pP]\{|\\u\{/.test(schema.pattern) : false
   const pattern = schema.pattern
-    ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${patternErrorPart})`
+    ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${needsUnicodeFlag ? 'u' : ''}${patternErrorPart})`
     : undefined
   const isFixedLength =
     schema.minLength !== undefined &&
