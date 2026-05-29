@@ -143,6 +143,8 @@ describe('arktype', () => {
       [{ const: 42 } as JSONSchema, '"42"'],
       [{ const: true } as JSONSchema, '"true"'],
       [{ const: 'fixed', nullable: true } as JSONSchema, '"\'fixed\' | null"'],
+      [{ const: { a: 1 } } as JSONSchema, '"unknown"'],
+      [{ const: [1, 2] } as JSONSchema, '"unknown"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })

@@ -1,4 +1,4 @@
-import { typeboxWrap } from '../../helper/index.js'
+import { isDeepLocalPointer, typeboxWrap } from '../../helper/index.js'
 import { typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
@@ -51,6 +51,9 @@ export function typebox(
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
         return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${rootName}`, s), s)
+      }
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+        return typeboxWrap('Type.Unknown()', s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)

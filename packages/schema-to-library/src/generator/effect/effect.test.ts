@@ -409,6 +409,10 @@ describe('effect', () => {
         'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
       ],
       [
+        { type: 'object', default: { key: 'defaultValue' } },
+        'Schema.optionalWith(Schema.Struct({}),{default:() => ({"key":"defaultValue"})})',
+      ],
+      [
         { type: 'string', format: 'email' },
         'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/))',
       ],

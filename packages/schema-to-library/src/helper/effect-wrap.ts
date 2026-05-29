@@ -42,9 +42,15 @@ export function effectWrap(
   const codeChain = [filter, transformExt, pipeExt].filter((v): v is string => v !== undefined)
   const withCodeExts = codeChain.length === 0 ? withBrand : `${withBrand}${codeChain.join('')}`
   // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
+  // An object literal `{...}` after `() =>` parses as a block, so wrap it in
+  // parens to force an object-literal expression.
+  const thunkBody = (value: unknown): string => {
+    const literal = formatLiteral(value)
+    return literal.startsWith('{') ? `(${literal})` : literal
+  }
   const withDefault =
     schema.default !== undefined
-      ? `Schema.optionalWith(${withCodeExts},{default:() => ${formatLiteral(schema.default)}})`
+      ? `Schema.optionalWith(${withCodeExts},{default:() => ${thunkBody(schema.default)}})`
       : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)

@@ -1,3 +1,4 @@
+import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
@@ -64,7 +65,7 @@ export function string(schema: JSONSchema) {
         `type(${base}).narrow((s, ctx) => new RegExp(${JSON.stringify(schema.pattern)}).test(s) || ctx.mustBe(${JSON.stringify(patternMessage)}))`,
       )
     }
-    return finalize(`type(${base}).and(/${schema.pattern}/)`)
+    return finalize(`type(${base}).and(${regexLiteral(schema.pattern)})`)
   }
 
   const isFixedLength =

@@ -8,6 +8,12 @@ export function _enum(schema: JSONSchema) {
 
   if (!schema.enum || schema.enum.length === 0) return '"unknown"'
 
+  // ArkType enums are a `"a | b | c"` string union, which can't represent
+  // array/object members (their JSON form embeds quotes that break the string).
+  // Such pathological enums fall back to `unknown`.
+  const isComposite = (v: unknown): boolean => v !== null && typeof v === 'object'
+  if (schema.enum.some(isComposite)) return '"unknown"'
+
   const lit = (v: unknown): string => {
     if (v === null) return 'null'
     if (typeof v === 'string') return `'${v}'`

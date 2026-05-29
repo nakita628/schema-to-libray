@@ -1,4 +1,8 @@
-import { type CodeExtensionOptions, zodWrap as _zodWrap } from '../../helper/index.js'
+import {
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+  zodWrap as _zodWrap,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -39,15 +43,6 @@ export function zod(
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const zodWrap = (zodStr: string, s: JSONSchema): string => _zodWrap(zodStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
-  // A local ref pointing into a sub-schema (e.g. `#/components/schemas/X/properties/Y`)
-  // has no top-level `export const`, so emitting its PascalCase name would dangle.
-  const isDeepLocalPointer = ($ref: string): boolean => {
-    if (!$ref.startsWith('#/')) return false
-    const fragment = $ref.slice(2)
-    const CONTAINERS = ['components/schemas/', 'definitions/', '$defs/']
-    const matched = CONTAINERS.find((c) => fragment.startsWith(c))
-    return matched ? fragment.slice(matched.length).includes('/') : false
-  }
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
     if (s.$ref === '#' || s.$ref === '') {
       return zodWrap(`z.lazy(() => ${rn})`, s)

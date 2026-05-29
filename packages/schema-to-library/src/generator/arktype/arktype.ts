@@ -1,4 +1,8 @@
-import { arktypeWrap as _arktypeWrap, type CodeExtensionOptions } from '../../helper/index.js'
+import {
+  arktypeWrap as _arktypeWrap,
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -44,6 +48,7 @@ export function arktype(
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') return `"${rootName}"`
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return '"unknown"'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
         if (resolved) return `"${resolved}"`
@@ -141,6 +146,7 @@ export function arktype(
     const formatConst = (value: unknown): string => {
       if (typeof value === 'string') return `"'${value}'"`
       if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
+      if (value !== null && typeof value === 'object') return '"unknown"'
       return `"${JSON.stringify(value) ?? 'null'}"`
     }
     // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.

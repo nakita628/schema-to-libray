@@ -1,4 +1,8 @@
-import { type CodeExtensionOptions, valibotWrap as _valibotWrap } from '../../helper/index.js'
+import {
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+  valibotWrap as _valibotWrap,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -43,6 +47,9 @@ export function valibot(
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
         return valibotWrap(`v.lazy(() => ${rootName})`, s)
+      }
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+        return valibotWrap('v.unknown()', s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)

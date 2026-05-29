@@ -1,3 +1,4 @@
+import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { zodBaseError, zodError } from '../../utils/index.js'
 
@@ -159,9 +160,8 @@ export function string(schema: JSONSchema) {
     : format
       ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
       : `z.${coercePrefix}string(${baseCallArg})`
-  const needsUnicodeFlag = schema.pattern ? /\\[pP]\{|\\u\{/.test(schema.pattern) : false
   const pattern = schema.pattern
-    ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${needsUnicodeFlag ? 'u' : ''}${patternErrorPart})`
+    ? `.regex(${regexLiteral(schema.pattern)}${patternErrorPart})`
     : undefined
   const isFixedLength =
     schema.minLength !== undefined &&
