@@ -78,7 +78,10 @@ export function number(schema: JSONSchema) {
   const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
   if (constraints.length > 1) {
     const parts = constraints.map((c) => `type("number ${c}")`)
-    const expr = `${parts[0]}${parts.slice(1).map((p) => `.and(${p})`).join('')}`
+    const expr = `${parts[0]}${parts
+      .slice(1)
+      .map((p) => `.and(${p})`)
+      .join('')}`
     if (errorMessage) return `${expr}${describe}`
     return expr
   }

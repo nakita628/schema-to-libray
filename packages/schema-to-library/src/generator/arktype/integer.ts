@@ -85,7 +85,10 @@ export function integer(schema: JSONSchema) {
 
   if (constraints.length > 1) {
     const parts = constraints.map((c) => `type("number.integer ${c}")`)
-    const expr = `${parts[0]}${parts.slice(1).map((p) => `.and(${p})`).join('')}`
+    const expr = `${parts[0]}${parts
+      .slice(1)
+      .map((p) => `.and(${p})`)
+      .join('')}`
     if (errorMessage) return `${expr}${describe}`
     return expr
   }

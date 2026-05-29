@@ -116,8 +116,17 @@ describe('helper', () => {
       ['v2-api-user', 'V2ApiUser'],
       ['com.example.User', 'ComExampleUser'],
       ['foo---bar___baz', 'FooBarBaz'],
+      // Non-ASCII names are encoded injectively instead of collapsing to `Schema`
+      ['日本語スキーマ', 'U65e5u672cu8a9eu30b9u30adu30fcu30de'],
+      ['中文', 'U4e2du6587'],
+      ['Схема_Русский', 'U421u445u435u43cu430U420u443u441u441u43au438u439'],
+      ['café', 'Cafue9'],
     ])('toIdentifierPascalCase(%s) → %s', (input, expected) => {
       expect(toIdentifierPascalCase(input)).toBe(expected)
+    })
+
+    it.concurrent('maps distinct non-ASCII names to distinct identifiers (no collapse)', () => {
+      expect(toIdentifierPascalCase('日本語')).not.toBe(toIdentifierPascalCase('中文'))
     })
   })
 
@@ -142,6 +151,10 @@ describe('helper', () => {
       ['#/components/schemas/My%20Schema', 'MySchemaSchema'],
       // Empty component name
       ['#/components/schemas/', 'SchemaSchema'],
+      // Non-ASCII component names: a percent-encoded $ref resolves to the same
+      // identifier as the decoded name, so declaration and reference stay aligned.
+      ['#/components/schemas/中文', 'U4e2du6587Schema'],
+      ['#/components/schemas/%E4%B8%AD%E6%96%87', 'U4e2du6587Schema'],
     ])('resolveOpenAPIRef(%s) → %s', (input, expected) => {
       expect(resolveOpenAPIRef(input)).toBe(expected)
     })

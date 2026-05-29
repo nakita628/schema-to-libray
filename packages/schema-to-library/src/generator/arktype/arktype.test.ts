@@ -190,7 +190,10 @@ describe('arktype', () => {
       [{ type: ['number', 'null'] } as JSONSchema, '"number | null"'],
       [{ type: 'number', minimum: 0 } as JSONSchema, '"number >= 0"'],
       [{ type: 'number', maximum: 100 } as JSONSchema, '"number <= 100"'],
-      [{ type: 'number', minimum: 0, maximum: 100 } as JSONSchema, 'type("number >= 0").and(type("number <= 100"))'],
+      [
+        { type: 'number', minimum: 0, maximum: 100 } as JSONSchema,
+        'type("number >= 0").and(type("number <= 100"))',
+      ],
       [{ type: 'number', exclusiveMinimum: 0 } as JSONSchema, '"number > 0"'],
       [{ type: 'number', exclusiveMaximum: 100 } as JSONSchema, '"number < 100"'],
       [{ type: 'number', multipleOf: 2 } as JSONSchema, '"number % 2"'],
@@ -624,21 +627,25 @@ describe('arktype', () => {
     })
 
     it('query: integer with minimum → .to() constraint', () => {
-      expect(
-        arktype({ type: 'integer', minimum: 1 }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('type("string.integer.parse").to("number.integer >= 1")')
+      expect(arktype({ type: 'integer', minimum: 1 }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'type("string.integer.parse").to("number.integer >= 1")',
+      )
     })
 
     it('query: integer with minimum+maximum → .to() constraint', () => {
       expect(
-        arktype({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('type("string.integer.parse").to(type("number.integer >= 1").and(type("number.integer <= 100")))')
+        arktype({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, {
+          paramIn: 'query',
+        }),
+      ).toBe(
+        'type("string.integer.parse").to(type("number.integer >= 1").and(type("number.integer <= 100")))',
+      )
     })
 
     it('query: number with minimum → .to() constraint', () => {
-      expect(
-        arktype({ type: 'number', minimum: 0 }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('type("string.numeric.parse").to("number >= 0")')
+      expect(arktype({ type: 'number', minimum: 0 }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'type("string.numeric.parse").to("number >= 0")',
+      )
     })
   })
 

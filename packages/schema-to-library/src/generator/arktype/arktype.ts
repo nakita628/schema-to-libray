@@ -313,5 +313,8 @@ function buildNumericConstraint(
   if (constraints.length === 0) return undefined
   if (constraints.length === 1) return `"${baseType} ${constraints[0]}"`
   const parts = constraints.map((c) => `type("${baseType} ${c}")`)
-  return `${parts[0]}${parts.slice(1).map((p) => `.and(${p})`).join('')}`
+  return `${parts[0]}${parts
+    .slice(1)
+    .map((p) => `.and(${p})`)
+    .join('')}`
 }

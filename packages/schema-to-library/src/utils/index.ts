@@ -33,8 +33,32 @@ export function toPascalCase(name: string) {
  * toIdentifierPascalCase('user')        // 'User'
  * ```
  */
+/**
+ * Encode non-ASCII characters as `u<hex codepoint>` so they survive identifier
+ * normalization instead of being stripped (which collapses every non-ASCII name
+ * to the same `Schema`, producing duplicate declarations). Pure-ASCII input is
+ * returned unchanged, so identifier generation stays byte-for-byte identical for
+ * the overwhelming majority of specs.
+ *
+ * @example
+ * ```ts
+ * encodeNonAscii('User')          // 'User'
+ * encodeNonAscii('日本語')         // 'u65e5u672cu8a9e'
+ * ```
+ */
+export function encodeNonAscii(name: string) {
+  return Array.from(name)
+    .map((ch) => {
+      const cp = ch.codePointAt(0) ?? 0
+      return cp > 0x7f ? `u${cp.toString(16)}` : ch
+    })
+    .join('')
+}
+
 export function toIdentifierPascalCase(name: string) {
-  const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean)
+  const parts = encodeNonAscii(name)
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
   if (parts.length === 0) return 'Schema'
   const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
   if (/^[0-9]/.test(result)) {
@@ -156,20 +180,10 @@ export const OPENAPI_COMPONENT_SUFFIX_MAP: ReadonlyArray<{
  * ```
  */
 export function resolveOpenAPIRef($ref: string) {
-  const toIdentifierName = (name: string) => {
-    const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean)
-    if (parts.length === 0) return 'Schema'
-    const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
-    if (/^[0-9]/.test(result)) {
-      const prefixed = `_${result}`
-      return prefixed.replace(/([0-9])([a-z])/, (_, d, c: string) => `${d}${c.toUpperCase()}`)
-    }
-    return result
-  }
   for (const { prefix, suffix } of OPENAPI_COMPONENT_SUFFIX_MAP) {
     if ($ref.startsWith(prefix)) {
       const rawName = decodeURIComponent($ref.slice(prefix.length))
-      return toIdentifierName(rawName) + suffix
+      return toIdentifierPascalCase(rawName) + suffix
     }
   }
   return null
