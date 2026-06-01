@@ -105,6 +105,15 @@ describe('string', () => {
         { type: 'string', format: 'email', 'x-emailRegex': '^[a-z]+@example\\.com$' },
         'z.email({pattern:/^[a-z]+@example\\.com$/})',
       ],
+      // Unicode property escapes require the `u` flag (TS1530); a bare `/` stays escaped.
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '^\\p{L}+@\\p{L}+$' },
+        'z.email({pattern:/^\\p{L}+@\\p{L}+$/u})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '\\p{L}/\\p{L}' },
+        'z.email({pattern:/\\p{L}\\/\\p{L}/u})',
+      ],
       [
         {
           type: 'string',
@@ -123,6 +132,14 @@ describe('string', () => {
       [
         { type: 'string', format: 'uri', 'x-urlHostname': '^[a-z.]+$' },
         'z.url({hostname:/^[a-z.]+$/})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlProtocol': '^\\p{L}+$' },
+        'z.url({protocol:/^\\p{L}+$/u})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlHostname': '\\p{L}+\\.\\p{L}+' },
+        'z.url({hostname:/\\p{L}+\\.\\p{L}+/u})',
       ],
       [{ type: 'string', format: 'uri', 'x-urlNormalize': true }, 'z.url({normalize:true})'],
       [{ type: 'string', format: 'uri', 'x-urlNormalize': false }, 'z.url({normalize:false})'],

@@ -38,10 +38,6 @@ const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
   unicode: 'z.regexes.unicodeEmail',
 }
 
-function escapeRegexLiteral(pattern: string) {
-  return pattern.replace(/(?<!\\)\//g, '\\/')
-}
-
 function buildFormatOptions(schema: JSONSchema): readonly string[] {
   const format = schema.format
   const parts: string[] = []
@@ -51,7 +47,7 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
     if (typeof emailPattern === 'string' && EMAIL_PATTERN_MAP[emailPattern] !== undefined) {
       parts.push(`pattern:${EMAIL_PATTERN_MAP[emailPattern]}`)
     } else if (typeof emailRegex === 'string') {
-      parts.push(`pattern:/${escapeRegexLiteral(emailRegex)}/`)
+      parts.push(`pattern:${regexLiteral(emailRegex)}`)
     }
     return parts
   }
@@ -62,9 +58,9 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
   }
   if (format === 'uri') {
     const urlProtocol = schema['x-urlProtocol']
-    if (typeof urlProtocol === 'string') parts.push(`protocol:/${escapeRegexLiteral(urlProtocol)}/`)
+    if (typeof urlProtocol === 'string') parts.push(`protocol:${regexLiteral(urlProtocol)}`)
     const urlHostname = schema['x-urlHostname']
-    if (typeof urlHostname === 'string') parts.push(`hostname:/${escapeRegexLiteral(urlHostname)}/`)
+    if (typeof urlHostname === 'string') parts.push(`hostname:${regexLiteral(urlHostname)}`)
     if (schema['x-urlNormalize'] === true) parts.push('normalize:true')
     else if (schema['x-urlNormalize'] === false) parts.push('normalize:false')
     return parts
