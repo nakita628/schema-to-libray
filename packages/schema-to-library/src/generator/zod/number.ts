@@ -6,7 +6,7 @@ import { zodBaseError, zodError } from '../../utils/index.js'
  * min/max/multipleOf constraints and `x-*-message` vendor extensions translated
  * to Zod v4 `{error: "msg"}` parameters.
  */
-export function number(schema: JSONSchema): string {
+export function number(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const isCoerce = schema['x-coerce'] === true
