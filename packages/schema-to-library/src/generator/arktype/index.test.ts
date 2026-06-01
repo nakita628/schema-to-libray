@@ -23,6 +23,30 @@ export type Schema = typeof Schema.infer`
     expect(result).toBe(expected)
   })
 
+  it('emits standalone cross-schema $refs as value references, not scope-DSL strings', () => {
+    // Without definitions the output is a bare `const`, so refs to sibling components must be
+    // value references (`PetSchema`) that resolve against imports — quoted DSL strings would only
+    // resolve inside scope({...}) and throw 'PetSchema is unresolvable' at runtime.
+    const result = schemaToArktype(
+      {
+        title: 'Owner',
+        type: 'object',
+        required: ['pet'],
+        properties: {
+          pet: { $ref: '#/components/schemas/Pet' },
+          tags: { type: 'array', items: { $ref: '#/components/schemas/Tag' } },
+        },
+      },
+      { openapi: true },
+    )
+    const expected = `import { type } from "arktype"
+
+export const Owner = type({pet:PetSchema,"tags?":type(TagSchema).array()})
+
+export type Owner = typeof Owner.infer`
+    expect(result).toBe(expected)
+  })
+
   it('should generate schema with title', () => {
     const result = schemaToArktype({
       title: 'User',

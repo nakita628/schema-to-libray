@@ -46,21 +46,26 @@ export function arktype(
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
 
   if (schema.$ref) {
+    // Scope mode (isArktype) resolves refs through `scope({...})` as DSL keywords (`"User"`).
+    // Standalone exports (`const X = type(...)`) have no scope, so a cross-schema ref must be a
+    // value reference to the imported const (`User`). Self-refs stay quoted: a value ref to the
+    // const being defined would hit a TDZ; recursion is only expressible in scope mode.
+    const emitRef = (name: string): string => (!isArktype && name !== rootName ? name : `"${name}"`)
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') return `"${rootName}"`
       if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return '"unknown"'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
-        if (resolved) return `"${resolved}"`
+        if (resolved) return emitRef(resolved)
       }
       const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
       const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
       for (const prefix of REF_PREFIXES) {
-        if (s.$ref?.startsWith(prefix)) return `"${toName(s.$ref.slice(prefix.length))}"`
+        if (s.$ref?.startsWith(prefix)) return emitRef(toName(s.$ref.slice(prefix.length)))
       }
       if (s.$ref?.startsWith('#')) {
         const refName = s.$ref.slice(1)
-        return refName === '' ? `"${rootName}"` : `"${toName(refName)}"`
+        return refName === '' ? `"${rootName}"` : emitRef(toName(refName))
       }
       return '"unknown"'
     }
