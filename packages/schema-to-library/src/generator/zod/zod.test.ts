@@ -427,9 +427,9 @@ describe('zod', () => {
         [{ type: 'string', default: 'test' }, 'z.string().default("test")'],
         [
           { type: 'string', default: 'test', nullable: true },
-          'z.string().default("test").nullable()',
+          'z.string().nullable().default("test")',
         ],
-        [{ type: ['string', 'null'], default: 'test' }, 'z.string().default("test").nullable()'],
+        [{ type: ['string', 'null'], default: 'test' }, 'z.string().nullable().default("test")'],
         [{ type: 'string', format: 'email' }, 'z.email()'],
         [{ type: 'string', format: 'uuid' }, 'z.uuid()'],
         [{ type: 'string', format: 'uuidv4' }, 'z.uuidv4()'],
@@ -493,9 +493,9 @@ describe('zod', () => {
             [{ type: 'number', default: 100 }, 'z.number().default(100)'],
             [
               { type: 'number', default: 100, nullable: true },
-              'z.number().default(100).nullable()',
+              'z.number().nullable().default(100)',
             ],
-            [{ type: ['number', 'null'], default: 100 }, 'z.number().default(100).nullable()'],
+            [{ type: ['number', 'null'], default: 100 }, 'z.number().nullable().default(100)'],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
           })
@@ -541,8 +541,8 @@ describe('zod', () => {
             [{ type: 'integer', exclusiveMaximum: 100 }, 'z.int().lt(100)'],
             [{ type: 'integer', multipleOf: 2 }, 'z.int().multipleOf(2)'],
             [{ type: 'integer', default: 100 }, 'z.int().default(100)'],
-            [{ type: 'integer', default: 100, nullable: true }, 'z.int().default(100).nullable()'],
-            [{ type: ['integer', 'null'], default: 100 }, 'z.int().default(100).nullable()'],
+            [{ type: 'integer', default: 100, nullable: true }, 'z.int().nullable().default(100)'],
+            [{ type: ['integer', 'null'], default: 100 }, 'z.int().nullable().default(100)'],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
           })
@@ -586,11 +586,11 @@ describe('zod', () => {
             [{ type: 'integer', format: 'int32', default: 100 }, 'z.int32().default(100)'],
             [
               { type: 'integer', format: 'int32', default: 100, nullable: true },
-              'z.int32().default(100).nullable()',
+              'z.int32().nullable().default(100)',
             ],
             [
               { type: ['integer', 'null'], format: 'int32', default: 100 },
-              'z.int32().default(100).nullable()',
+              'z.int32().nullable().default(100)',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -635,11 +635,11 @@ describe('zod', () => {
             [{ type: 'integer', format: 'int64', default: 100 }, 'z.int64().default(100n)'],
             [
               { type: 'integer', format: 'int64', default: 100, nullable: true },
-              'z.int64().default(100n).nullable()',
+              'z.int64().nullable().default(100n)',
             ],
             [
               { type: ['integer', 'null'], format: 'int64', default: 100 },
-              'z.int64().default(100n).nullable()',
+              'z.int64().nullable().default(100n)',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -693,11 +693,11 @@ describe('zod', () => {
             ],
             [
               { type: 'integer', format: 'bigint', default: 100, nullable: true },
-              'z.bigint().default(BigInt(100)).nullable()',
+              'z.bigint().nullable().default(BigInt(100))',
             ],
             [
               { type: ['integer', 'null'], format: 'bigint', default: 100 },
-              'z.bigint().default(BigInt(100)).nullable()',
+              'z.bigint().nullable().default(BigInt(100))',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -902,11 +902,11 @@ describe('zod', () => {
           [{ type: 'null' }, 'z.null().nullable()'],
           [{ type: 'null', nullable: true }, 'z.null().nullable()'],
           [{ type: ['null'] }, 'z.null().nullable()'],
-          [{ type: 'null', default: 'test' }, 'z.null().default("test").nullable()'],
-          [{ type: ['null'], default: 'test' }, 'z.null().default("test").nullable()'],
+          [{ type: 'null', default: 'test' }, 'z.null().nullable().default("test")'],
+          [{ type: ['null'], default: 'test' }, 'z.null().nullable().default("test")'],
           [
             { type: 'null', nullable: true, default: 'test' },
-            'z.null().default("test").nullable()',
+            'z.null().nullable().default("test")',
           ],
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
@@ -948,14 +948,14 @@ describe('zod', () => {
               nullable: true,
               default: 'test',
             },
-            'z.any().default("test").nullable()',
+            'z.any().nullable().default("test")',
           ],
           [
             {
               type: ['any' as any, 'null'],
               default: 'test',
             },
-            'z.any().default("test").nullable()',
+            'z.any().nullable().default("test")',
           ],
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
@@ -1271,8 +1271,19 @@ describe('zod', () => {
       )
     })
 
-    it('should handle object default', () => {
-      expect(zod({ type: 'string', default: null })).toBe('z.string().default(null)')
+    it('omits a null default on a non-nullable schema', () => {
+      expect(zod({ type: 'string', default: null })).toBe('z.string()')
+    })
+
+    it('keeps a null default on a nullable schema', () => {
+      expect(zod({ type: ['string', 'null'], default: null })).toBe(
+        'z.string().nullable().default(null)',
+      )
+    })
+
+    it('coerces a string boolean default to the boolean it spells', () => {
+      expect(zod({ type: 'boolean', default: 'true' })).toBe('z.boolean().default(true)')
+      expect(zod({ type: 'boolean', default: 'false' })).toBe('z.boolean().default(false)')
     })
 
     it('should handle nullable via type array with null', () => {

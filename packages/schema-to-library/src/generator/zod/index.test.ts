@@ -495,7 +495,7 @@ export type WithDefault = z.infer<typeof WithDefault>`
     })
     const expected = `import * as z from 'zod'
 
-export const NullDefault = z.object({value:z.string().default("x").nullable().exactOptional()})
+export const NullDefault = z.object({value:z.string().nullable().default("x").exactOptional()})
 
 export type NullDefault = z.infer<typeof NullDefault>`
     expect(result).toBe(expected)
@@ -936,7 +936,7 @@ export const Doc: z.ZodType<_Doc> = z.object({tags:z.array(z.lazy(() => Tag))})`
       )
       const expected = `import * as z from 'zod'
 
-export const Status = z.object({role:z.enum(["admin","user"]).default("user"),active:z.boolean().default(true).nullable().exactOptional()})`
+export const Status = z.object({role:z.enum(["admin","user"]).default("user"),active:z.boolean().nullable().default(true).exactOptional()})`
       expect(result).toBe(expected)
     })
 
@@ -956,7 +956,7 @@ export const Status = z.object({role:z.enum(["admin","user"]).default("user"),ac
       )
       const expected = `import * as z from 'zod'
 
-export const Config = z.object({value:z.string().default("hello").nullable()})`
+export const Config = z.object({value:z.string().nullable().default("hello")})`
       expect(result).toBe(expected)
     })
 

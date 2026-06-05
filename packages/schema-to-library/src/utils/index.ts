@@ -85,6 +85,46 @@ export function normalizeTypes(t?: string | readonly string[]) {
 }
 
 /**
+ * Reconcile a schema's `default` value with the type the schema actually emits
+ * so the generated `.default(...)` stays assignable.
+ *
+ * - `null` on a non-nullable schema is unusable as a default → `keep: false`
+ *   (the caller omits `.default`).
+ * - a string `'true'`/`'false'` on a boolean schema denotes the boolean it
+ *   spells → coerced to the boolean value (covers `z.stringbool()` query coercion).
+ * - everything else is returned unchanged (byte-for-byte identical output).
+ *
+ * @example
+ * ```ts
+ * coerceDefault({ type: 'boolean' }, 'true')           // { keep: true, value: true }
+ * coerceDefault({ type: 'object' }, null)              // { keep: false, value: null }
+ * coerceDefault({ type: 'object', nullable: true }, null) // { keep: true, value: null }
+ * ```
+ */
+export function coerceDefault(
+  schema: { readonly type?: string | readonly string[]; readonly nullable?: boolean },
+  value: unknown,
+): { readonly keep: boolean; readonly value: unknown } {
+  const types = Array.isArray(schema.type)
+    ? schema.type
+    : schema.type !== undefined
+      ? [schema.type]
+      : []
+  const isNullable = schema.nullable === true || types.includes('null')
+  if (value === null && !isNullable) return { keep: false, value }
+  if (types.includes('boolean') && (value === 'true' || value === 'false')) {
+    return { keep: true, value: value === 'true' }
+  }
+  // Drop a composite default (`[]` / `{}`) on a purely scalar schema, e.g. the
+  // malformed `{ type: 'string', default: [] }` — keeping it would emit an
+  // ill-typed `.default([])` on a string literal/primitive.
+  const isComposite = Array.isArray(value) || (typeof value === 'object' && value !== null)
+  const allowsComposite = types.length === 0 || types.includes('array') || types.includes('object')
+  if (isComposite && !allowsComposite) return { keep: false, value }
+  return { keep: true, value }
+}
+
+/**
  * Format an error message argument using the Zod v4 unified `error` parameter.
  *
  * @example

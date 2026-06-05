@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
@@ -33,10 +34,15 @@ export function zodWrap(
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  const withDefault =
-    schema.default !== undefined ? `${zodStr}.default(${formatLiteral(schema.default)})` : zodStr
-  const withNullable = isNullable ? `${withDefault}.nullable()` : withDefault
-  const withReadonly = schema['x-readonly'] === true ? `${withNullable}.readonly()` : withNullable
+  const defaultResult =
+    schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
+  // `.nullable()` must precede `.default()` so a `default: null` is valid against
+  // the nullable type; for non-null defaults the order is behaviourally identical.
+  const withNullable = isNullable ? `${zodStr}.nullable()` : zodStr
+  const withDefault = defaultResult?.keep
+    ? `${withNullable}.default(${formatLiteral(defaultResult.value)})`
+    : withNullable
+  const withReadonly = schema['x-readonly'] === true ? `${withDefault}.readonly()` : withDefault
   const withPrefault =
     schema['x-prefault'] !== undefined
       ? `${withReadonly}.prefault(${formatLiteral(schema['x-prefault'])})`

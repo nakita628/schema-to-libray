@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 
 /**
  * Wraps a TypeBox schema string with `Type.Optional()` (when a `default` is
@@ -20,10 +21,11 @@ export function typeboxWrap(typeboxStr: string, schema: JSONSchema): string {
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  const withDefault =
-    schema.default !== undefined
-      ? `Type.Optional(${typeboxStr},{default:${formatLiteral(schema.default)}})`
-      : typeboxStr
+  const defaultResult =
+    schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
+  const withDefault = defaultResult?.keep
+    ? `Type.Optional(${typeboxStr},{default:${formatLiteral(defaultResult.value)}})`
+    : typeboxStr
   const withNullable = isNullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
   return schema['x-readonly'] === true ? `Type.Readonly(${withNullable})` : withNullable
 }

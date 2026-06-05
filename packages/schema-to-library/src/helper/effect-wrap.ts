@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
@@ -48,10 +49,11 @@ export function effectWrap(
     const literal = formatLiteral(value)
     return literal.startsWith('{') ? `(${literal})` : literal
   }
-  const withDefault =
-    schema.default !== undefined
-      ? `Schema.optionalWith(${withCodeExts},{default:() => ${thunkBody(schema.default)}})`
-      : withCodeExts
+  const defaultResult =
+    schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
+  const withDefault = defaultResult?.keep
+    ? `Schema.optionalWith(${withCodeExts},{default:() => ${thunkBody(defaultResult.value)}})`
+    : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}

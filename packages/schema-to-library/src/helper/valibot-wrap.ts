@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
@@ -29,10 +30,11 @@ export function valibotWrap(
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  const withDefault =
-    schema.default !== undefined
-      ? `v.optional(${valibotStr},${formatLiteral(schema.default)})`
-      : valibotStr
+  const defaultResult =
+    schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
+  const withDefault = defaultResult?.keep
+    ? `v.optional(${valibotStr},${formatLiteral(defaultResult.value)})`
+    : valibotStr
   const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)

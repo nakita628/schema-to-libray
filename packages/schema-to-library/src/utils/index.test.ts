@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
+  coerceDefault,
   effectError,
   normalizeTypes,
   resolveOpenAPIRef,
@@ -157,6 +158,31 @@ describe('helper', () => {
       ['#/components/schemas/%E4%B8%AD%E6%96%87', 'U4e2du6587Schema'],
     ])('resolveOpenAPIRef(%s) → %s', (input, expected) => {
       expect(resolveOpenAPIRef(input)).toBe(expected)
+    })
+  })
+
+  describe('coerceDefault', () => {
+    it('drops a composite default on a scalar schema', () => {
+      expect(coerceDefault({ type: 'string' }, [])).toStrictEqual({ keep: false, value: [] })
+      expect(coerceDefault({ type: 'integer' }, {})).toStrictEqual({ keep: false, value: {} })
+    })
+
+    it('keeps a composite default when the schema allows it', () => {
+      expect(coerceDefault({ type: 'array' }, [])).toStrictEqual({ keep: true, value: [] })
+      expect(coerceDefault({ type: 'object' }, {})).toStrictEqual({ keep: true, value: {} })
+      expect(coerceDefault({}, [])).toStrictEqual({ keep: true, value: [] })
+    })
+
+    it('drops a null default unless the schema is nullable', () => {
+      expect(coerceDefault({ type: 'string' }, null)).toStrictEqual({ keep: false, value: null })
+      expect(coerceDefault({ type: 'string', nullable: true }, null)).toStrictEqual({
+        keep: true,
+        value: null,
+      })
+    })
+
+    it('coerces stringified booleans for boolean schemas', () => {
+      expect(coerceDefault({ type: 'boolean' }, 'true')).toStrictEqual({ keep: true, value: true })
     })
   })
 })

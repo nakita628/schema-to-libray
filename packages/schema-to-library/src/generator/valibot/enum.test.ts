@@ -9,7 +9,7 @@ describe('valibot enum', () => {
     [{ enum: ['active'] }, "v.literal('active')"],
     [{ enum: [1, 2], type: 'number' }, 'v.union([v.literal(1),v.literal(2)])'],
     [{ enum: [true, false], type: 'boolean' }, 'v.union([v.literal(true),v.literal(false)])'],
-    [{ enum: [null] }, 'v.literal(null)'],
+    [{ enum: [null] }, 'v.null()'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)
   })

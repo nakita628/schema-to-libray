@@ -69,7 +69,7 @@ describe('zodWrap with metadata', () => {
         description: 'a branded string',
       } satisfies JSONSchema),
     ).toBe(
-      'z.string().default("foo").nullable().brand<"UserId">().meta({description:"a branded string"})',
+      'z.string().nullable().default("foo").brand<"UserId">().meta({description:"a branded string"})',
     )
   })
 })
