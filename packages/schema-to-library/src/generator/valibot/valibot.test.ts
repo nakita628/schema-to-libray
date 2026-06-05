@@ -331,6 +331,9 @@ describe('valibot', () => {
       [{ const: 'fixed' }, 'v.literal("fixed")'],
       [{ const: 'fixed', nullable: true }, 'v.nullable(v.literal("fixed"))'],
       [{ type: ['null'], const: 'fixed' }, 'v.nullable(v.literal("fixed"))'],
+      [{ const: null }, 'v.null()'],
+      [{ const: [] }, 'v.custom<[]>((input) => JSON.stringify(input) === "[]")'],
+      [{ const: {} }, 'v.custom<{}>((input) => JSON.stringify(input) === "{}")'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })

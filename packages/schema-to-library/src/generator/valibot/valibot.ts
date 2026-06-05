@@ -190,9 +190,22 @@ export function valibot(
 
   if (schema.const !== undefined) {
     // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const value = schema.const
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
-    const errorPart = constMessage ? `,${valibotError(constMessage)}` : ''
-    return valibotWrap(`v.literal(${JSON.stringify(schema.const)}${errorPart})`, schema)
+    const msgArg = constMessage ? valibotError(constMessage) : ''
+    const errorPart = msgArg ? `,${msgArg}` : ''
+    // `v.literal` only accepts string/number/boolean. `null` maps to `v.null()`,
+    // and array/object consts to a deep-equality `v.custom` (mirrors zod's
+    // `z.custom<T>()` fallback) since Valibot has no literal for them.
+    if (value === null) return valibotWrap(`v.null(${msgArg})`, schema)
+    const isPrimitive =
+      typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    return valibotWrap(
+      isPrimitive
+        ? `v.literal(${JSON.stringify(value)}${errorPart})`
+        : `v.custom<${JSON.stringify(value)}>((input) => JSON.stringify(input) === ${JSON.stringify(JSON.stringify(value))}${errorPart})`,
+      schema,
+    )
   }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
