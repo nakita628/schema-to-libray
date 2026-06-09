@@ -192,7 +192,9 @@ export function effect(
       if (bodies.length > 0) return filtered(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return filtered(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
+      // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
+      // is `unknown`); compare via `.some(===)` which accepts any operand.
+      return filtered(`(val) => !${JSON.stringify(inner.enum)}.some((item) => item === val)`)
     }
     return effectWrap('Schema.Unknown', schema)
   }

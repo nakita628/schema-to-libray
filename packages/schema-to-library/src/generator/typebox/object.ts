@@ -1,4 +1,4 @@
-import { typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { typebox } from './typebox.js'
@@ -33,6 +33,7 @@ export function object(
     const recordOpts = [
       ...buildAdvancedOpts(schema, rootName, isTypebox, options),
       ...typeboxMetaOpts(schema),
+      ...typeboxDefaultOpt(schema),
     ].filter((v) => v !== undefined)
     return recordOpts.length === 0
       ? `Type.Record(Type.String(),${value})`
@@ -44,6 +45,7 @@ export function object(
     const emptyOpts = [
       ...buildAdvancedOpts(schema, rootName, isTypebox, options),
       ...typeboxMetaOpts(schema),
+      ...typeboxDefaultOpt(schema),
     ].filter((v) => v !== undefined)
     return emptyOpts.length === 0 ? 'Type.Object({})' : `Type.Object({},{${emptyOpts.join(',')}})`
   }
@@ -119,6 +121,7 @@ export function object(
     ...buildAdvancedOpts(schema, rootName, isTypebox, options),
     objectErrorMessageField,
     ...typeboxMetaOpts(schema),
+    ...typeboxDefaultOpt(schema),
   ].filter((v) => v !== undefined)
   const opts = optParts.length > 0 ? `,{${optParts.join(',')}}` : ''
   return `Type.Object({${props.join(',')}}${opts})`

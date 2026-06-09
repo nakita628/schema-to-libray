@@ -320,7 +320,7 @@ describe('valibot', () => {
         "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
       [{ not: { const: 42 } }, 'v.custom<unknown>((val) => val !== 42)'],
-      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((val) => !["a","b"].includes(val))'],
+      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((val) => !["a","b"].some((item) => item === val))'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -1119,6 +1119,34 @@ describe('valibot', () => {
       expect(
         valibot({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('v.pipe(v.number(),v.integer())')
+    })
+
+    it('query: integer with default → default emitted as string-wire literal', () => {
+      expect(
+        valibot({ type: 'integer', default: 1, minimum: 1 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe(
+        'v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.integer(),v.minValue(1)),"1")',
+      )
+    })
+
+    it('query: number with default → default emitted as string-wire literal', () => {
+      expect(
+        valibot({ type: 'number', default: 2.5 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe('v.optional(v.pipe(v.string(),v.transform(Number),v.number()),"2.5")')
+    })
+
+    it('path: boolean with default → default emitted as string-wire literal', () => {
+      expect(
+        valibot({ type: 'boolean', default: true }, 'Schema', false, { paramIn: 'path' }),
+      ).toBe(
+        'v.optional(v.pipe(v.picklist([\'true\',\'false\']),v.transform((s)=>s===\'true\')),"true")',
+      )
+    })
+
+    it('no paramIn: integer with default keeps the numeric default (no string-wire coercion)', () => {
+      expect(valibot({ type: 'integer', default: 1 })).toBe(
+        'v.optional(v.pipe(v.number(),v.integer()),1)',
+      )
     })
   })
 

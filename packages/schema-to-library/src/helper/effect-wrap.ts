@@ -58,8 +58,12 @@ export function effectWrap(
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
   if (schema.description !== undefined) ann.description = schema.description
-  if (examples !== undefined) ann.examples = examples
   const jsonSchemaAnn: Record<string, unknown> = {}
+  // Route `examples` through `jsonSchema` (loose, not type-checked) rather than
+  // Effect's native `examples` annotation (typed `ReadonlyArray<A>`). OpenAPI
+  // examples are documentation metadata, not constraints, and specs may carry
+  // incomplete examples; type-checking them would break generation on valid input.
+  if (examples !== undefined) jsonSchemaAnn.examples = examples
   if (schema.deprecated !== undefined) jsonSchemaAnn.deprecated = schema.deprecated
   if (schema.externalDocs !== undefined) jsonSchemaAnn.externalDocs = schema.externalDocs
   if (schema.readOnly !== undefined) jsonSchemaAnn.readOnly = schema.readOnly

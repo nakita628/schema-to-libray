@@ -1,4 +1,4 @@
-import { typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 export function integer(schema: JSONSchema) {
@@ -33,7 +33,7 @@ export function integer(schema: JSONSchema) {
       : `errorMessage:{${perKeywordEntries.join(',')}${
           errorMessage ? `,_:${JSON.stringify(errorMessage)}` : ''
         }}`
-  const metaOpts = typeboxMetaOpts(schema)
+  const metaOpts = [...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
 
   if (schema.format === 'bigint') {
     const opts = [

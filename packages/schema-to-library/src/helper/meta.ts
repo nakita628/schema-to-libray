@@ -1,5 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
-import { makeSafeKey } from '../utils/index.js'
+import { coerceDefault, makeSafeKey } from '../utils/index.js'
 
 /**
  * Returns OpenAPI/JSON Schema metadata fields as a list of TypeBox option
@@ -22,6 +22,24 @@ export function typeboxMetaOpts(schema: JSONSchema): readonly string[] {
     schema.readOnly !== undefined ? `readOnly:${schema.readOnly}` : undefined,
     schema.writeOnly !== undefined ? `writeOnly:${schema.writeOnly}` : undefined,
   ].filter((v) => v !== undefined)
+}
+
+/**
+ * Returns the TypeBox `default` option entry (`['default:1']`) for a schema, or
+ * `[]` when absent/droppable. TypeBox v1's `Type.Optional(type)` takes one arg —
+ * defaults must live on the inner type's options object, so every factory emits
+ * its own default here rather than the wrapper passing a 2nd `Type.Optional` arg.
+ * `stringWire` (for `query`/`path` coercion) emits the default in its string-wire
+ * form (`'1'` / `'true'`), since the coerced `Type.String(...)` input is a string.
+ */
+export function typeboxDefaultOpt(schema: JSONSchema, stringWire = false): readonly string[] {
+  if (schema.default === undefined) return []
+  const result = coerceDefault(schema, schema.default)
+  if (!result.keep) return []
+  const value = stringWire ? String(result.value) : result.value
+  const formatLiteral =
+    typeof value === 'boolean' || typeof value === 'number' ? `${value}` : JSON.stringify(value)
+  return [`default:${formatLiteral}`]
 }
 
 /**

@@ -1,4 +1,4 @@
-import { typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 export function _enum(schema: JSONSchema) {
@@ -11,17 +11,22 @@ export function _enum(schema: JSONSchema) {
   // v3.0: x-enum-message overrides x-error-message for enum mismatch.
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
-  const metaOpts = typeboxMetaOpts(schema)
+  const metaOpts = [...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
   const optsParts = [
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
     ...metaOpts,
   ].filter((v) => v !== undefined)
   const optsTrailer = optsParts.length > 0 ? `,{${optsParts.join(',')}}` : ''
+  // TypeBox v1's `TLiteralValue` excludes `null` (string | number | boolean |
+  // bigint only), so a `null` enum member is `Type.Null()`, not `Type.Literal(null)`.
+  const member = (v: unknown): string => (v === null ? 'Type.Null()' : `Type.Literal(${lit(v)})`)
   if (!schema.enum || schema.enum.length === 0) {
     return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'
   }
   if (schema.enum.length === 1) {
-    return `Type.Literal(${lit(schema.enum[0])}${optsTrailer})`
+    return schema.enum[0] === null
+      ? `Type.Null(${optsParts.length > 0 ? `{${optsParts.join(',')}}` : ''})`
+      : `Type.Literal(${lit(schema.enum[0])}${optsTrailer})`
   }
-  return `Type.Union([${schema.enum.map((v: unknown) => `Type.Literal(${lit(v)})`).join(',')}]${optsTrailer})`
+  return `Type.Union([${schema.enum.map(member).join(',')}]${optsTrailer})`
 }

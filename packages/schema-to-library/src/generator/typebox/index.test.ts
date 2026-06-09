@@ -332,7 +332,7 @@ export const Schema = Type.Object({name:Type.Optional(Type.String())})`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.String(),{default:"active"}))})
+export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.Intersect([Type.String()],{default:"active"})))})
 
 export type WithDefault = Static<typeof WithDefault>`
     expect(result).toBe(expected)
@@ -350,7 +350,7 @@ export type WithDefault = Static<typeof WithDefault>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.String(),{default:"x"}),Type.Null()]))})
+export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.Intersect([Type.String()],{default:"x"})),Type.Null()]))})
 
 export type NullDefault = Static<typeof NullDefault>`
     expect(result).toBe(expected)
@@ -418,7 +418,7 @@ export type Fixed = Static<typeof Fixed>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean(),{default:true}))})
+export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean({default:true})))})
 
 export type Def = Static<typeof Def>`
     expect(result).toBe(expected)
@@ -581,7 +581,7 @@ export type AnyOf = Static<typeof AnyOf>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String(),{default:"untitled"}))})
+export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String({default:"untitled"})))})
 
 export type Def = Static<typeof Def>`
     expect(result).toBe(expected)

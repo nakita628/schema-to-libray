@@ -20,7 +20,7 @@ import { serializeJSValue } from './meta.js'
 export function valibotWrap(
   valibotStr: string,
   schema: JSONSchema,
-  options?: CodeExtensionOptions,
+  options?: CodeExtensionOptions & { readonly stringWire?: boolean },
 ): string {
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
@@ -32,9 +32,17 @@ export function valibotWrap(
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
-  const withDefault = defaultResult?.keep
-    ? `v.optional(${valibotStr},${formatLiteral(defaultResult.value)})`
-    : valibotStr
+  // For a string-wire param (`query` / `path`), `valibotStr` is a coercion pipe
+  // whose *input* is a string (`v.pipe(v.string(),v.transform(Number),...)` etc).
+  // Valibot's `optional(schema, default)` types the default as `InferInput`, so a
+  // numeric/boolean default must be emitted in its string-wire form (`'1'`,
+  // `'true'`) — the pipe coerces it back. Emitting the raw `1` is a type error.
+  const defaultLiteral =
+    defaultResult?.keep === true
+      ? formatLiteral(options?.stringWire === true ? String(defaultResult.value) : defaultResult.value)
+      : undefined
+  const withDefault =
+    defaultLiteral !== undefined ? `v.optional(${valibotStr},${defaultLiteral})` : valibotStr
   const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)

@@ -800,9 +800,9 @@ describe('array/nullable/default: schema-to-typebox', () => {
 
 export const Config = Type.Object({
   tags: Type.Array(Type.String(), { minItems: 1 }),
-  enabled: Type.Optional(Type.Optional(Type.Boolean(), { default: true })),
+  enabled: Type.Optional(Type.Optional(Type.Boolean({ default: true }))),
   count: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
-  label: Type.Optional(Type.Optional(Type.String(), { default: 'untitled' })),
+  label: Type.Optional(Type.Optional(Type.String({ default: 'untitled' }))),
 })
 `
     expect(generatedCode).toBe(expectedCode)
