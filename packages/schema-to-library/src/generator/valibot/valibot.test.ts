@@ -320,7 +320,10 @@ describe('valibot', () => {
         "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
       [{ not: { const: 42 } }, 'v.custom<unknown>((val) => val !== 42)'],
-      [{ not: { enum: ['a', 'b'] } }, 'v.custom<unknown>((val) => !["a","b"].includes(val))'],
+      [
+        { not: { enum: ['a', 'b'] } },
+        'v.custom<unknown>((val) => !["a","b"].some((item) => item === val))',
+      ],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -331,6 +334,9 @@ describe('valibot', () => {
       [{ const: 'fixed' }, 'v.literal("fixed")'],
       [{ const: 'fixed', nullable: true }, 'v.nullable(v.literal("fixed"))'],
       [{ type: ['null'], const: 'fixed' }, 'v.nullable(v.literal("fixed"))'],
+      [{ const: null }, 'v.null()'],
+      [{ const: [] }, 'v.custom<[]>((input) => JSON.stringify(input) === "[]")'],
+      [{ const: {} }, 'v.custom<{}>((input) => JSON.stringify(input) === "{}")'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -359,8 +365,8 @@ describe('valibot', () => {
         { enum: [true, false], type: ['boolean', 'null'] },
         'v.nullable(v.union([v.literal(true),v.literal(false)]))',
       ],
-      [{ enum: [null] }, 'v.literal(null)'],
-      [{ enum: [null], type: ['null'] }, 'v.nullable(v.literal(null))'],
+      [{ enum: [null] }, 'v.null()'],
+      [{ enum: [null], type: ['null'] }, 'v.nullable(v.null())'],
       [{ enum: ['abc'] }, "v.literal('abc')"],
       [{ enum: ['abc'], type: ['string'], nullable: true }, "v.nullable(v.literal('abc'))"],
       [{ enum: ['abc'], type: ['string', 'null'] }, "v.nullable(v.literal('abc'))"],
@@ -425,6 +431,11 @@ describe('valibot', () => {
         'v.nullable(v.optional(v.string(),"test"))',
       ],
       [{ type: ['string', 'null'], default: 'test' }, 'v.nullable(v.optional(v.string(),"test"))'],
+      [
+        { type: 'string', nullable: true, default: null },
+        'v.optional(v.nullable(v.string()),null)',
+      ],
+      [{ type: ['string', 'null'], default: null }, 'v.optional(v.nullable(v.string()),null)'],
       [{ type: 'string', format: 'email' }, 'v.pipe(v.string(),v.email())'],
       [{ type: 'string', format: 'uuid' }, 'v.pipe(v.string(),v.uuid())'],
       [{ type: 'string', format: 'uri' }, 'v.pipe(v.string(),v.url())'],
@@ -704,12 +715,9 @@ describe('valibot', () => {
       [{ type: 'null' }, 'v.nullable(v.null())'],
       [{ type: 'null', nullable: true }, 'v.nullable(v.null())'],
       [{ type: ['null'] }, 'v.nullable(v.null())'],
-      [{ type: 'null', default: 'test' }, 'v.nullable(v.optional(v.null(),"test"))'],
-      [{ type: ['null'], default: 'test' }, 'v.nullable(v.optional(v.null(),"test"))'],
-      [
-        { type: 'null', nullable: true, default: 'test' },
-        'v.nullable(v.optional(v.null(),"test"))',
-      ],
+      [{ type: 'null', default: 'test' }, 'v.nullable(v.null())'],
+      [{ type: ['null'], default: 'test' }, 'v.nullable(v.null())'],
+      [{ type: 'null', nullable: true, default: 'test' }, 'v.nullable(v.null())'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -1116,6 +1124,34 @@ describe('valibot', () => {
       expect(
         valibot({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('v.pipe(v.number(),v.integer())')
+    })
+
+    it('query: integer with default → default emitted as string-wire literal', () => {
+      expect(
+        valibot({ type: 'integer', default: 1, minimum: 1 }, 'Schema', false, { paramIn: 'query' }),
+      ).toBe(
+        'v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.integer(),v.minValue(1)),"1")',
+      )
+    })
+
+    it('query: number with default → default emitted as string-wire literal', () => {
+      expect(valibot({ type: 'number', default: 2.5 }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'v.optional(v.pipe(v.string(),v.transform(Number),v.number()),"2.5")',
+      )
+    })
+
+    it('path: boolean with default → default emitted as string-wire literal', () => {
+      expect(
+        valibot({ type: 'boolean', default: true }, 'Schema', false, { paramIn: 'path' }),
+      ).toBe(
+        "v.optional(v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true')),\"true\")",
+      )
+    })
+
+    it('no paramIn: integer with default keeps the numeric default (no string-wire coercion)', () => {
+      expect(valibot({ type: 'integer', default: 1 })).toBe(
+        'v.optional(v.pipe(v.number(),v.integer()),1)',
+      )
     })
   })
 

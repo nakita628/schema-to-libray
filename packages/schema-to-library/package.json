@@ -1,6 +1,6 @@
 {
   "name": "schema-to-library",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
   "keywords": [
     "arktype",
@@ -79,12 +79,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
-    "release": "pnpm build && pnpm publish"
+    "build": "tsdown"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^15.3.1",
-    "oxfmt": "^0.36.0"
+    "oxfmt": "^0.47.0"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

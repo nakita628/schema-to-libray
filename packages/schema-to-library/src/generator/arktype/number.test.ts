@@ -8,7 +8,10 @@ describe('arktype number', () => {
     [{ type: 'number' }, '"number"'],
     [{ type: 'number', minimum: 0 }, '"number >= 0"'],
     [{ type: 'number', maximum: 100 }, '"number <= 100"'],
-    [{ type: 'number', minimum: 0, maximum: 100 }, '"number >= 0 <= 100"'],
+    [
+      { type: 'number', minimum: 0, maximum: 100 },
+      'type("number >= 0").and(type("number <= 100"))',
+    ],
     [{ type: 'number', exclusiveMinimum: 0 }, '"number > 0"'],
     [{ type: 'number', exclusiveMaximum: 100 }, '"number < 100"'],
     [{ type: 'number', multipleOf: 0.5 }, '"number % 0.5"'],
@@ -29,7 +32,7 @@ describe('arktype number', () => {
           maximum: 100,
           'x-error-message': 'Must be 0-100',
         },
-        'type("number >= 0 <= 100").describe("Must be 0-100")',
+        'type("number >= 0").and(type("number <= 100")).describe("Must be 0-100")',
       ],
       [
         {

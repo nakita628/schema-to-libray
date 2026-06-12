@@ -12,6 +12,9 @@ describe('string', () => {
     [{ type: 'string', minLength: 1, maxLength: 10 }, 'z.string().min(1).max(10)'],
     [{ type: 'string', minLength: 5, maxLength: 5 }, 'z.string().length(5)'],
     [{ type: 'string', pattern: '^\\w+$' }, 'z.string().regex(/^\\w+$/)'],
+    [{ type: 'string', pattern: '^\\p{L}+$' }, 'z.string().regex(/^\\p{L}+$/u)'],
+    [{ type: 'string', pattern: '\\P{N}' }, 'z.string().regex(/\\P{N}/u)'],
+    [{ type: 'string', pattern: '\\u{1F600}' }, 'z.string().regex(/\\u{1F600}/u)'],
     [{ type: 'string', format: 'email' }, 'z.email()'],
     [{ type: 'string', format: 'uuid' }, 'z.uuid()'],
     [{ type: 'string', format: 'uuidv4' }, 'z.uuidv4()'],
@@ -102,6 +105,15 @@ describe('string', () => {
         { type: 'string', format: 'email', 'x-emailRegex': '^[a-z]+@example\\.com$' },
         'z.email({pattern:/^[a-z]+@example\\.com$/})',
       ],
+      // Unicode property escapes require the `u` flag (TS1530); a bare `/` stays escaped.
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '^\\p{L}+@\\p{L}+$' },
+        'z.email({pattern:/^\\p{L}+@\\p{L}+$/u})',
+      ],
+      [
+        { type: 'string', format: 'email', 'x-emailRegex': '\\p{L}/\\p{L}' },
+        'z.email({pattern:/\\p{L}\\/\\p{L}/u})',
+      ],
       [
         {
           type: 'string',
@@ -120,6 +132,14 @@ describe('string', () => {
       [
         { type: 'string', format: 'uri', 'x-urlHostname': '^[a-z.]+$' },
         'z.url({hostname:/^[a-z.]+$/})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlProtocol': '^\\p{L}+$' },
+        'z.url({protocol:/^\\p{L}+$/u})',
+      ],
+      [
+        { type: 'string', format: 'uri', 'x-urlHostname': '\\p{L}+\\.\\p{L}+' },
+        'z.url({hostname:/\\p{L}+\\.\\p{L}+/u})',
       ],
       [{ type: 'string', format: 'uri', 'x-urlNormalize': true }, 'z.url({normalize:true})'],
       [{ type: 'string', format: 'uri', 'x-urlNormalize': false }, 'z.url({normalize:false})'],

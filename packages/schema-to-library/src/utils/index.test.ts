@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
+  coerceDefault,
   effectError,
   normalizeTypes,
   resolveOpenAPIRef,
@@ -116,8 +117,17 @@ describe('helper', () => {
       ['v2-api-user', 'V2ApiUser'],
       ['com.example.User', 'ComExampleUser'],
       ['foo---bar___baz', 'FooBarBaz'],
+      // Non-ASCII names are encoded injectively instead of collapsing to `Schema`
+      ['日本語スキーマ', 'U65e5u672cu8a9eu30b9u30adu30fcu30de'],
+      ['中文', 'U4e2du6587'],
+      ['Схема_Русский', 'U421u445u435u43cu430U420u443u441u441u43au438u439'],
+      ['café', 'Cafue9'],
     ])('toIdentifierPascalCase(%s) → %s', (input, expected) => {
       expect(toIdentifierPascalCase(input)).toBe(expected)
+    })
+
+    it.concurrent('maps distinct non-ASCII names to distinct identifiers (no collapse)', () => {
+      expect(toIdentifierPascalCase('日本語')).not.toBe(toIdentifierPascalCase('中文'))
     })
   })
 
@@ -142,8 +152,61 @@ describe('helper', () => {
       ['#/components/schemas/My%20Schema', 'MySchemaSchema'],
       // Empty component name
       ['#/components/schemas/', 'SchemaSchema'],
+      // Non-ASCII component names: a percent-encoded $ref resolves to the same
+      // identifier as the decoded name, so declaration and reference stay aligned.
+      ['#/components/schemas/中文', 'U4e2du6587Schema'],
+      ['#/components/schemas/%E4%B8%AD%E6%96%87', 'U4e2du6587Schema'],
     ])('resolveOpenAPIRef(%s) → %s', (input, expected) => {
       expect(resolveOpenAPIRef(input)).toBe(expected)
+    })
+  })
+
+  describe('coerceDefault', () => {
+    it('drops a composite default on a scalar schema', () => {
+      expect(coerceDefault({ type: 'string' }, [])).toStrictEqual({ keep: false, value: [] })
+      expect(coerceDefault({ type: 'integer' }, {})).toStrictEqual({ keep: false, value: {} })
+    })
+
+    it('keeps a composite default when the schema allows it', () => {
+      expect(coerceDefault({ type: 'array' }, [])).toStrictEqual({ keep: true, value: [] })
+      expect(coerceDefault({ type: 'object' }, {})).toStrictEqual({ keep: true, value: {} })
+      expect(coerceDefault({}, [])).toStrictEqual({ keep: true, value: [] })
+    })
+
+    it('drops a scalar default on a composite-only schema', () => {
+      expect(coerceDefault({ type: 'array' }, 'eval')).toStrictEqual({
+        keep: false,
+        value: 'eval',
+      })
+      expect(coerceDefault({ type: 'object' }, 'x')).toStrictEqual({ keep: false, value: 'x' })
+      expect(coerceDefault({ type: ['array', 'null'] }, 'eval')).toStrictEqual({
+        keep: false,
+        value: 'eval',
+      })
+    })
+
+    it('keeps a scalar default when any scalar type is allowed or type is absent', () => {
+      expect(coerceDefault({ type: ['array', 'string'] }, 'eval')).toStrictEqual({
+        keep: true,
+        value: 'eval',
+      })
+      expect(coerceDefault({}, 'eval')).toStrictEqual({ keep: true, value: 'eval' })
+      expect(coerceDefault({ type: ['string', 'null'] }, null)).toStrictEqual({
+        keep: true,
+        value: null,
+      })
+    })
+
+    it('drops a null default unless the schema is nullable', () => {
+      expect(coerceDefault({ type: 'string' }, null)).toStrictEqual({ keep: false, value: null })
+      expect(coerceDefault({ type: 'string', nullable: true }, null)).toStrictEqual({
+        keep: true,
+        value: null,
+      })
+    })
+
+    it('coerces stringified booleans for boolean schemas', () => {
+      expect(coerceDefault({ type: 'boolean' }, 'true')).toStrictEqual({ keep: true, value: true })
     })
   })
 })

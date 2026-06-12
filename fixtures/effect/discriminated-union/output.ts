@@ -9,4 +9,4 @@ export const Event = Schema.Union(
   Schema.Struct({ type: Schema.Literal('keypress'), key: Schema.String }),
 )
 
-export type EventEncoded = typeof Event.Encoded
+export type Event = typeof Event.Type

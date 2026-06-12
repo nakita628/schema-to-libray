@@ -206,7 +206,7 @@ describe('typebox', () => {
         'Type.Union([Type.Literal(true),Type.Literal(false)])',
       ],
       [{ enum: ['only'] } as JSONSchema, 'Type.Literal("only")'],
-      [{ enum: [null] } as JSONSchema, 'Type.Literal(null)'],
+      [{ enum: [null] } as JSONSchema, 'Type.Null()'],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })
@@ -238,11 +238,11 @@ describe('typebox', () => {
       [{ type: 'string', pattern: '^\\w+$' } as JSONSchema, 'Type.String({pattern:"^\\\\w+$"})'],
       [
         { type: 'string', default: 'hello' } as JSONSchema,
-        'Type.Optional(Type.String(),{default:"hello"})',
+        'Type.Optional(Type.String({default:"hello"}))',
       ],
       [
         { type: 'string', default: 'hello', nullable: true } as JSONSchema,
-        'Type.Union([Type.Optional(Type.String(),{default:"hello"}),Type.Null()])',
+        'Type.Union([Type.Optional(Type.String({default:"hello"})),Type.Null()])',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -266,10 +266,10 @@ describe('typebox', () => {
         'Type.Number({exclusiveMaximum:100})',
       ],
       [{ type: 'number', multipleOf: 2 } as JSONSchema, 'Type.Number({multipleOf:2})'],
-      [{ type: 'number', default: 42 } as JSONSchema, 'Type.Optional(Type.Number(),{default:42})'],
+      [{ type: 'number', default: 42 } as JSONSchema, 'Type.Optional(Type.Number({default:42}))'],
       [
         { type: 'number', default: 42, nullable: true } as JSONSchema,
-        'Type.Union([Type.Optional(Type.Number(),{default:42}),Type.Null()])',
+        'Type.Union([Type.Optional(Type.Number({default:42})),Type.Null()])',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -295,10 +295,7 @@ describe('typebox', () => {
         'Type.Integer({exclusiveMaximum:100})',
       ],
       [{ type: 'integer', multipleOf: 5 } as JSONSchema, 'Type.Integer({multipleOf:5})'],
-      [
-        { type: 'integer', default: 10 } as JSONSchema,
-        'Type.Optional(Type.Integer(),{default:10})',
-      ],
+      [{ type: 'integer', default: 10 } as JSONSchema, 'Type.Optional(Type.Integer({default:10}))'],
       [{ type: 'integer', format: 'bigint' } as JSONSchema, 'Type.BigInt()'],
       [
         { type: 'integer', format: 'bigint', minimum: 0, maximum: 100 } as JSONSchema,
@@ -319,11 +316,11 @@ describe('typebox', () => {
       [{ type: ['boolean', 'null'] } as JSONSchema, 'Type.Union([Type.Boolean(),Type.Null()])'],
       [
         { type: 'boolean', default: true } as JSONSchema,
-        'Type.Optional(Type.Boolean(),{default:true})',
+        'Type.Optional(Type.Boolean({default:true}))',
       ],
       [
         { type: 'boolean', default: false } as JSONSchema,
-        'Type.Optional(Type.Boolean(),{default:false})',
+        'Type.Optional(Type.Boolean({default:false}))',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -693,19 +690,19 @@ describe('typebox', () => {
   describe('paramIn coercion', () => {
     it('query: number → Type.Transform decode Number', () => {
       expect(typebox({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'Type.Transform(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))',
+        'Codec(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))',
       )
     })
 
     it("path: boolean → Type.Transform decode 'true'|'false'", () => {
       expect(typebox({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        "Type.Transform(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')",
+        "Codec(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')",
       )
     })
 
     it('query: date → Type.Transform decode new Date', () => {
       expect(typebox({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'Type.Transform(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
+        'Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
       )
     })
 

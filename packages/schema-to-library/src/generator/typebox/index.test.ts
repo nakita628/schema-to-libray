@@ -6,6 +6,37 @@ import { schemaToTypebox } from './index.js'
 // pnpm vitest run ./src/generator/typebox/index.test.ts
 
 describe('schemaToTypebox', () => {
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToTypebox(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import { Type, type Static } from 'typebox'
+
+export const Criteria = Type.Array(Type.String())`
+    expect(result).toBe(expected)
+  })
+
+  it('should emit Type.Null for a null const and Type.Any for a composite const', () => {
+    expect(schemaToTypebox({ title: 'C', const: null }, { exportType: false })).toBe(
+      `import { Type, type Static } from 'typebox'
+
+export const C = Type.Null()`,
+    )
+    expect(
+      schemaToTypebox({ title: 'D', const: { nested: { value: 42 } } }, { exportType: false }),
+    ).toBe(
+      `import { Type, type Static } from 'typebox'
+
+export const D = Type.Any()`,
+    )
+  })
+
   it('should generate simple schema without definitions', () => {
     const result = schemaToTypebox({
       type: 'object',
@@ -332,7 +363,7 @@ export const Schema = Type.Object({name:Type.Optional(Type.String())})`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.String(),{default:"active"}))})
+export const WithDefault = Type.Object({status:Type.Optional(Type.Optional(Type.Intersect([Type.String()],{default:"active"})))})
 
 export type WithDefault = Static<typeof WithDefault>`
     expect(result).toBe(expected)
@@ -350,7 +381,7 @@ export type WithDefault = Static<typeof WithDefault>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.String(),{default:"x"}),Type.Null()]))})
+export const NullDefault = Type.Object({value:Type.Optional(Type.Union([Type.Optional(Type.Intersect([Type.String()],{default:"x"})),Type.Null()]))})
 
 export type NullDefault = Static<typeof NullDefault>`
     expect(result).toBe(expected)
@@ -418,7 +449,7 @@ export type Fixed = Static<typeof Fixed>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean(),{default:true}))})
+export const Def = Type.Object({enabled:Type.Optional(Type.Optional(Type.Boolean({default:true})))})
 
 export type Def = Static<typeof Def>`
     expect(result).toBe(expected)
@@ -581,7 +612,7 @@ export type AnyOf = Static<typeof AnyOf>`
     })
     const expected = `import { Type, type Static } from 'typebox'
 
-export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String(),{default:"untitled"}))})
+export const Def = Type.Object({label:Type.Optional(Type.Optional(Type.String({default:"untitled"})))})
 
 export type Def = Static<typeof Def>`
     expect(result).toBe(expected)

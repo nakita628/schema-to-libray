@@ -66,19 +66,19 @@ describe('typebox string', () => {
   describe('declarative behavior extensions', () => {
     it('wraps Type.String with Type.Transform for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe(
-        'Type.Transform(Type.String()).Decode((val: string) => val.trim()).Encode((val: string) => val)',
+        'Codec(Type.String()).Decode((val: string) => val.trim()).Encode((val: string) => val)',
       )
     })
 
     it('chains multiple string transforms', () => {
       expect(string({ type: 'string', 'x-trim': true, 'x-toLowerCase': true })).toBe(
-        'Type.Transform(Type.String()).Decode((val: string) => val.trim().toLowerCase()).Encode((val: string) => val)',
+        'Codec(Type.String()).Decode((val: string) => val.trim().toLowerCase()).Encode((val: string) => val)',
       )
     })
 
     it('emits x-normalize via Transform.Decode', () => {
       expect(string({ type: 'string', 'x-normalize': 'NFC' })).toBe(
-        'Type.Transform(Type.String()).Decode((val: string) => val.normalize("NFC")).Encode((val: string) => val)',
+        'Codec(Type.String()).Decode((val: string) => val.normalize("NFC")).Encode((val: string) => val)',
       )
     })
 

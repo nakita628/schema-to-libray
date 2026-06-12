@@ -19,14 +19,14 @@ describe('object', () => {
         properties: { foo: { type: 'string' }, bar: { type: 'number' } },
         required: ['foo'],
       },
-      'z.object({foo:z.string(),bar:z.number().optional()})',
+      'z.object({foo:z.string(),bar:z.number().exactOptional()})',
     ],
     [
       {
         type: 'object',
         properties: { foo: { type: 'string' } },
       },
-      'z.object({foo:z.string()}).partial()',
+      'z.object({foo:z.string().exactOptional()})',
     ],
     [
       {
@@ -215,7 +215,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({card:z.string(),billing:z.string().optional()}).refine((o)=>!('card' in o)||('billing' in o))",
+        "z.object({card:z.string(),billing:z.string().exactOptional()}).refine((o)=>!('card' in o)||('billing' in o))",
       )
     })
 
@@ -236,7 +236,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({a:z.string(),b:z.string(),c:z.string()}).partial().refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+        "z.object({a:z.string().exactOptional(),b:z.string().exactOptional(),c:z.string().exactOptional()}).refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
       )
     })
   })

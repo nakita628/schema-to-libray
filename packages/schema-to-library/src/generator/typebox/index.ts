@@ -64,10 +64,14 @@ export function schemaToTypebox(
 
   const rootExport = `export const ${rootName} = ${rootSchema}`
 
+  // `Codec(...)` (string-wire coercion / transform) is a separate named export
+  // from `typebox`; import it only when the generated code emitted one.
+  const usesCodec = `${schemaDefsCode}\n${rootExport}`.includes('Codec(')
+
   // Assemble output
   return [
     ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
-    `import { Type, type Static } from 'typebox'`,
+    `import { ${usesCodec ? 'Codec, ' : ''}Type, type Static } from 'typebox'`,
     schemaDefsCode,
     rootExport,
     ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),

@@ -1,5 +1,5 @@
-import { typeboxWrap } from '../../helper/index.js'
-import { typeboxMetaOpts } from '../../helper/meta.js'
+import { isDeepLocalPointer, typeboxWrap } from '../../helper/index.js'
+import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -18,8 +18,18 @@ import { string } from './string.js'
  * any meta options from the schema. Returns `Type.X()` when no options.
  */
 function tbPrim(name: string, schema: JSONSchema, extraOpts: readonly string[] = []): string {
-  const opts = [...extraOpts, ...typeboxMetaOpts(schema)]
+  const opts = [...extraOpts, ...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
   return opts.length === 0 ? `${name}()` : `${name}({${opts.join(',')}})`
+}
+
+/**
+ * The `Type.String(...)` input of a string-wire coercion `Codec`. A query/path
+ * default is carried here in its string-wire form (`{default:'1'}`), since the
+ * Codec decodes from a string.
+ */
+function wireString(schema: JSONSchema): string {
+  const defaultOpt = typeboxDefaultOpt(schema, true)
+  return defaultOpt.length > 0 ? `Type.String({${defaultOpt.join(',')}})` : 'Type.String()'
 }
 
 /**
@@ -33,7 +43,7 @@ function tbComp(
   schema: JSONSchema,
   extraOpts: readonly string[] = [],
 ): string {
-  const opts = [...extraOpts, ...typeboxMetaOpts(schema)]
+  const opts = [...extraOpts, ...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
   return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
 }
 
@@ -51,6 +61,9 @@ export function typebox(
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
         return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${rootName}`, s), s)
+      }
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+        return typeboxWrap('Type.Unknown()', s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
@@ -131,12 +144,16 @@ export function typebox(
             messageOpt(schema['x-allOf-message']),
           )
     if (defaultValue !== undefined) {
-      const formatLiteral = (value: unknown): string => {
-        if (typeof value === 'boolean') return `${value}`
-        if (typeof value === 'number') return `${value}`
-        return JSON.stringify(value)
-      }
-      const withDefault = `Type.Optional(${baseResult},{default:${formatLiteral(defaultValue)}})`
+      const formatLiteral =
+        typeof defaultValue === 'boolean' || typeof defaultValue === 'number'
+          ? `${defaultValue}`
+          : JSON.stringify(defaultValue)
+      // TypeBox v1's `Type.Optional` takes one arg, so the default must live in an
+      // inner type's options. Carry it on the `Type.Intersect` wrapper (a single
+      // member intersect is the identity, so this is valid for both arities).
+      const intersectOpts = [...messageOpt(schema['x-allOf-message']), `default:${formatLiteral}`]
+      const baseWithDefault = `Type.Intersect([${schemas.join(',')}],{${intersectOpts.join(',')}})`
+      const withDefault = `Type.Optional(${baseWithDefault})`
       return nullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
     }
     return typeboxWrap(baseResult, { ...schema, nullable })
@@ -155,6 +172,15 @@ export function typebox(
   if (schema.const !== undefined) {
     // v3.0: x-const-message overrides x-error-message for literal mismatch.
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    // `TLiteralValue` is scalar-only and excludes null: a null const becomes
+    // Type.Null(), and an array/object const degrades to Type.Any() (the same
+    // fallback the enum path uses for composite members).
+    if (schema.const === null) {
+      return typeboxWrap(tbPrim('Type.Null', schema, messageOpt(constMessage)), schema)
+    }
+    if (typeof schema.const === 'object') {
+      return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(constMessage)), schema)
+    }
     return typeboxWrap(
       tbComp('Type.Literal', JSON.stringify(schema.const), schema, messageOpt(constMessage)),
       schema,
@@ -169,18 +195,17 @@ export function typebox(
   if (types.includes('number')) {
     const base = number(schema)
     if (isStringWireParam) {
-      return typeboxWrap(
-        `Type.Transform(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))`,
-        schema,
-      )
+      const wire = wireString(schema)
+      return typeboxWrap(`Codec(${wire}).Decode((v)=>Number(v)).Encode((v)=>String(v))`, schema)
     }
     return typeboxWrap(base, schema)
   }
   if (types.includes('integer')) {
     const base = integer(schema)
     if (isStringWireParam) {
+      const wire = wireString(schema)
       return typeboxWrap(
-        `Type.Transform(Type.String()).Decode((v)=>Number.parseInt(v,10)).Encode((v)=>String(v))`,
+        `Codec(${wire}).Decode((v)=>Number.parseInt(v,10)).Encode((v)=>String(v))`,
         schema,
       )
     }
@@ -188,8 +213,13 @@ export function typebox(
   }
   if (types.includes('boolean')) {
     if (isStringWireParam) {
+      const defaultOpt = typeboxDefaultOpt(schema, true)
+      const union =
+        defaultOpt.length > 0
+          ? `Type.Union([Type.Literal('true'),Type.Literal('false')],{${defaultOpt.join(',')}})`
+          : `Type.Union([Type.Literal('true'),Type.Literal('false')])`
       return typeboxWrap(
-        `Type.Transform(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')`,
+        `Codec(${union}).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')`,
         schema,
       )
     }
@@ -261,8 +291,9 @@ export function typebox(
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
   if (types.includes('date')) {
     if (isStringWireParam) {
+      const wire = wireString(schema)
       return typeboxWrap(
-        `Type.Transform(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
+        `Codec(${wire}).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
         schema,
       )
     }

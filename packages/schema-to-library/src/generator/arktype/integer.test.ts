@@ -8,7 +8,10 @@ describe('arktype integer', () => {
     [{ type: 'integer' }, '"number.integer"'],
     [{ type: 'integer', minimum: 0 }, '"number.integer >= 0"'],
     [{ type: 'integer', maximum: 100 }, '"number.integer <= 100"'],
-    [{ type: 'integer', minimum: 0, maximum: 100 }, '"number.integer >= 0 <= 100"'],
+    [
+      { type: 'integer', minimum: 0, maximum: 100 },
+      'type("number.integer >= 0").and(type("number.integer <= 100"))',
+    ],
     [{ type: 'integer', exclusiveMinimum: 50 }, '"number.integer > 50"'],
     [{ type: 'integer', exclusiveMaximum: 50 }, '"number.integer < 50"'],
     [{ type: 'integer', multipleOf: 2 }, '"number.integer % 2"'],
@@ -30,7 +33,7 @@ describe('arktype integer', () => {
           maximum: 100,
           'x-error-message': 'Must be 0-100',
         },
-        'type("number.integer >= 0 <= 100").describe("Must be 0-100")',
+        'type("number.integer >= 0").and(type("number.integer <= 100")).describe("Must be 0-100")',
       ],
       [
         {

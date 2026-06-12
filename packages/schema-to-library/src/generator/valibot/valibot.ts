@@ -1,4 +1,8 @@
-import { type CodeExtensionOptions, valibotWrap as _valibotWrap } from '../../helper/index.js'
+import {
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+  valibotWrap as _valibotWrap,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -35,14 +39,20 @@ export function valibot(
   }
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
-  const valibotWrap = (valibotStr: string, s: JSONSchema): string =>
-    _valibotWrap(valibotStr, s, codeExtOpts)
+  const valibotWrap = (
+    valibotStr: string,
+    s: JSONSchema,
+    extra?: { readonly stringWire?: boolean },
+  ): string => _valibotWrap(valibotStr, s, { ...codeExtOpts, ...extra })
   const readonly = (v: string) => (options?.readonly ? `v.pipe(${v},v.readonly())` : v)
 
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
         return valibotWrap(`v.lazy(() => ${rootName})`, s)
+      }
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+        return valibotWrap('v.unknown()', s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
@@ -175,7 +185,9 @@ export function valibot(
       if (bodies.length > 0) return custom(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return custom(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
+      // `Array<string>.includes(unknown)` is a type error (the custom predicate's
+      // `val` is `unknown`); compare via `.some(===)` which accepts any operand.
+      return custom(`(val) => !${JSON.stringify(inner.enum)}.some((item) => item === val)`)
     }
     const innerExpr = valibot(inner, rootName, isValibot, options)
     return custom(`(val) => !v.safeParse(${innerExpr},val).success`)
@@ -183,9 +195,22 @@ export function valibot(
 
   if (schema.const !== undefined) {
     // v3.0: x-const-message overrides x-error-message for `const` mismatch.
+    const value = schema.const
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
-    const errorPart = constMessage ? `,${valibotError(constMessage)}` : ''
-    return valibotWrap(`v.literal(${JSON.stringify(schema.const)}${errorPart})`, schema)
+    const msgArg = constMessage ? valibotError(constMessage) : ''
+    const errorPart = msgArg ? `,${msgArg}` : ''
+    // `v.literal` only accepts string/number/boolean. `null` maps to `v.null()`,
+    // and array/object consts to a deep-equality `v.custom` (mirrors zod's
+    // `z.custom<T>()` fallback) since Valibot has no literal for them.
+    if (value === null) return valibotWrap(`v.null(${msgArg})`, schema)
+    const isPrimitive =
+      typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    return valibotWrap(
+      isPrimitive
+        ? `v.literal(${JSON.stringify(value)}${errorPart})`
+        : `v.custom<${JSON.stringify(value)}>((input) => JSON.stringify(input) === ${JSON.stringify(JSON.stringify(value))}${errorPart})`,
+      schema,
+    )
   }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
   if (schema.properties)
@@ -196,14 +221,18 @@ export function valibot(
   if (types.includes('number')) {
     const base = number(schema)
     if (isStringWireParam) {
-      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema, {
+        stringWire: true,
+      })
     }
     return valibotWrap(base, schema)
   }
   if (types.includes('integer')) {
     const base = integer(schema)
     if (isStringWireParam) {
-      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema)
+      return valibotWrap(prependPipe(['v.string()', 'v.transform(Number)'], base), schema, {
+        stringWire: true,
+      })
     }
     return valibotWrap(base, schema)
   }
@@ -212,6 +241,7 @@ export function valibot(
       return valibotWrap(
         `v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))`,
         schema,
+        { stringWire: true },
       )
     }
     return valibotWrap('v.boolean()', schema)
@@ -320,7 +350,9 @@ export function valibot(
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
   if (types.includes('date')) {
     if (isStringWireParam) {
-      return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema)
+      return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema, {
+        stringWire: true,
+      })
     }
     return valibotWrap('v.date()', schema)
   }

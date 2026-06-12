@@ -298,7 +298,7 @@ describe('effect', () => {
       [{ not: { const: 42 } }, 'Schema.Unknown.pipe(Schema.filter((val) => val !== 42))'],
       [
         { not: { enum: ['a', 'b'] } },
-        'Schema.Unknown.pipe(Schema.filter((val) => !["a","b"].includes(val)))',
+        'Schema.Unknown.pipe(Schema.filter((val) => !["a","b"].some((item) => item === val)))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -407,6 +407,10 @@ describe('effect', () => {
       [
         { type: ['string', 'null'], default: 'test' },
         'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
+      ],
+      [
+        { type: 'object', default: { key: 'defaultValue' } },
+        'Schema.optionalWith(Schema.Struct({}),{default:() => ({"key":"defaultValue"})})',
       ],
       [
         { type: 'string', format: 'email' },

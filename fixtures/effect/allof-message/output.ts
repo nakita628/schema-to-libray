@@ -22,4 +22,4 @@ export const Merged = Schema.transformOrFail(
   },
 )
 
-export type MergedEncoded = typeof Merged.Encoded
+export type Merged = typeof Merged.Type

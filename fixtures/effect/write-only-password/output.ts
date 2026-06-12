@@ -7,4 +7,4 @@ export const Login = Schema.Struct({
   }),
 })
 
-export type LoginEncoded = typeof Login.Encoded
+export type Login = typeof Login.Type

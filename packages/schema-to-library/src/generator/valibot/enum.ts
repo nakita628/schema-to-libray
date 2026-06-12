@@ -30,8 +30,18 @@ export function _enum(schema: JSONSchema) {
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
   const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
-  const innerLit = (v: unknown): string => `v.literal(${lit(v)})`
-  const outerLit = (v: unknown): string => `v.literal(${lit(v)}${errorArg})`
+  // `v.literal` only accepts string/number/boolean. `null` → `v.null()`, and
+  // object members → a deep-equality `v.custom` (arrays are handled as tuples by
+  // the callers below); primitives stay on `v.literal`.
+  const litSchema = (v: unknown, errPart: string): string => {
+    if (v === null) return `v.null(${errPart.replace(/^,/, '')})`
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      return `v.literal(${lit(v)}${errPart})`
+    }
+    return `v.custom<${JSON.stringify(v)}>((input) => JSON.stringify(input) === ${JSON.stringify(JSON.stringify(v))}${errPart})`
+  }
+  const innerLit = (v: unknown): string => litSchema(v, '')
+  const outerLit = (v: unknown): string => litSchema(v, errorArg)
   const innerTuple = (arr: readonly unknown[]): string =>
     `v.tuple([${arr.map(innerLit).join(',')}])`
   const outerTuple = (arr: readonly unknown[]): string =>

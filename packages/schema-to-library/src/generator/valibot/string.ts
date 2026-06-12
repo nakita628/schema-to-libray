@@ -1,3 +1,4 @@
+import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
 
@@ -71,9 +72,7 @@ export function string(schema: JSONSchema) {
     endsWith,
     includes,
     formatAction,
-    schema.pattern
-      ? `v.regex(/${schema.pattern.replace(/(?<!\\)\//g, '\\/')}/${patternErrorPart})`
-      : undefined,
+    schema.pattern ? `v.regex(${regexLiteral(schema.pattern)}${patternErrorPart})` : undefined,
     isFixedLength ? `v.length(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
       ? `v.minLength(${schema.minLength}${minErrorPart})`

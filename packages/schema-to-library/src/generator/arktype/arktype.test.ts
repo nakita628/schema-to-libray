@@ -7,17 +7,49 @@ import { arktype } from './arktype.js'
 // pnpm vitest run ./src/generator/arktype/arktype.test.ts
 
 describe('arktype', () => {
-  describe('ref', () => {
+  // Standalone exports (isArktype=false): cross-schema refs are value references to imported
+  // consts; self-refs and unresolvable pointers stay quoted. See the scope-mode pair below.
+  describe('ref (standalone)', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ $ref: '#/components/schemas/User' } as JSONSchema, '"User"'],
-      [{ $ref: '#/components/schemas/UserProfile' } as JSONSchema, '"UserProfile"'],
-      [{ $ref: '#/definitions/Item' } as JSONSchema, '"Item"'],
-      [{ $ref: '#/$defs/Address' } as JSONSchema, '"Address"'],
+      [{ $ref: '#/components/schemas/User' } as JSONSchema, 'User'],
+      [{ $ref: '#/components/schemas/UserProfile' } as JSONSchema, 'UserProfile'],
+      [{ $ref: '#/definitions/Item' } as JSONSchema, 'Item'],
+      [{ $ref: '#/$defs/Address' } as JSONSchema, 'Address'],
       [{ $ref: '#' } as JSONSchema, '"Schema"'],
       [{ $ref: '' } as JSONSchema, '"unknown"'],
-      [{ $ref: '#/components/schemas/User', nullable: true } as JSONSchema, '"User | null"'],
+      [
+        { $ref: '#/components/schemas/User', nullable: true } as JSONSchema,
+        'type(User).or("null")',
+      ],
+      [
+        { type: 'array', items: { $ref: '#/components/schemas/User' } } as JSONSchema,
+        'type(User).array()',
+      ],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
+    })
+  })
+
+  // Scope mode (isArktype=true): refs resolve through scope({...}) as DSL keyword strings.
+  describe('ref (scope)', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ $ref: '#/components/schemas/User' } as JSONSchema, '"User"'],
+      [{ $ref: '#/components/schemas/User', nullable: true } as JSONSchema, '"User | null"'],
+      [{ type: 'array', items: { $ref: '#/components/schemas/User' } } as JSONSchema, '"User[]"'],
+      [
+        {
+          oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
+        } as JSONSchema,
+        '"A | B"',
+      ],
+      [
+        {
+          allOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
+        } as JSONSchema,
+        '"A & B"',
+      ],
+    ])('arktype(%o, "Schema", true) → %s', (input, expected) => {
+      expect(arktype(input, 'Schema', true)).toBe(expected)
     })
   })
 
@@ -33,7 +65,7 @@ describe('arktype', () => {
         {
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         } as JSONSchema,
-        '"A | B"',
+        'type(A).or(B)',
       ],
       [
         {
@@ -60,7 +92,7 @@ describe('arktype', () => {
         {
           anyOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         } as JSONSchema,
-        '"Cat | Dog"',
+        'type(Cat).or(Dog)',
       ],
       [
         {
@@ -87,7 +119,7 @@ describe('arktype', () => {
         {
           allOf: [{ $ref: '#/components/schemas/A' }],
         } as JSONSchema,
-        '"A"',
+        'A',
       ],
       [
         {
@@ -143,6 +175,8 @@ describe('arktype', () => {
       [{ const: 42 } as JSONSchema, '"42"'],
       [{ const: true } as JSONSchema, '"true"'],
       [{ const: 'fixed', nullable: true } as JSONSchema, '"\'fixed\' | null"'],
+      [{ const: { a: 1 } } as JSONSchema, '"unknown"'],
+      [{ const: [1, 2] } as JSONSchema, '"unknown"'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
     })
@@ -190,7 +224,10 @@ describe('arktype', () => {
       [{ type: ['number', 'null'] } as JSONSchema, '"number | null"'],
       [{ type: 'number', minimum: 0 } as JSONSchema, '"number >= 0"'],
       [{ type: 'number', maximum: 100 } as JSONSchema, '"number <= 100"'],
-      [{ type: 'number', minimum: 0, maximum: 100 } as JSONSchema, '"number >= 0 <= 100"'],
+      [
+        { type: 'number', minimum: 0, maximum: 100 } as JSONSchema,
+        'type("number >= 0").and(type("number <= 100"))',
+      ],
       [{ type: 'number', exclusiveMinimum: 0 } as JSONSchema, '"number > 0"'],
       [{ type: 'number', exclusiveMaximum: 100 } as JSONSchema, '"number < 100"'],
       [{ type: 'number', multipleOf: 2 } as JSONSchema, '"number % 2"'],
@@ -362,15 +399,15 @@ describe('arktype', () => {
   describe('openapi', () => {
     describe('ref with openapi option', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [{ $ref: '#/components/schemas/User' }, '"UserSchema"'],
-        [{ $ref: '#/components/schemas/user-profile' }, '"UserProfileSchema"'],
-        [{ $ref: '#/components/parameters/UserId' }, '"UserIdParamsSchema"'],
-        [{ $ref: '#/components/headers/X-Request-Id' }, '"XRequestIdHeaderSchema"'],
-        [{ $ref: '#/components/responses/NotFound' }, '"NotFoundResponse"'],
-        [{ $ref: '#/components/securitySchemes/Bearer' }, '"BearerSecurityScheme"'],
-        [{ $ref: '#/components/requestBodies/CreateUser' }, '"CreateUserRequestBody"'],
-        [{ $ref: '#/definitions/Address' }, '"Address"'],
-        [{ $ref: '#/$defs/Address' }, '"Address"'],
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema'],
+        [{ $ref: '#/components/schemas/user-profile' }, 'UserProfileSchema'],
+        [{ $ref: '#/components/parameters/UserId' }, 'UserIdParamsSchema'],
+        [{ $ref: '#/components/headers/X-Request-Id' }, 'XRequestIdHeaderSchema'],
+        [{ $ref: '#/components/responses/NotFound' }, 'NotFoundResponse'],
+        [{ $ref: '#/components/securitySchemes/Bearer' }, 'BearerSecurityScheme'],
+        [{ $ref: '#/components/requestBodies/CreateUser' }, 'CreateUserRequestBody'],
+        [{ $ref: '#/definitions/Address' }, 'Address'],
+        [{ $ref: '#/$defs/Address' }, 'Address'],
       ])('arktype(%o, "Schema", false, { openapi: true }) → %s', (input, expected) => {
         expect(arktype(input, 'Schema', false, { openapi: true })).toBe(expected)
       })
@@ -385,7 +422,7 @@ describe('arktype', () => {
           },
           required: ['pet'],
         }
-        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe('type({pet:"PetSchema"})')
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe('type({pet:PetSchema})')
       })
     })
 
@@ -394,26 +431,32 @@ describe('arktype', () => {
         const schema: JSONSchema = {
           oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
-        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe('"CatSchema | DogSchema"')
+        expect(arktype(schema, 'Schema', false, { openapi: true })).toBe(
+          'type(CatSchema).or(DogSchema)',
+        )
       })
     })
 
     describe('openapi edge cases', () => {
       it.concurrent.each<[JSONSchema, string, string]>([
-        // Self-reference: resolved name equals rootName (arktype wraps in quotes)
+        // Self-reference: resolved name equals rootName → stays quoted to avoid a TDZ on the const
         [{ $ref: '#/components/schemas/User' }, 'UserSchema', '"UserSchema"'],
-        // Nullable ref with openapi
-        [{ $ref: '#/components/schemas/Pet', nullable: true }, 'TestSchema', '"PetSchema | null"'],
+        // Nullable cross-ref with openapi
+        [
+          { $ref: '#/components/schemas/Pet', nullable: true },
+          'TestSchema',
+          'type(PetSchema).or("null")',
+        ],
         // allOf with openapi ref
-        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', '"BaseSchema"'],
-        // anyOf with openapi ref and inline
+        [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
+        // anyOf with openapi ref and inline — mixed union keeps the inline part quoted
         [
           { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
           'TestSchema',
-          '"ASchema | string"',
+          'type(ASchema).or("string")',
         ],
         // URL-encoded $ref with openapi
-        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', '"MySchemaSchema"'],
+        [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
       ])('arktype(%o, %s, false, { openapi: true }) → %s', (input, rootName, expected) => {
         expect(arktype(input, rootName, false, { openapi: true })).toBe(expected)
       })
@@ -422,8 +465,8 @@ describe('arktype', () => {
 
   describe('ref edge cases (non-openapi)', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      // Relative reference (#SomeRef)
-      [{ $ref: '#SomeRef' }, '"SomeRef"'],
+      // Relative reference (#SomeRef) — cross-ref, value reference in standalone
+      [{ $ref: '#SomeRef' }, 'SomeRef'],
       // External file or URL without fragment → unknown
       [{ $ref: 'other.json#/definitions/Foo' }, '"unknown"'],
       [{ $ref: 'https://example.com/schemas/User.json' }, '"unknown"'],
@@ -621,6 +664,28 @@ describe('arktype', () => {
       expect(
         arktype({ type: 'number', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('"number"')
+    })
+
+    it('query: integer with minimum → .to() constraint', () => {
+      expect(arktype({ type: 'integer', minimum: 1 }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'type("string.integer.parse").to("number.integer >= 1")',
+      )
+    })
+
+    it('query: integer with minimum+maximum → .to() constraint', () => {
+      expect(
+        arktype({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, {
+          paramIn: 'query',
+        }),
+      ).toBe(
+        'type("string.integer.parse").to(type("number.integer >= 1").and(type("number.integer <= 100")))',
+      )
+    })
+
+    it('query: number with minimum → .to() constraint', () => {
+      expect(arktype({ type: 'number', minimum: 0 }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'type("string.numeric.parse").to("number >= 0")',
+      )
     })
   })
 

@@ -149,7 +149,7 @@ describe('schema-to-zod', () => {
     const generatedCode = fs.readFileSync('test-output-zod.ts', 'utf-8')
     const expectedCode = `import * as z from 'zod'
 
-export const User = z.object({ name: z.string(), age: z.int().optional() })
+export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
 `
     expect(generatedCode).toBe(expectedCode)
   })
@@ -179,7 +179,7 @@ describe('schema-to-zod --export-type', () => {
     const generatedCode = fs.readFileSync('test-output-zod-et.ts', 'utf-8')
     const expectedCode = `import * as z from 'zod'
 
-export const User = z.object({ name: z.string(), age: z.int().optional() })
+export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
 
 export type User = z.infer<typeof User>
 `
@@ -301,7 +301,7 @@ export const User = Schema.Struct({
   age: Schema.optional(Schema.Number.pipe(Schema.int())),
 })
 
-export type UserEncoded = typeof User.Encoded
+export type User = typeof User.Type
 `
     expect(generatedCode).toBe(expectedCode)
   })
@@ -443,8 +443,12 @@ describe('x-error-message: schema-to-zod', () => {
 export const UserForm = z.object({
   name: z.string({ error: 'Name is required' }).min(1),
   email: z.email({ error: 'Invalid email' }),
-  age: z.int({ error: 'Invalid age' }).min(0).max(150).optional(),
-  role: z.enum(['admin', 'user'], { error: 'Invalid role' }).optional(),
+  age: z
+    .int({ error: 'Invalid age' })
+    .min(0, { error: 'Invalid age' })
+    .max(150, { error: 'Invalid age' })
+    .exactOptional(),
+  role: z.enum(['admin', 'user'], { error: 'Invalid role' }).exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -569,7 +573,7 @@ describe('x-error-message: schema-to-arktype', () => {
 export const UserForm = type({
   name: type('string >= 1').describe('Name is required'),
   email: type('string.email').describe('Invalid email'),
-  'age?': type('number.integer >= 0 <= 150').describe('Invalid age'),
+  'age?': type('number.integer >= 0').and(type('number.integer <= 150')).describe('Invalid age'),
   'role?': type("'admin' | 'user'").describe('Invalid role'),
 })
 `
@@ -604,7 +608,7 @@ export const Product = z.object({
     .int()
     .min(0, { error: 'Quantity cannot be negative' })
     .multipleOf(1, { error: 'Quantity must be whole number' })
-    .optional(),
+    .exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -712,9 +716,9 @@ describe('array/nullable/default: schema-to-zod', () => {
 
 export const Config = z.object({
   tags: z.array(z.string()).min(1),
-  enabled: z.boolean().default(true).optional(),
-  count: z.int().nullable().optional(),
-  label: z.string().default('untitled').optional(),
+  enabled: z.boolean().default(true).exactOptional(),
+  count: z.int().nullable().exactOptional(),
+  label: z.string().default('untitled').exactOptional(),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -796,9 +800,9 @@ describe('array/nullable/default: schema-to-typebox', () => {
 
 export const Config = Type.Object({
   tags: Type.Array(Type.String(), { minItems: 1 }),
-  enabled: Type.Optional(Type.Optional(Type.Boolean(), { default: true })),
+  enabled: Type.Optional(Type.Optional(Type.Boolean({ default: true }))),
   count: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
-  label: Type.Optional(Type.Optional(Type.String(), { default: 'untitled' })),
+  label: Type.Optional(Type.Optional(Type.String({ default: 'untitled' }))),
 })
 `
     expect(generatedCode).toBe(expectedCode)

@@ -12,4 +12,4 @@ export const User = Schema.Struct({
   }),
 })
 
-export type UserEncoded = typeof User.Encoded
+export type User = typeof User.Type

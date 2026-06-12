@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
@@ -42,16 +43,27 @@ export function effectWrap(
   const codeChain = [filter, transformExt, pipeExt].filter((v): v is string => v !== undefined)
   const withCodeExts = codeChain.length === 0 ? withBrand : `${withBrand}${codeChain.join('')}`
   // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
-  const withDefault =
-    schema.default !== undefined
-      ? `Schema.optionalWith(${withCodeExts},{default:() => ${formatLiteral(schema.default)}})`
-      : withCodeExts
+  // An object literal `{...}` after `() =>` parses as a block, so wrap it in
+  // parens to force an object-literal expression.
+  const thunkBody = (value: unknown): string => {
+    const literal = formatLiteral(value)
+    return literal.startsWith('{') ? `(${literal})` : literal
+  }
+  const defaultResult =
+    schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
+  const withDefault = defaultResult?.keep
+    ? `Schema.optionalWith(${withCodeExts},{default:() => ${thunkBody(defaultResult.value)}})`
+    : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
   if (schema.description !== undefined) ann.description = schema.description
-  if (examples !== undefined) ann.examples = examples
   const jsonSchemaAnn: Record<string, unknown> = {}
+  // Route `examples` through `jsonSchema` (loose, not type-checked) rather than
+  // Effect's native `examples` annotation (typed `ReadonlyArray<A>`). OpenAPI
+  // examples are documentation metadata, not constraints, and specs may carry
+  // incomplete examples; type-checking them would break generation on valid input.
+  if (examples !== undefined) jsonSchemaAnn.examples = examples
   if (schema.deprecated !== undefined) jsonSchemaAnn.deprecated = schema.deprecated
   if (schema.externalDocs !== undefined) jsonSchemaAnn.externalDocs = schema.externalDocs
   if (schema.readOnly !== undefined) jsonSchemaAnn.readOnly = schema.readOnly

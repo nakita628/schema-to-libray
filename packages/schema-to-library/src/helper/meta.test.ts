@@ -69,7 +69,7 @@ describe('zodWrap with metadata', () => {
         description: 'a branded string',
       } satisfies JSONSchema),
     ).toBe(
-      'z.string().default("foo").nullable().brand<"UserId">().meta({description:"a branded string"})',
+      'z.string().nullable().default("foo").brand<"UserId">().meta({description:"a branded string"})',
     )
   })
 })
@@ -138,10 +138,13 @@ describe('typeboxWrap (default/nullable only)', () => {
     expect(typeboxWrap('Type.String()', { description: 'name' })).toBe('Type.String()')
   })
 
-  it('wraps with Type.Optional when default is set', () => {
-    expect(typeboxWrap('Type.String()', { default: 'foo' } satisfies JSONSchema)).toBe(
-      'Type.Optional(Type.String(),{default:"foo"})',
-    )
+  it('marks Type.Optional when default is set (default value lives on the inner type)', () => {
+    // TypeBox v1's `Type.Optional` takes one arg; the default itself is baked into
+    // the wrapped type's options by the factory (`typeboxDefaultOpt`), so the wrap
+    // only marks the property optional.
+    expect(
+      typeboxWrap('Type.String({default:"foo"})', { default: 'foo' } satisfies JSONSchema),
+    ).toBe('Type.Optional(Type.String({default:"foo"}))')
   })
 
   it('wraps with Type.Union([..., Type.Null()]) when nullable', () => {
@@ -170,10 +173,25 @@ describe('effectWrap with metadata', () => {
     )
   })
 
-  it('uses examples (plural) as Effect annotation', () => {
+  it('routes examples through jsonSchema (loose, not Effect native examples)', () => {
     expect(effectWrap('Schema.String', { example: 'foo' })).toBe(
-      'Schema.String.annotations({examples:["foo"]})',
+      'Schema.String.annotations({jsonSchema:{examples:["foo"]}})',
     )
+  })
+
+  it('keeps description native and examples under jsonSchema when both present', () => {
+    expect(
+      effectWrap('Schema.String', { description: 'a name', example: 'foo' } satisfies JSONSchema),
+    ).toBe('Schema.String.annotations({description:"a name",jsonSchema:{examples:["foo"]}})')
+  })
+
+  it('routes an incomplete object example through jsonSchema so generation does not type-check it', () => {
+    // A spec example missing a required field must not break the generated Struct
+    // (OpenAPI examples are loose doc metadata; Effect's native `examples` would
+    // type-check them against the struct type and fail).
+    expect(
+      effectWrap('Schema.Struct({a:Schema.String})', { example: {} } satisfies JSONSchema),
+    ).toBe('Schema.Struct({a:Schema.String}).annotations({jsonSchema:{examples:[{}]}})')
   })
 })
 

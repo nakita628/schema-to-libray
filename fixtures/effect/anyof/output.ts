@@ -4,4 +4,4 @@ export const StringOrNumber = Schema.Union(Schema.String, Schema.Number).annotat
   message: () => 'Must be string or number',
 })
 
-export type StringOrNumberEncoded = typeof StringOrNumber.Encoded
+export type StringOrNumber = typeof StringOrNumber.Type

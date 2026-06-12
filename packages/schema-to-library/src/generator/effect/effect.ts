@@ -1,4 +1,8 @@
-import { type CodeExtensionOptions, effectWrap as _effectWrap } from '../../helper/index.js'
+import {
+  type CodeExtensionOptions,
+  effectWrap as _effectWrap,
+  isDeepLocalPointer,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   effectError,
@@ -44,6 +48,9 @@ export function effect(
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') {
         return effectWrap(`Schema.suspend(() => ${rootName})`, s)
+      }
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+        return effectWrap('Schema.Unknown', s)
       }
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
@@ -147,7 +154,11 @@ export function effect(
       // must be the outermost wrap. Use Schema.optionalWith (Schema.optional with
       // options is deprecated in Effect Schema 3.x).
       const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
-      return `Schema.optionalWith(${withNullable},{default:() => ${formatLiteral(defaultValue)}})`
+      // An object default `{...}` after `() =>` parses as a block; wrap it in
+      // parens so it is an object-literal expression.
+      const literal = formatLiteral(defaultValue)
+      const thunkBody = literal.startsWith('{') ? `(${literal})` : literal
+      return `Schema.optionalWith(${withNullable},{default:() => ${thunkBody}})`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
@@ -181,7 +192,9 @@ export function effect(
       if (bodies.length > 0) return filtered(`(val) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return filtered(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
+      // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
+      // is `unknown`); compare via `.some(===)` which accepts any operand.
+      return filtered(`(val) => !${JSON.stringify(inner.enum)}.some((item) => item === val)`)
     }
     return effectWrap('Schema.Unknown', schema)
   }

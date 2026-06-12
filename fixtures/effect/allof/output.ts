@@ -5,4 +5,4 @@ export const Combined = Schema.extend(
   Schema.Struct({ age: Schema.Number }),
 )
 
-export type CombinedEncoded = typeof Combined.Encoded
+export type Combined = typeof Combined.Type

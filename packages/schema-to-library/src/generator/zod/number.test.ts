@@ -74,4 +74,61 @@ describe('number', () => {
       expect(number(input)).toBe(expected)
     })
   })
+
+  describe('x-coerce', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'number', 'x-coerce': true }, 'z.coerce.number()'],
+      [
+        { type: 'number', 'x-coerce': true, 'x-error-message': '数値必須' },
+        'z.coerce.number({error:"数値必須"})',
+      ],
+      [{ type: 'number', 'x-coerce': true, minimum: 0 }, 'z.coerce.number().min(0)'],
+      // float32 uses pipe (z.coerce.float32() does not exist in Zod v4)
+      [
+        { type: 'number', format: 'float', 'x-coerce': true },
+        'z.coerce.number().pipe(z.float32())',
+      ],
+      [
+        { type: 'number', format: 'float32', 'x-coerce': true },
+        'z.coerce.number().pipe(z.float32())',
+      ],
+      [
+        { type: 'number', format: 'float64', 'x-coerce': true },
+        'z.coerce.number().pipe(z.float64())',
+      ],
+      // wirePipe + x-error-message
+      [
+        { type: 'number', format: 'float', 'x-coerce': true, 'x-error-message': 'float必須' },
+        'z.coerce.number({error:"float必須"}).pipe(z.float32({error:"float必須"}))',
+      ],
+      [
+        { type: 'number', format: 'float64', 'x-coerce': true, 'x-error-message': 'float64必須' },
+        'z.coerce.number({error:"float64必須"}).pipe(z.float64({error:"float64必須"}))',
+      ],
+      // wirePipe + x-error-message + constraints
+      [
+        {
+          type: 'number',
+          format: 'float',
+          'x-coerce': true,
+          minimum: 0,
+          'x-error-message': 'float必須',
+        },
+        'z.coerce.number({error:"float必須"}).pipe(z.float32({error:"float必須"}).min(0))',
+      ],
+      // coerce + x-required-message dropped
+      [
+        {
+          type: 'number',
+          'x-coerce': true,
+          'x-required-message': '必須です',
+          'x-error-message': '数値必須',
+        },
+        'z.coerce.number({error:"数値必須"})',
+      ],
+      [{ type: 'number', 'x-coerce': true, 'x-required-message': '必須です' }, 'z.coerce.number()'],
+    ])('number(%o) → %s', (input, expected) => {
+      expect(number(input)).toBe(expected)
+    })
+  })
 })

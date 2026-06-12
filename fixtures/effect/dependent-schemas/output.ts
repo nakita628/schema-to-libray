@@ -6,4 +6,4 @@ export const Card = Schema.Struct({ name: Schema.String }).pipe(
   ),
 )
 
-export type CardEncoded = typeof Card.Encoded
+export type Card = typeof Card.Type

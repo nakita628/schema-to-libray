@@ -199,7 +199,7 @@ describe('zod', () => {
               },
             ],
           },
-          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).optional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
+          'z.intersection(GeoJsonObjectSchema,z.object({geometry:GeometrySchema.nullable(),properties:z.object({}).nullable(),id:z.xor([z.number(),z.string()]).exactOptional()})).meta({description:"GeoJSon \'Feature\' object",externalDocs:{url:"https://tools.ietf.org/html/rfc7946#section-3.2"}})',
         ],
         [
           {
@@ -427,9 +427,9 @@ describe('zod', () => {
         [{ type: 'string', default: 'test' }, 'z.string().default("test")'],
         [
           { type: 'string', default: 'test', nullable: true },
-          'z.string().default("test").nullable()',
+          'z.string().nullable().default("test")',
         ],
-        [{ type: ['string', 'null'], default: 'test' }, 'z.string().default("test").nullable()'],
+        [{ type: ['string', 'null'], default: 'test' }, 'z.string().nullable().default("test")'],
         [{ type: 'string', format: 'email' }, 'z.email()'],
         [{ type: 'string', format: 'uuid' }, 'z.uuid()'],
         [{ type: 'string', format: 'uuidv4' }, 'z.uuidv4()'],
@@ -493,9 +493,9 @@ describe('zod', () => {
             [{ type: 'number', default: 100 }, 'z.number().default(100)'],
             [
               { type: 'number', default: 100, nullable: true },
-              'z.number().default(100).nullable()',
+              'z.number().nullable().default(100)',
             ],
-            [{ type: ['number', 'null'], default: 100 }, 'z.number().default(100).nullable()'],
+            [{ type: ['number', 'null'], default: 100 }, 'z.number().nullable().default(100)'],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
           })
@@ -541,8 +541,8 @@ describe('zod', () => {
             [{ type: 'integer', exclusiveMaximum: 100 }, 'z.int().lt(100)'],
             [{ type: 'integer', multipleOf: 2 }, 'z.int().multipleOf(2)'],
             [{ type: 'integer', default: 100 }, 'z.int().default(100)'],
-            [{ type: 'integer', default: 100, nullable: true }, 'z.int().default(100).nullable()'],
-            [{ type: ['integer', 'null'], default: 100 }, 'z.int().default(100).nullable()'],
+            [{ type: 'integer', default: 100, nullable: true }, 'z.int().nullable().default(100)'],
+            [{ type: ['integer', 'null'], default: 100 }, 'z.int().nullable().default(100)'],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
           })
@@ -586,11 +586,11 @@ describe('zod', () => {
             [{ type: 'integer', format: 'int32', default: 100 }, 'z.int32().default(100)'],
             [
               { type: 'integer', format: 'int32', default: 100, nullable: true },
-              'z.int32().default(100).nullable()',
+              'z.int32().nullable().default(100)',
             ],
             [
               { type: ['integer', 'null'], format: 'int32', default: 100 },
-              'z.int32().default(100).nullable()',
+              'z.int32().nullable().default(100)',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -635,11 +635,11 @@ describe('zod', () => {
             [{ type: 'integer', format: 'int64', default: 100 }, 'z.int64().default(100n)'],
             [
               { type: 'integer', format: 'int64', default: 100, nullable: true },
-              'z.int64().default(100n).nullable()',
+              'z.int64().nullable().default(100n)',
             ],
             [
               { type: ['integer', 'null'], format: 'int64', default: 100 },
-              'z.int64().default(100n).nullable()',
+              'z.int64().nullable().default(100n)',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -693,11 +693,11 @@ describe('zod', () => {
             ],
             [
               { type: 'integer', format: 'bigint', default: 100, nullable: true },
-              'z.bigint().default(BigInt(100)).nullable()',
+              'z.bigint().nullable().default(BigInt(100))',
             ],
             [
               { type: ['integer', 'null'], format: 'bigint', default: 100 },
-              'z.bigint().default(BigInt(100)).nullable()',
+              'z.bigint().nullable().default(BigInt(100))',
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -902,12 +902,9 @@ describe('zod', () => {
           [{ type: 'null' }, 'z.null().nullable()'],
           [{ type: 'null', nullable: true }, 'z.null().nullable()'],
           [{ type: ['null'] }, 'z.null().nullable()'],
-          [{ type: 'null', default: 'test' }, 'z.null().default("test").nullable()'],
-          [{ type: ['null'], default: 'test' }, 'z.null().default("test").nullable()'],
-          [
-            { type: 'null', nullable: true, default: 'test' },
-            'z.null().default("test").nullable()',
-          ],
+          [{ type: 'null', default: 'test' }, 'z.null().nullable()'],
+          [{ type: ['null'], default: 'test' }, 'z.null().nullable()'],
+          [{ type: 'null', nullable: true, default: 'test' }, 'z.null().nullable()'],
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
         })
@@ -948,14 +945,14 @@ describe('zod', () => {
               nullable: true,
               default: 'test',
             },
-            'z.any().default("test").nullable()',
+            'z.any().nullable().default("test")',
           ],
           [
             {
               type: ['any' as any, 'null'],
               default: 'test',
             },
-            'z.any().default("test").nullable()',
+            'z.any().nullable().default("test")',
           ],
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
@@ -1163,7 +1160,7 @@ describe('zod', () => {
           required: ['pet'],
         }
         expect(zod(schema, 'Schema', false, { openapi: true })).toBe(
-          'z.object({pet:PetSchema,owner:UserProfileSchema.optional()})',
+          'z.object({pet:PetSchema,owner:UserProfileSchema.exactOptional()})',
         )
       })
     })
@@ -1222,6 +1219,28 @@ describe('zod', () => {
     })
   })
 
+  describe('deep local JSON Pointer refs', () => {
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ $ref: '#/components/schemas/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/components/schemas/Foo/items' }, 'z.unknown()'],
+      [{ $ref: '#/$defs/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/definitions/Foo/properties/bar' }, 'z.unknown()'],
+    ])('zod(%o) → %s', (input, expected) => {
+      expect(zod(input)).toBe(expected)
+    })
+
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ $ref: '#/components/schemas/Foo/properties/bar' }, 'z.unknown()'],
+      [{ $ref: '#/$defs/Foo/properties/bar' }, 'z.unknown()'],
+    ])('zod(%o, "TestSchema", false, { openapi: true }) → %s', (input, expected) => {
+      expect(zod(input, 'TestSchema', false, { openapi: true })).toBe(expected)
+    })
+
+    it.concurrent('top-level ref is unchanged', () => {
+      expect(zod({ $ref: '#/components/schemas/Foo' })).toBe('FooSchema')
+    })
+  })
+
   describe('$ref edge cases', () => {
     it('should handle self reference #', () => {
       expect(zod({ $ref: '#' }, 'Schema')).toBe('z.lazy(() => Schema)')
@@ -1249,8 +1268,19 @@ describe('zod', () => {
       )
     })
 
-    it('should handle object default', () => {
-      expect(zod({ type: 'string', default: null })).toBe('z.string().default(null)')
+    it('omits a null default on a non-nullable schema', () => {
+      expect(zod({ type: 'string', default: null })).toBe('z.string()')
+    })
+
+    it('keeps a null default on a nullable schema', () => {
+      expect(zod({ type: ['string', 'null'], default: null })).toBe(
+        'z.string().nullable().default(null)',
+      )
+    })
+
+    it('coerces a string boolean default to the boolean it spells', () => {
+      expect(zod({ type: 'boolean', default: 'true' })).toBe('z.boolean().default(true)')
+      expect(zod({ type: 'boolean', default: 'false' })).toBe('z.boolean().default(false)')
     })
 
     it('should handle nullable via type array with null', () => {
@@ -1517,8 +1547,8 @@ describe('zod', () => {
       it('emits z.coerce.number()', () => {
         expect(zod({ type: 'number', 'x-coerce': true })).toBe('z.coerce.number()')
       })
-      it('emits z.coerce.int()', () => {
-        expect(zod({ type: 'integer', 'x-coerce': true })).toBe('z.coerce.int()')
+      it('emits z.coerce.number().int()', () => {
+        expect(zod({ type: 'integer', 'x-coerce': true })).toBe('z.coerce.number().int()')
       })
       it('emits z.coerce.boolean()', () => {
         expect(zod({ type: 'boolean', 'x-coerce': true })).toBe('z.coerce.boolean()')
@@ -1532,8 +1562,35 @@ describe('zod', () => {
       it('does not coerce when format is set (format-specific API has no coerce variant)', () => {
         expect(zod({ type: 'string', format: 'email', 'x-coerce': true })).toBe('z.email()')
       })
-      it('emits z.coerce.int32() for format int32', () => {
-        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true })).toBe('z.coerce.int32()')
+      it('emits z.coerce.number().pipe(z.int32()) for format int32', () => {
+        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true })).toBe(
+          'z.coerce.number().pipe(z.int32())',
+        )
+      })
+      it('emits z.coerce.bigint().pipe(z.int64()) for format int64', () => {
+        expect(zod({ type: 'integer', format: 'int64', 'x-coerce': true })).toBe(
+          'z.coerce.bigint().pipe(z.int64())',
+        )
+      })
+      it('emits z.coerce.bigint() for format bigint', () => {
+        expect(zod({ type: 'integer', format: 'bigint', 'x-coerce': true })).toBe(
+          'z.coerce.bigint()',
+        )
+      })
+      it('emits z.coerce.number({error}).int({error}) with x-error-message', () => {
+        expect(
+          zod({ type: 'integer', 'x-coerce': true, 'x-error-message': 'Must be integer' }),
+        ).toBe('z.coerce.number({error:"Must be integer"}).int({error:"Must be integer"})')
+      })
+      it('emits z.coerce.number().int().min(0) with x-coerce + minimum', () => {
+        expect(zod({ type: 'integer', 'x-coerce': true, minimum: 0 })).toBe(
+          'z.coerce.number().int().min(0)',
+        )
+      })
+      it('x-coerce + int32 + minimum: constraints inside pipe', () => {
+        expect(zod({ type: 'integer', format: 'int32', 'x-coerce': true, minimum: 100 })).toBe(
+          'z.coerce.number().pipe(z.int32().min(100))',
+        )
       })
     })
 
@@ -1646,13 +1703,13 @@ describe('zod', () => {
 
     it('emits then refine with x-then-message', () => {
       expect(zod(buildSchema({ 'x-then-message': 'then failed' }))).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
       )
     })
 
     it('falls back to x-if-message for then when x-then-message absent', () => {
       expect(zod(buildSchema({ 'x-if-message': 'if shared' }))).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
       )
     })
 
@@ -1666,14 +1723,16 @@ describe('zod', () => {
           }),
         ),
       ).toBe(
-        'z.looseObject({a:z.string(),b:z.string()}).partial().refine((o)=>!z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x")}).partial().safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
       )
     })
   })
 
   describe('paramIn coercion', () => {
-    it('query: integer → z.coerce.int()', () => {
-      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe('z.coerce.int()')
+    it('query: integer → z.coerce.number().int()', () => {
+      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.number().int()',
+      )
     })
 
     it('query: number → z.coerce.number()', () => {
@@ -1710,25 +1769,43 @@ describe('zod', () => {
           false,
           { paramIn: 'query' },
         ),
-      ).toBe('z.object({page:z.coerce.int(),q:z.string().optional()})')
+      ).toBe('z.object({page:z.coerce.number().int(),q:z.string().exactOptional()})')
     })
 
     it('nested in array: items coerced too', () => {
       expect(
         zod({ type: 'array', items: { type: 'integer' } }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.array(z.coerce.int())')
+      ).toBe('z.array(z.coerce.number().int())')
     })
 
     it('integer with min/max: constraints preserved after coerce', () => {
       expect(
         zod({ type: 'integer', minimum: 1, maximum: 100 }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.coerce.int().min(1).max(100)')
+      ).toBe('z.coerce.number().int().min(1).max(100)')
     })
 
     it('x-coerce: false overrides paramIn (user opt-out wins)', () => {
       expect(
         zod({ type: 'integer', 'x-coerce': false }, 'Schema', false, { paramIn: 'query' }),
       ).toBe('z.int()')
+    })
+
+    it('paramIn query + format int32 → pipe preserves range constraint', () => {
+      expect(zod({ type: 'integer', format: 'int32' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.number().pipe(z.int32())',
+      )
+    })
+
+    it('paramIn query + format int64 → pipe preserves BigInt semantics', () => {
+      expect(zod({ type: 'integer', format: 'int64' }, 'Schema', false, { paramIn: 'query' })).toBe(
+        'z.coerce.bigint().pipe(z.int64())',
+      )
+    })
+
+    it('paramIn path + format bigint → z.coerce.bigint()', () => {
+      expect(zod({ type: 'integer', format: 'bigint' }, 'Schema', false, { paramIn: 'path' })).toBe(
+        'z.coerce.bigint()',
+      )
     })
   })
 })

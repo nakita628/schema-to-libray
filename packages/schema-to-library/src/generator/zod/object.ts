@@ -82,7 +82,7 @@ export function object(
       const parsed = zod(propSchema, rootName, isZod, options)
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
-      return `${safeKey}:${parsed}${required.includes(key) ? '' : '.optional()'}`
+      return `${safeKey}:${parsed}${required.includes(key) ? '' : '.exactOptional()'}`
     })
     .filter((v) => v !== null)
   // x-additionalProperties-message / x-unevaluatedProperties-message both
@@ -97,10 +97,7 @@ export function object(
       ? `,{error:(issue)=>issue.code==='unrecognized_keys'?${JSON.stringify(strictMessage)}:${errorMessage ? JSON.stringify(errorMessage) : 'undefined'}}`
       : ''
 
-  const rawBase =
-    required.length === 0 && props.every((p) => p.includes('.optional()'))
-      ? `z.${objectType}({${props.map((p) => p.replace('.optional()', '')).join(',')}}${objectParams}).partial()`
-      : `z.${objectType}({${props.join(',')}}${objectParams})`
+  const rawBase = `z.${objectType}({${props.join(',')}}${objectParams})`
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {

@@ -126,7 +126,7 @@ export type User = z.infer<typeof User>
 export type UserOutput = v.InferOutput<typeof User>
 
 // Effect Schema
-export type UserEncoded = typeof User.Encoded
+export type User = typeof User.Type
 
 // TypeBox
 export type User = Static<typeof User>

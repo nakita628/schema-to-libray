@@ -1,3 +1,4 @@
+import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { zodBaseError, zodError } from '../../utils/index.js'
 
@@ -37,10 +38,6 @@ const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
   unicode: 'z.regexes.unicodeEmail',
 }
 
-function escapeRegexLiteral(pattern: string) {
-  return pattern.replace(/(?<!\\)\//g, '\\/')
-}
-
 function buildFormatOptions(schema: JSONSchema): readonly string[] {
   const format = schema.format
   const parts: string[] = []
@@ -50,7 +47,7 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
     if (typeof emailPattern === 'string' && EMAIL_PATTERN_MAP[emailPattern] !== undefined) {
       parts.push(`pattern:${EMAIL_PATTERN_MAP[emailPattern]}`)
     } else if (typeof emailRegex === 'string') {
-      parts.push(`pattern:/${escapeRegexLiteral(emailRegex)}/`)
+      parts.push(`pattern:${regexLiteral(emailRegex)}`)
     }
     return parts
   }
@@ -61,9 +58,9 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
   }
   if (format === 'uri') {
     const urlProtocol = schema['x-urlProtocol']
-    if (typeof urlProtocol === 'string') parts.push(`protocol:/${escapeRegexLiteral(urlProtocol)}/`)
+    if (typeof urlProtocol === 'string') parts.push(`protocol:${regexLiteral(urlProtocol)}`)
     const urlHostname = schema['x-urlHostname']
-    if (typeof urlHostname === 'string') parts.push(`hostname:/${escapeRegexLiteral(urlHostname)}/`)
+    if (typeof urlHostname === 'string') parts.push(`hostname:${regexLiteral(urlHostname)}`)
     if (schema['x-urlNormalize'] === true) parts.push('normalize:true')
     else if (schema['x-urlNormalize'] === false) parts.push('normalize:false')
     return parts
@@ -137,7 +134,10 @@ export function string(schema: JSONSchema) {
   if (stringboolExpr !== undefined) return stringboolExpr
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
-  const baseErrorArg = zodBaseError(errorMessage, requiredMessage)
+  const coerce = schema['x-coerce'] === true
+  // coerce converts undefined → "undefined" (string success) before the error
+  // handler runs, so issue.input === undefined is unreachable — drop x-required-message.
+  const baseErrorArg = zodBaseError(errorMessage, coerce ? undefined : requiredMessage)
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
   const minLengthMessage = schema['x-minLength-message']
@@ -148,7 +148,7 @@ export function string(schema: JSONSchema) {
   const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
   const hash = hashBase(schema, baseErrorArg)
   const format = schema.format && FORMAT_STRING[schema.format]
-  const coercePrefix = schema['x-coerce'] === true && !format ? 'coerce.' : ''
+  const coercePrefix = coerce && !format ? 'coerce.' : ''
   const formatOptions = format ? buildFormatOptions(schema) : []
   const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
   const base = hash
@@ -157,7 +157,7 @@ export function string(schema: JSONSchema) {
       ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
       : `z.${coercePrefix}string(${baseCallArg})`
   const pattern = schema.pattern
-    ? `.regex(/${escapeRegexLiteral(schema.pattern)}/${patternErrorPart})`
+    ? `.regex(${regexLiteral(schema.pattern)}${patternErrorPart})`
     : undefined
   const isFixedLength =
     schema.minLength !== undefined &&

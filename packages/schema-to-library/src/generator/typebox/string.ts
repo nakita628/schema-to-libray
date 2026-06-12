@@ -1,4 +1,4 @@
-import { typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
@@ -79,11 +79,12 @@ export function string(schema: JSONSchema) {
     !isFixedLength && schema.maxLength !== undefined ? `maxLength:${schema.maxLength}` : undefined,
     errorMessageField,
     ...typeboxMetaOpts(schema),
+    ...typeboxDefaultOpt(schema),
   ].filter((v) => v !== undefined)
 
   const stringExpr = opts.length > 0 ? `Type.String({${opts.join(',')}})` : 'Type.String()'
 
-  // String pre-validation transforms via Type.Transform.Decode.Encode.
+  // String pre-validation transforms via Codec.Decode.Encode.
   const transforms: string[] = []
   if (schema['x-trim'] === true) transforms.push('.trim()')
   if (schema['x-toLowerCase'] === true) transforms.push('.toLowerCase()')
@@ -92,7 +93,7 @@ export function string(schema: JSONSchema) {
     transforms.push(`.normalize(${JSON.stringify(schema['x-normalize'])})`)
   }
   if (transforms.length > 0) {
-    return `Type.Transform(${stringExpr}).Decode((val: string) => val${transforms.join('')}).Encode((val: string) => val)`
+    return `Codec(${stringExpr}).Decode((val: string) => val${transforms.join('')}).Encode((val: string) => val)`
   }
   return stringExpr
 }

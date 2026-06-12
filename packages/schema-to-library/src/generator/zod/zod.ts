@@ -1,4 +1,8 @@
-import { type CodeExtensionOptions, zodWrap as _zodWrap } from '../../helper/index.js'
+import {
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+  zodWrap as _zodWrap,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -42,6 +46,9 @@ export function zod(
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
     if (s.$ref === '#' || s.$ref === '') {
       return zodWrap(`z.lazy(() => ${rn})`, s)
+    }
+    if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
+      return zodWrap('z.unknown()', s)
     }
     if (options?.openapi && s.$ref) {
       const resolved = resolveOpenAPIRef(s.$ref)
@@ -159,20 +166,12 @@ export function zod(
           return `(()=>{const Schema=${intersected};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){${branches}}}}).pipe(Schema)})()`
         })()
       : intersected
-    const merged = { ...schema, nullable }
-    if (defaultValue !== undefined) {
-      const formatLiteral = (value: unknown): string => {
-        if (typeof value === 'boolean') return `${value}`
-        if (typeof value === 'number') {
-          if (merged.format === 'int64') return `${value}n`
-          if (merged.format === 'bigint') return `BigInt(${value})`
-          return `${value}`
-        }
-        if (merged.type === 'date' && typeof value === 'string')
-          return `new Date(${JSON.stringify(value)})`
-        return JSON.stringify(value)
-      }
-      return zodWrap(`${baseResult}.default(${formatLiteral(defaultValue)})`, merged)
+    // Carry the default through `merged` so zodWrap applies `.nullable()` before
+    // `.default()`; a `default: null` is only valid against the nullable type.
+    const merged = {
+      ...schema,
+      nullable,
+      default: defaultValue !== undefined ? defaultValue : schema.default,
     }
     return zodWrap(baseResult, merged)
   }

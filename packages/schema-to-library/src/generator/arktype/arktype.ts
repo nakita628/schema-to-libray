@@ -1,4 +1,8 @@
-import { arktypeWrap as _arktypeWrap, type CodeExtensionOptions } from '../../helper/index.js'
+import {
+  arktypeWrap as _arktypeWrap,
+  type CodeExtensionOptions,
+  isDeepLocalPointer,
+} from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -42,20 +46,26 @@ export function arktype(
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
 
   if (schema.$ref) {
+    // Scope mode (isArktype) resolves refs through `scope({...})` as DSL keywords (`"User"`).
+    // Standalone exports (`const X = type(...)`) have no scope, so a cross-schema ref must be a
+    // value reference to the imported const (`User`). Self-refs stay quoted: a value ref to the
+    // const being defined would hit a TDZ; recursion is only expressible in scope mode.
+    const emitRef = (name: string): string => (!isArktype && name !== rootName ? name : `"${name}"`)
     const ref = (s: JSONSchema): string => {
       if (s.$ref === '#' || s.$ref === '') return `"${rootName}"`
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return '"unknown"'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
-        if (resolved) return `"${resolved}"`
+        if (resolved) return emitRef(resolved)
       }
       const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
       const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
       for (const prefix of REF_PREFIXES) {
-        if (s.$ref?.startsWith(prefix)) return `"${toName(s.$ref.slice(prefix.length))}"`
+        if (s.$ref?.startsWith(prefix)) return emitRef(toName(s.$ref.slice(prefix.length)))
       }
       if (s.$ref?.startsWith('#')) {
         const refName = s.$ref.slice(1)
-        return refName === '' ? `"${rootName}"` : `"${toName(refName)}"`
+        return refName === '' ? `"${rootName}"` : emitRef(toName(refName))
       }
       return '"unknown"'
     }
@@ -138,13 +148,23 @@ export function arktype(
   }
 
   if (schema.const !== undefined) {
+    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    // A quote or backslash in the value breaks both the arktype string DSL
+    // literal and the surrounding JS string; such consts use the runtime unit form.
+    if (typeof schema.const === 'string' && /['"\\]/.test(schema.const)) {
+      const unit = `type.unit(${JSON.stringify(schema.const)})`
+      return arktypeWrap(
+        constMessage ? `${unit}.describe(${JSON.stringify(constMessage)})` : unit,
+        schema,
+      )
+    }
     const formatConst = (value: unknown): string => {
       if (typeof value === 'string') return `"'${value}'"`
       if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
+      if (value !== null && typeof value === 'object') return '"unknown"'
       return `"${JSON.stringify(value) ?? 'null'}"`
     }
-    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
-    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const constExpr = formatConst(schema.const)
     if (constMessage) {
       return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)
@@ -160,11 +180,21 @@ export function arktype(
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
   if (types.includes('number')) {
-    if (isStringWireParam) return arktypeWrap('"string.numeric.parse"', schema)
+    if (isStringWireParam) {
+      const constraint = buildNumericConstraint(schema, 'number')
+      return constraint
+        ? arktypeWrap(`type("string.numeric.parse").to(${constraint})`, schema)
+        : arktypeWrap('"string.numeric.parse"', schema)
+    }
     return arktypeWrap(number(schema), schema)
   }
   if (types.includes('integer')) {
-    if (isStringWireParam) return arktypeWrap('"string.integer.parse"', schema)
+    if (isStringWireParam) {
+      const constraint = buildNumericConstraint(schema, 'number.integer')
+      return constraint
+        ? arktypeWrap(`type("string.integer.parse").to(${constraint})`, schema)
+        : arktypeWrap('"string.integer.parse"', schema)
+    }
     return arktypeWrap(integer(schema), schema)
   }
   if (types.includes('boolean')) {
@@ -282,4 +312,29 @@ export function arktype(
   if (types.length === 1 && types[0] === 'null') return arktypeWrap('"null"', schema)
 
   return arktypeWrap('"unknown"', schema)
+}
+
+function buildNumericConstraint(
+  schema: JSONSchema,
+  baseType: 'number' | 'number.integer',
+): string | undefined {
+  const minimum = (() => {
+    if (schema.minimum !== undefined) return `>= ${schema.minimum}`
+    if (typeof schema.exclusiveMinimum === 'number') return `> ${schema.exclusiveMinimum}`
+    return undefined
+  })()
+  const maximum = (() => {
+    if (schema.maximum !== undefined) return `<= ${schema.maximum}`
+    if (typeof schema.exclusiveMaximum === 'number') return `< ${schema.exclusiveMaximum}`
+    return undefined
+  })()
+  const multipleOf = schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
+  const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
+  if (constraints.length === 0) return undefined
+  if (constraints.length === 1) return `"${baseType} ${constraints[0]}"`
+  const parts = constraints.map((c) => `type("${baseType} ${c}")`)
+  return `${parts[0]}${parts
+    .slice(1)
+    .map((p) => `.and(${p})`)
+    .join('')}`
 }
