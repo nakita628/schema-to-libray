@@ -79,8 +79,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
-    "release": "pnpm build && pnpm publish"
+    "build": "tsdown"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^15.3.5",
