@@ -18,6 +18,8 @@ jobs:
       version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Check version change
         id: ver
@@ -31,7 +33,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.ver.outputs.version }}
-        run: gh release create "v$VERSION" --generate-notes
+          TARGET: ${{ github.event.workflow_run.head_sha }}
+        run: gh release create "v$VERSION" --generate-notes --target "$TARGET"
 
   publish:
     runs-on: ubuntu-latest
@@ -42,6 +45,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: voidzero-dev/setup-vp@v1
         with:
@@ -52,7 +57,7 @@ jobs:
 
       - run: vp run schema-to-library#build
 
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@11.17.0
 
       - run: npm publish
         working-directory: packages/schema-to-library
