@@ -21,6 +21,6 @@ jobs:
 
       - run: vp check
 
-      - run: vp exec -F schema-to-library -- tsdown
+      - run: vp run schema-to-library#build
 
       - run: vp test --coverage

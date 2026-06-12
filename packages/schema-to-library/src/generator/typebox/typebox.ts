@@ -172,6 +172,15 @@ export function typebox(
   if (schema.const !== undefined) {
     // v3.0: x-const-message overrides x-error-message for literal mismatch.
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    // `TLiteralValue` is scalar-only and excludes null: a null const becomes
+    // Type.Null(), and an array/object const degrades to Type.Any() (the same
+    // fallback the enum path uses for composite members).
+    if (schema.const === null) {
+      return typeboxWrap(tbPrim('Type.Null', schema, messageOpt(constMessage)), schema)
+    }
+    if (typeof schema.const === 'object') {
+      return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(constMessage)), schema)
+    }
     return typeboxWrap(
       tbComp('Type.Literal', JSON.stringify(schema.const), schema, messageOpt(constMessage)),
       schema,

@@ -465,6 +465,22 @@ export const Schema = z.object({name:z.string().exactOptional()})`
     expect(result).toBe(expected)
   })
 
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToZod(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import * as z from 'zod'
+
+export const Criteria = z.array(z.string())`
+    expect(result).toBe(expected)
+  })
+
   it('should handle allOf with default value', () => {
     const result = schemaToZod({
       title: 'WithDefault',

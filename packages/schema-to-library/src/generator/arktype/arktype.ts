@@ -148,14 +148,23 @@ export function arktype(
   }
 
   if (schema.const !== undefined) {
+    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
+    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
+    // A quote or backslash in the value breaks both the arktype string DSL
+    // literal and the surrounding JS string; such consts use the runtime unit form.
+    if (typeof schema.const === 'string' && /['"\\]/.test(schema.const)) {
+      const unit = `type.unit(${JSON.stringify(schema.const)})`
+      return arktypeWrap(
+        constMessage ? `${unit}.describe(${JSON.stringify(constMessage)})` : unit,
+        schema,
+      )
+    }
     const formatConst = (value: unknown): string => {
       if (typeof value === 'string') return `"'${value}'"`
       if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
       if (value !== null && typeof value === 'object') return '"unknown"'
       return `"${JSON.stringify(value) ?? 'null'}"`
     }
-    // v3.0: x-const-message attaches a `.describe(msg)` to the literal type.
-    const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const constExpr = formatConst(schema.const)
     if (constMessage) {
       return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)

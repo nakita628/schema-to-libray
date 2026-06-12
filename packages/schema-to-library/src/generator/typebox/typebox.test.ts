@@ -295,10 +295,7 @@ describe('typebox', () => {
         'Type.Integer({exclusiveMaximum:100})',
       ],
       [{ type: 'integer', multipleOf: 5 } as JSONSchema, 'Type.Integer({multipleOf:5})'],
-      [
-        { type: 'integer', default: 10 } as JSONSchema,
-        'Type.Optional(Type.Integer({default:10}))',
-      ],
+      [{ type: 'integer', default: 10 } as JSONSchema, 'Type.Optional(Type.Integer({default:10}))'],
       [{ type: 'integer', format: 'bigint' } as JSONSchema, 'Type.BigInt()'],
       [
         { type: 'integer', format: 'bigint', minimum: 0, maximum: 100 } as JSONSchema,

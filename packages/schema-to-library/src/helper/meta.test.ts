@@ -142,9 +142,9 @@ describe('typeboxWrap (default/nullable only)', () => {
     // TypeBox v1's `Type.Optional` takes one arg; the default itself is baked into
     // the wrapped type's options by the factory (`typeboxDefaultOpt`), so the wrap
     // only marks the property optional.
-    expect(typeboxWrap('Type.String({default:"foo"})', { default: 'foo' } satisfies JSONSchema)).toBe(
-      'Type.Optional(Type.String({default:"foo"}))',
-    )
+    expect(
+      typeboxWrap('Type.String({default:"foo"})', { default: 'foo' } satisfies JSONSchema),
+    ).toBe('Type.Optional(Type.String({default:"foo"}))')
   })
 
   it('wraps with Type.Union([..., Type.Null()]) when nullable', () => {

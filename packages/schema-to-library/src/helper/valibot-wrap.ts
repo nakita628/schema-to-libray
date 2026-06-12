@@ -4,6 +4,23 @@ import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.
 import { serializeJSValue } from './meta.js'
 
 /**
+ * `v.optional(schema, default)` types the default as the inner schema's
+ * InferInput, so a kept `null` default must wrap the nullable schema
+ * (`v.optional(v.nullable(x), null)`) — nesting it inside `v.nullable` is a
+ * type error. Non-null defaults keep the established nullable-outer nesting.
+ */
+function wrapDefaultNullable(
+  inner: string,
+  isNullable: boolean,
+  defaultLiteral: string | undefined,
+) {
+  if (defaultLiteral === 'null' && isNullable) return `v.optional(v.nullable(${inner}),null)`
+  const withDefault =
+    defaultLiteral !== undefined ? `v.optional(${inner},${defaultLiteral})` : inner
+  return isNullable ? `v.nullable(${withDefault})` : withDefault
+}
+
+/**
  * Wraps a Valibot schema string with `v.optional()`, `v.nullable()`, metadata
  * actions (`v.description()` / `v.metadata()`) and `v.brand()` based on the
  * JSON Schema's `default` / `nullable` / `x-brand` and OpenAPI metadata
@@ -39,11 +56,11 @@ export function valibotWrap(
   // `'true'`) — the pipe coerces it back. Emitting the raw `1` is a type error.
   const defaultLiteral =
     defaultResult?.keep === true
-      ? formatLiteral(options?.stringWire === true ? String(defaultResult.value) : defaultResult.value)
+      ? formatLiteral(
+          options?.stringWire === true ? String(defaultResult.value) : defaultResult.value,
+        )
       : undefined
-  const withDefault =
-    defaultLiteral !== undefined ? `v.optional(${valibotStr},${defaultLiteral})` : valibotStr
-  const withNullable = isNullable ? `v.nullable(${withDefault})` : withDefault
+  const withNullable = wrapDefaultNullable(valibotStr, isNullable, defaultLiteral)
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const actions: string[] = []

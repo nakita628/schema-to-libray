@@ -23,6 +23,12 @@ export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) {
     return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'
   }
+  // TypeBox has no literal form for array/object members (`TLiteralValue` is
+  // scalar-only); enums containing one fall back to Any, like arktype's unknown.
+  const isComposite = (v: unknown): boolean => v !== null && typeof v === 'object'
+  if (schema.enum.some(isComposite)) {
+    return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'
+  }
   if (schema.enum.length === 1) {
     return schema.enum[0] === null
       ? `Type.Null(${optsParts.length > 0 ? `{${optsParts.join(',')}}` : ''})`

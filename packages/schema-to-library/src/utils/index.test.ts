@@ -173,6 +173,30 @@ describe('helper', () => {
       expect(coerceDefault({}, [])).toStrictEqual({ keep: true, value: [] })
     })
 
+    it('drops a scalar default on a composite-only schema', () => {
+      expect(coerceDefault({ type: 'array' }, 'eval')).toStrictEqual({
+        keep: false,
+        value: 'eval',
+      })
+      expect(coerceDefault({ type: 'object' }, 'x')).toStrictEqual({ keep: false, value: 'x' })
+      expect(coerceDefault({ type: ['array', 'null'] }, 'eval')).toStrictEqual({
+        keep: false,
+        value: 'eval',
+      })
+    })
+
+    it('keeps a scalar default when any scalar type is allowed or type is absent', () => {
+      expect(coerceDefault({ type: ['array', 'string'] }, 'eval')).toStrictEqual({
+        keep: true,
+        value: 'eval',
+      })
+      expect(coerceDefault({}, 'eval')).toStrictEqual({ keep: true, value: 'eval' })
+      expect(coerceDefault({ type: ['string', 'null'] }, null)).toStrictEqual({
+        keep: true,
+        value: null,
+      })
+    })
+
     it('drops a null default unless the schema is nullable', () => {
       expect(coerceDefault({ type: 'string' }, null)).toStrictEqual({ keep: false, value: null })
       expect(coerceDefault({ type: 'string', nullable: true }, null)).toStrictEqual({

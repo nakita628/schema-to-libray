@@ -94,11 +94,19 @@ export function normalizeTypes(t?: string | readonly string[]) {
  *   spells → coerced to the boolean value (covers `z.stringbool()` query coercion).
  * - everything else is returned unchanged (byte-for-byte identical output).
  *
+ * The mismatch check is deliberately shallow and only crosses the
+ * composite (array/object) ↔ scalar category boundary; scalar↔scalar
+ * mismatches and schemas without an explicit `type` (`oneOf`/`$ref` only)
+ * pass through untouched — JSON Schema 2020-12 §9.9.4.1 treats `default` as
+ * an annotation with no validity guarantee, so anything finer would need a
+ * full validator.
+ *
  * @example
  * ```ts
  * coerceDefault({ type: 'boolean' }, 'true')           // { keep: true, value: true }
  * coerceDefault({ type: 'object' }, null)              // { keep: false, value: null }
  * coerceDefault({ type: 'object', nullable: true }, null) // { keep: true, value: null }
+ * coerceDefault({ type: 'array' }, 'eval')             // { keep: false, value: 'eval' }
  * ```
  */
 export function coerceDefault(
@@ -121,6 +129,12 @@ export function coerceDefault(
   const isComposite = Array.isArray(value) || (typeof value === 'object' && value !== null)
   const allowsComposite = types.length === 0 || types.includes('array') || types.includes('object')
   if (isComposite && !allowsComposite) return { keep: false, value }
+  // The symmetric hole: drop a scalar default on a composite-only schema, e.g.
+  // OpenAI's malformed `{ type: 'array', default: 'eval' }` — keeping it would
+  // emit an ill-typed `.default('eval')` on an array schema.
+  const allowsScalar =
+    types.length === 0 || types.some((t) => t !== 'array' && t !== 'object' && t !== 'null')
+  if (!isComposite && value !== null && !allowsScalar) return { keep: false, value }
   return { keep: true, value }
 }
 

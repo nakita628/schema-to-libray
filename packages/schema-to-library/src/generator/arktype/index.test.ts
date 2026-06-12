@@ -6,6 +6,22 @@ import { schemaToArktype } from './index.js'
 // pnpm vitest run ./src/generator/arktype/index.test.ts
 
 describe('schemaToArktype', () => {
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToArktype(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import { type } from "arktype"
+
+export const Criteria = type("string[]")`
+    expect(result).toBe(expected)
+  })
+
   it('should generate simple schema without definitions', () => {
     const result = schemaToArktype({
       type: 'object',

@@ -6,6 +6,37 @@ import { schemaToTypebox } from './index.js'
 // pnpm vitest run ./src/generator/typebox/index.test.ts
 
 describe('schemaToTypebox', () => {
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToTypebox(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import { Type, type Static } from 'typebox'
+
+export const Criteria = Type.Array(Type.String())`
+    expect(result).toBe(expected)
+  })
+
+  it('should emit Type.Null for a null const and Type.Any for a composite const', () => {
+    expect(schemaToTypebox({ title: 'C', const: null }, { exportType: false })).toBe(
+      `import { Type, type Static } from 'typebox'
+
+export const C = Type.Null()`,
+    )
+    expect(
+      schemaToTypebox({ title: 'D', const: { nested: { value: 42 } } }, { exportType: false }),
+    ).toBe(
+      `import { Type, type Static } from 'typebox'
+
+export const D = Type.Any()`,
+    )
+  })
+
   it('should generate simple schema without definitions', () => {
     const result = schemaToTypebox({
       type: 'object',

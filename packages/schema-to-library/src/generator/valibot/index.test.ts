@@ -6,6 +6,22 @@ import { schemaToValibot } from './index.js'
 // pnpm vitest run ./src/valibot/index.test.ts
 
 describe('schemaToValibot', () => {
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToValibot(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import * as v from 'valibot'
+
+export const Criteria = v.array(v.string())`
+    expect(result).toBe(expected)
+  })
+
   it('should generate simple schema without definitions', () => {
     const result = schemaToValibot({
       type: 'object',

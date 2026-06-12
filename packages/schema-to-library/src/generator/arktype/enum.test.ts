@@ -10,6 +10,8 @@ describe('arktype enum', () => {
     [{ enum: [1, 2] }, '"1 | 2"'],
     [{ enum: [true, false] }, '"true | false"'],
     [{ enum: [null] }, '"null"'],
+    [{ enum: ["it's", 'plain'] }, `type.enumerated("it's","plain")`],
+    [{ enum: ['say "hi"', 1] }, 'type.enumerated("say \\"hi\\"",1)'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)
   })

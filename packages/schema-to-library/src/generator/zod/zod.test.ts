@@ -902,12 +902,9 @@ describe('zod', () => {
           [{ type: 'null' }, 'z.null().nullable()'],
           [{ type: 'null', nullable: true }, 'z.null().nullable()'],
           [{ type: ['null'] }, 'z.null().nullable()'],
-          [{ type: 'null', default: 'test' }, 'z.null().nullable().default("test")'],
-          [{ type: ['null'], default: 'test' }, 'z.null().nullable().default("test")'],
-          [
-            { type: 'null', nullable: true, default: 'test' },
-            'z.null().nullable().default("test")',
-          ],
+          [{ type: 'null', default: 'test' }, 'z.null().nullable()'],
+          [{ type: ['null'], default: 'test' }, 'z.null().nullable()'],
+          [{ type: 'null', nullable: true, default: 'test' }, 'z.null().nullable()'],
         ])('zod(%o) → %s', (input, expected) => {
           expect(zod(input)).toBe(expected)
         })

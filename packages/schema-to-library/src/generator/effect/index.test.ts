@@ -6,6 +6,22 @@ import { schemaToEffect } from './index.js'
 // pnpm vitest run ./src/effect/index.test.ts
 
 describe('schemaToEffect', () => {
+  it('should drop a scalar default on an array schema', () => {
+    const result = schemaToEffect(
+      {
+        title: 'Criteria',
+        type: 'array',
+        items: { type: 'string' },
+        default: 'eval',
+      },
+      { exportType: false },
+    )
+    const expected = `import { Schema } from "effect"
+
+export const Criteria = Schema.Array(Schema.String)`
+    expect(result).toBe(expected)
+  })
+
   it('should generate simple schema without definitions', () => {
     const result = schemaToEffect({
       type: 'object',
