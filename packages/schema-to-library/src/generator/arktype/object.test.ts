@@ -296,6 +296,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         type: 'object',
         properties: { a: { type: 'string' } },
         if: { properties: { a: { const: 'x' } } },
+        // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
         then: { required: ['a'] },
       },
       `type({"a?":"string"}).narrow((o) => !type({"a?":"'x'"}).allows(o) || type("unknown").allows(o))`,
@@ -314,6 +315,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         type: 'object',
         properties: { a: { type: 'string' } },
         if: { properties: { a: { const: 'x' } } },
+        // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
         then: { required: ['a'] },
         else: { properties: { a: { type: 'string' } } },
         'x-if-message': 'iff',
