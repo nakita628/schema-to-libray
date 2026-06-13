@@ -1054,3 +1054,84 @@ describe('effect', () => {
     })
   })
 })
+
+describe('effect not: type arrays / message', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { not: { type: ['string', 'number'] } },
+      "Schema.Unknown.pipe(Schema.filter((val) => (typeof val !== 'string') && (typeof val !== 'number')))",
+    ],
+    [
+      { not: { type: 'number' } },
+      "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'number'))",
+    ],
+    [
+      { not: { type: 'array' } },
+      'Schema.Unknown.pipe(Schema.filter((val) => !Array.isArray(val)))',
+    ],
+    [
+      { not: { type: 'object' } },
+      "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'object' || val === null || Array.isArray(val)))",
+    ],
+    [{ not: { type: 'null' } }, 'Schema.Unknown.pipe(Schema.filter((val) => val !== null))'],
+    [{ not: { $ref: '#/components/schemas/Foo' } }, 'Schema.Unknown'],
+    [{ not: { oneOf: [{ type: 'string' }, { type: 'number' }] } }, 'Schema.Unknown'],
+    [
+      { not: { type: 'string' }, 'x-not-message': 'no strings' },
+      `Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string',{message:()=>"no strings"}))`,
+    ],
+    [{ not: { format: 'email' } }, 'Schema.Unknown'],
+  ])('effect(%o) → %s', (input, expected) => {
+    expect(effect(input)).toBe(expected)
+  })
+})
+
+describe('effect contains / minContains / maxContains', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.some((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i))))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        'x-contains-message': 'need int',
+      },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.some((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)),{message:()=>"need int"}))',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=2))',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=1),Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=3))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 1,
+        maxContains: 2,
+        'x-minContains-message': 'few',
+        'x-maxContains-message': 'many',
+      },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=1,{message:()=>"few"}),Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=2,{message:()=>"many"}))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 0,
+        maxContains: 2,
+      },
+      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=2))',
+    ],
+  ])('effect(%o) → %s', (input, expected) => {
+    expect(effect(input)).toBe(expected)
+  })
+})

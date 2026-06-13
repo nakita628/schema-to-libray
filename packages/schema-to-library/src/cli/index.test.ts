@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
@@ -1015,4 +1016,53 @@ describe('syntax validation', () => {
       })
     }
   }
+})
+
+// --- failure paths ---
+
+describe('cli failure paths', () => {
+  it('should fail when schema file is not parseable', async () => {
+    fs.writeFileSync('test-fail-parse.json', 'not json{{{')
+    process.argv = ['node', 'cli.js', 'test-fail-parse.json', '-o', 'test-fail-parse-out.ts']
+    const result = await cli(schemaToZod, 'help')
+    fs.rmSync('test-fail-parse.json', { force: true })
+    expect(result).toStrictEqual({
+      ok: false,
+      error: `Failed to parse schema: "${path.resolve('test-fail-parse.json')}" is not a valid JSON Schema`,
+    })
+  })
+
+  it('should fail when generated code cannot be formatted', async () => {
+    fs.writeFileSync('test-fail-fmt.json', JSON.stringify(schema))
+    process.argv = ['node', 'cli.js', 'test-fail-fmt.json', '-o', 'test-fail-fmt-out.ts']
+    const result = await cli(() => 'const x = {', 'help')
+    fs.rmSync('test-fail-fmt.json', { force: true })
+    expect(result).toStrictEqual({ ok: false, error: 'Expected `}` but found `EOF`' })
+  })
+
+  it('should fail when output directory cannot be created', async () => {
+    fs.writeFileSync('test-fail-mkdir.json', JSON.stringify(schema))
+    fs.writeFileSync('test-fail-blocker', '')
+    process.argv = ['node', 'cli.js', 'test-fail-mkdir.json', '-o', 'test-fail-blocker/sub/out.ts']
+    const result = await cli(schemaToZod, 'help')
+    fs.rmSync('test-fail-mkdir.json', { force: true })
+    fs.rmSync('test-fail-blocker', { force: true })
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "ENOTDIR: not a directory, mkdir 'test-fail-blocker/sub'",
+    })
+  })
+
+  it('should fail when output file cannot be written', async () => {
+    fs.writeFileSync('test-fail-write.json', JSON.stringify(schema))
+    fs.mkdirSync('test-fail-dir.ts', { recursive: true })
+    process.argv = ['node', 'cli.js', 'test-fail-write.json', '-o', 'test-fail-dir.ts']
+    const result = await cli(schemaToZod, 'help')
+    fs.rmSync('test-fail-write.json', { force: true })
+    fs.rmSync('test-fail-dir.ts', { recursive: true, force: true })
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "EISDIR: illegal operation on a directory, open 'test-fail-dir.ts'",
+    })
+  })
 })

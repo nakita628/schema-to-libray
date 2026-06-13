@@ -55,3 +55,66 @@ describe('arktype number', () => {
     })
   })
 })
+
+describe('arktype number per-keyword message', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { type: 'number', minimum: 0, 'x-minimum-message': 'min!' },
+      'type("number").narrow((n, ctx) => n >= 0 || ctx.mustBe("min!"))',
+    ],
+    [
+      { type: 'number', maximum: 100, 'x-maximum-message': 'max!' },
+      'type("number").narrow((n, ctx) => n <= 100 || ctx.mustBe("max!"))',
+    ],
+    [
+      { type: 'number', exclusiveMinimum: 5, 'x-exclusiveMinimum-message': 'gt!' },
+      'type("number").narrow((n, ctx) => n > 5 || ctx.mustBe("gt!"))',
+    ],
+    [
+      { type: 'number', exclusiveMaximum: 5, 'x-exclusiveMaximum-message': 'lt!' },
+      'type("number").narrow((n, ctx) => n < 5 || ctx.mustBe("lt!"))',
+    ],
+    [
+      {
+        type: 'number',
+        minimum: 0,
+        exclusiveMinimum: true,
+        'x-exclusiveMinimum-message': 'gt0!',
+      } as JSONSchema,
+      'type("number").narrow((n, ctx) => n > 0 || ctx.mustBe("gt0!"))',
+    ],
+    [
+      {
+        type: 'number',
+        maximum: 9,
+        exclusiveMaximum: true,
+        'x-exclusiveMaximum-message': 'lt9!',
+      } as JSONSchema,
+      'type("number").narrow((n, ctx) => n < 9 || ctx.mustBe("lt9!"))',
+    ],
+    [
+      { type: 'number', multipleOf: 2, 'x-multipleOf-message': 'even!' },
+      'type("number").narrow((n, ctx) => n % 2 === 0 || ctx.mustBe("even!"))',
+    ],
+    [
+      { type: 'number', minimum: 0, maximum: 9, 'x-minimum-message': 'only-min' },
+      'type("number").narrow((n, ctx) => n >= 0 || ctx.mustBe("only-min")).narrow((n, ctx) => n <= 9 || ctx.mustBe("must be <= 9"))',
+    ],
+    [
+      { type: 'number', minimum: 0, 'x-minimum-message': 'min!', 'x-error-message': 'E' },
+      'type("number").narrow((n, ctx) => n >= 0 || ctx.mustBe("min!")).describe("E")',
+    ],
+    [
+      {
+        type: 'number',
+        minimum: 0,
+        maximum: 9,
+        'x-maximum-message': 'only-max',
+        'x-error-message': 'E',
+      },
+      'type("number").narrow((n, ctx) => n >= 0 || ctx.mustBe("E")).narrow((n, ctx) => n <= 9 || ctx.mustBe("only-max")).describe("E")',
+    ],
+  ])('number(%o) → %s', (input, expected) => {
+    expect(number(input)).toBe(expected)
+  })
+})

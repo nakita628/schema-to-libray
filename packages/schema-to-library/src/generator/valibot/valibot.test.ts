@@ -1192,3 +1192,84 @@ describe('valibot', () => {
     })
   })
 })
+
+describe('valibot not: $ref / type arrays / combinators / message', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { not: { $ref: '#/components/schemas/Foo' } },
+      'v.custom<unknown>((val) => !v.safeParse(FooSchema,val).success)',
+    ],
+    [
+      { not: { type: ['string', 'number'] } },
+      "v.custom<unknown>((val) => (typeof val !== 'string') && (typeof val !== 'number'))",
+    ],
+    [{ not: { type: 'number' } }, "v.custom<unknown>((val) => typeof val !== 'number')"],
+    [{ not: { type: 'array' } }, 'v.custom<unknown>((val) => !Array.isArray(val))'],
+    [
+      { not: { type: 'object' } },
+      "v.custom<unknown>((val) => typeof val !== 'object' || val === null || Array.isArray(val))",
+    ],
+    [{ not: { type: 'null' } }, 'v.custom<unknown>((val) => val !== null)'],
+    [
+      { not: { oneOf: [{ type: 'string' }, { type: 'number' }] } },
+      'v.custom<unknown>((val) => !v.safeParse(v.union([v.string(),v.number()]),val).success)',
+    ],
+    [
+      { not: { type: 'string' }, 'x-not-message': 'no strings' },
+      `v.custom<unknown>((val) => typeof val !== 'string',"no strings")`,
+    ],
+    [{ not: { format: 'email' } }, 'v.custom<unknown>((val) => !v.safeParse(v.any(),val).success)'],
+  ])('valibot(%o) → %s', (input, expected) => {
+    expect(valibot(input)).toBe(expected)
+  })
+})
+
+describe('valibot contains / minContains / maxContains', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.some((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success)))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        'x-contains-message': 'need int',
+      },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.some((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success),"need int"))',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length>=2))',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length>=1),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length<=3))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 1,
+        maxContains: 2,
+        'x-minContains-message': 'few',
+        'x-maxContains-message': 'many',
+      },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length>=1,"few"),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length<=2,"many"))',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 0,
+        maxContains: 2,
+      },
+      'v.pipe(v.array(v.number()),v.check((arr)=>arr.filter((i)=>v.safeParse(v.pipe(v.number(),v.integer()),i).success).length<=2))',
+    ],
+  ])('valibot(%o) → %s', (input, expected) => {
+    expect(valibot(input)).toBe(expected)
+  })
+})

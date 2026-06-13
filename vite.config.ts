@@ -9,6 +9,9 @@ export default defineConfig({
     testTimeout: 10_000,
     coverage: {
       include: ['packages/**/*.ts'],
+      // bin entry shims (top-level `void cli(...)` only); cli/generator behavior
+      // is covered via src/cli/index.test.ts and each generator's tests
+      exclude: ['packages/**/src/{zod,valibot,effect,typebox,arktype}.ts'],
       reporter: ['text', 'html'],
       thresholds: {
         statements: 80,

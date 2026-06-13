@@ -2,7 +2,7 @@ name: release
 
 on:
   workflow_run:
-    workflows: [Test]
+    workflows: [deploy]
     types: [completed]
     branches: [main]
 
@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
     steps:
@@ -19,10 +19,11 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Check version change
+      - name: Check published and untagged version
         id: ver
         run: |
           CUR=$(jq -r .version packages/schema-to-library/package.json)
+          npm view "schema-to-library@$CUR" version >/dev/null 2>&1 || { echo "schema-to-library@$CUR is not published to npm; skip release"; exit 0; }
           git fetch --tags --depth=1 --quiet origin "refs/tags/v$CUR" 2>/dev/null || true
           git rev-parse -q --verify "refs/tags/v$CUR" >/dev/null || echo "version=$CUR" >> $GITHUB_OUTPUT
 

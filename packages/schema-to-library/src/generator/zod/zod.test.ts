@@ -1809,3 +1809,84 @@ describe('zod', () => {
     })
   })
 })
+
+describe('zod not: $ref / type arrays / combinators / message', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { not: { $ref: '#/components/schemas/Foo' } },
+      'z.any().refine((val) => !z.lazy(() => Foo).safeParse(val).success)',
+    ],
+    [
+      { not: { type: ['string', 'number'] } },
+      "z.any().refine((val) => (typeof val !== 'string') && (typeof val !== 'number'))",
+    ],
+    [{ not: { type: 'number' } }, "z.any().refine((val) => typeof val !== 'number')"],
+    [{ not: { type: 'array' } }, 'z.any().refine((val) => !Array.isArray(val))'],
+    [
+      { not: { type: 'object' } },
+      "z.any().refine((val) => typeof val !== 'object' || val === null || Array.isArray(val))",
+    ],
+    [{ not: { type: 'null' } }, 'z.any().refine((val) => val !== null)'],
+    [
+      { not: { oneOf: [{ type: 'string' }, { type: 'number' }] } },
+      'z.any().refine((val) => !z.xor([z.string(),z.number()]).safeParse(val).success)',
+    ],
+    [
+      { not: { type: 'string' }, 'x-not-message': 'no strings' },
+      `z.any().refine((val) => typeof val !== 'string',{error:"no strings"})`,
+    ],
+    [{ not: { format: 'email' } }, 'z.any()'],
+  ])('zod(%o) → %s', (input, expected) => {
+    expect(zod(input)).toBe(expected)
+  })
+})
+
+describe('zod contains / minContains / maxContains', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.some((i)=>Schema.safeParse(i).success)})',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        'x-contains-message': 'need int',
+      },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.some((i)=>Schema.safeParse(i).success)},{error:"need int"})',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=2})',
+    ],
+    [
+      { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=1}).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=3})',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 1,
+        maxContains: 2,
+        'x-minContains-message': 'few',
+        'x-maxContains-message': 'many',
+      },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=1},{error:"few"}).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=2},{error:"many"})',
+    ],
+    [
+      {
+        type: 'array',
+        items: { type: 'number' },
+        contains: { type: 'integer' },
+        minContains: 0,
+        maxContains: 2,
+      },
+      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=2})',
+    ],
+  ])('zod(%o) → %s', (input, expected) => {
+    expect(zod(input)).toBe(expected)
+  })
+})

@@ -234,3 +234,163 @@ describe('object', () => {
     })
   })
 })
+
+describe('object dependent / unevaluated / conditional keywords', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' }, b: { type: 'string' } },
+        dependentRequired: { a: ['b'] },
+      },
+      `type({"a?":"string","b?":"string"}).narrow((o) => !('a' in o) || ('b' in o))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' }, b: { type: 'string' } },
+        dependentRequired: { a: ['b'] },
+        'x-dependentRequired-message': 'need b',
+      },
+      `type({"a?":"string","b?":"string"}).narrow((o, ctx) => !('a' in o) || ('b' in o) || ctx.mustBe("need b"))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        dependentSchemas: { a: { properties: { b: { type: 'number' } }, required: ['b'] } },
+      },
+      `type({"a?":"string"}).narrow((o) => !('a' in o) || type({b:"number"}).allows(o))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        additionalProperties: false,
+        'x-additionalProperties-message': 'no extras',
+      },
+      'type({"a?":"string","+":"reject"}).narrow((o, ctx) => Object.keys(o).every((k) => ["a"].includes(k)) || ctx.mustBe("no extras"))',
+    ],
+    [
+      { type: 'object', properties: { a: { type: 'string' } }, additionalProperties: false },
+      'type({"a?":"string","+":"reject"})',
+    ],
+    [
+      { type: 'object', properties: { a: { type: 'string' } }, unevaluatedProperties: false },
+      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => ["a"].includes(k)))',
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        unevaluatedProperties: { type: 'string' },
+      },
+      'type({"a?":"string"}).narrow((o) => Object.entries(o).filter(([k]) => !["a"].includes(k)).every(([,val]) => type("string").allows(val)))',
+    ],
+    [
+      { type: 'object', properties: { a: { type: 'string' } }, unevaluatedProperties: true },
+      'type({"a?":"string"})',
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        if: { properties: { a: { const: 'x' } } },
+        then: { required: ['a'] },
+      },
+      `type({"a?":"string"}).narrow((o) => !type({"a?":"'x'"}).allows(o) || type("unknown").allows(o))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        if: { properties: { a: { const: 'x' } } },
+        else: { required: ['a'] },
+      },
+      `type({"a?":"string"}).narrow((o) => type({"a?":"'x'"}).allows(o) || type("unknown").allows(o))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        if: { properties: { a: { const: 'x' } } },
+        then: { required: ['a'] },
+        else: { properties: { a: { type: 'string' } } },
+        'x-if-message': 'iff',
+      },
+      `type({"a?":"string"}).narrow((o, ctx) => !type({"a?":"'x'"}).allows(o) || type("unknown").allows(o) || ctx.mustBe("iff")).narrow((o, ctx) => type({"a?":"'x'"}).allows(o) || type({"a?":"string"}).allows(o) || ctx.mustBe("iff"))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        if: { properties: { a: { const: 'x' } } },
+      },
+      'type({"a?":"string"})',
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        propertyNames: { pattern: '^[a-z]+$' },
+      },
+      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)))',
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        propertyNames: { enum: ['a', 'b'] },
+      },
+      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => ["a","b"].includes(k)))',
+    ],
+    [
+      {
+        type: 'object',
+        properties: { a: { type: 'string' } },
+        patternProperties: { '^x-': { type: 'number' } },
+      },
+      'type({"a?":"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^x-").test(k) || type("number").allows(val)))',
+    ],
+    [
+      {
+        type: 'object',
+        additionalProperties: { type: 'string' },
+        propertyNames: { pattern: '^x' },
+      },
+      'type({"[string]":"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^x").test(k)))',
+    ],
+  ])('object(%o) → %s', (input, expected) => {
+    expect(object(input, 'Schema', false)).toBe(expected)
+  })
+
+  it('wraps with .describe for x-properties-message', () => {
+    expect(
+      object(
+        {
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          'x-properties-message': 'P',
+        },
+        'Schema',
+        false,
+      ),
+    ).toBe('type({a:"string"}).describe("P")')
+  })
+
+  it('wraps bare literal with type() for x-properties-message when isArktype', () => {
+    expect(
+      object(
+        {
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          required: ['a'],
+          'x-properties-message': 'P',
+        },
+        'Schema',
+        true,
+      ),
+    ).toBe('type({a:"string"}).describe("P")')
+  })
+})
