@@ -22,4 +22,9 @@ describe('fmt', () => {
     const result = await fmt('const x = {')
     expect(result.ok).toBe(false)
   })
+
+  it('should format with default printWidth (no wrap at 100)', async () => {
+    const result = await fmt('const obj = { aaaa: 1, bbbb: 2, cccc: 3 }')
+    expect(result).toStrictEqual({ ok: true, value: 'const obj = { aaaa: 1, bbbb: 2, cccc: 3 }\n' })
+  })
 })
