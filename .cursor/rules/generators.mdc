@@ -1,0 +1,67 @@
+---
+globs: packages/schema-to-library/src/generator/**/*.ts,packages/schema-to-library/src/helper/**/*.ts,packages/schema-to-library/src/utils/**/*.ts
+alwaysApply: false
+---
+
+# Writing a generator
+
+Five generators, one directory each, all with the same module shape. Read the Zod one
+first — `@packages/schema-to-library/src/generator/zod` is the reference implementation
+and the other four mirror it.
+
+| Module | Role |
+| --- | --- |
+| `index.ts` | `schemaTo<Lib>(schema, options)` — a whole document to a whole file: imports, `$defs` in dependency order, type exports, cycle handling |
+| `<lib>.ts` | `<lib>(schema, ...)` — **one schema node to one expression**. The recursion entry point; every other emitter funnels back through it |
+| `type.ts` | the TypeScript type declaration that accompanies a recursive schema (`_Category`); ArkType has none — it emits a `scope` instead |
+| `object.ts` / `string.ts` / `number.ts` / `integer.ts` / `enum.ts` | per-type emitters, keyword by keyword |
+
+Shared code sits outside the generator directories:
+
+- `@packages/schema-to-library/src/helper` — `allof`, `cyclic`, `ref`, `regex`, `meta`,
+  `value`, `code-extensions`, and one `<lib>-wrap.ts` per target for the wrapping rules
+  that library needs.
+- `@packages/schema-to-library/src/utils` — naming (`toPascalCase`,
+  `toIdentifierPascalCase`, `makeSafeKey`), `normalizeTypes`, `coerceDefault`, the
+  per-library error helpers (`zodError`, `valibotError`, `effectError`) and OpenAPI `$ref`
+  resolution.
+
+Put anything shared by two or more generators in `helper/` or `utils/`, not in one
+generator with an import reaching across.
+
+## Rules
+
+- **Emit strings; evaluate nothing.** A generator returns TypeScript source and never
+  imports the library it targets. (`effect` is a runtime dependency of the package only
+  because the CLI is built on Effect's CLI — not for schema generation.)
+- **Idiom over uniformity.** Emit what a competent user of that library would have
+  written, not a mechanical translation of the Zod output. That is the whole premise of
+  the tool.
+- **Formatting is not your job.** Output goes through `fmt` (oxfmt); do not hand-align,
+  hand-wrap, or add cosmetic whitespace to emitted source.
+- **Output must be deterministic** — same input, same bytes. Never iterate an object in
+  a way whose order depends on anything but the document; the fixtures compare exact
+  bytes.
+- **Cover all five targets.** Adding support for a keyword or extension in one generator
+  means either implementing it in the other four or making it a documented no-op there.
+  A target with no equivalent is a silent no-op, never a thrown error.
+- **Never break a message slot.** A keyword that accepts `x-<keyword>-message` must keep
+  honouring it — see `@.cursor/rules/vendor-extensions.mdc`.
+- The `import/no-cycle` exception for `object.ts` ↔ `<lib>.ts` is deliberate (an object
+  holds schemas, a schema may be an object). Do not add new cycles; do not "fix" that one.
+- Every emitted API must exist in the pinned target version — see
+  `@.cursor/rules/target-libraries.mdc`.
+
+## The loop for a generator change
+
+```bash
+vp run schema-to-library#test      # unit tests for the emitters you touched
+vp run schema-to-library#build     # fixtures import the built dist
+vp run @fixtures/zod#generate      # ...and the other four targets you touched
+vp run -r typecheck                # generated code vs. the real libraries
+vp test                            # fixture golden assertions
+vp run -r check                    # fmt + lint + tsc
+```
+
+Then read the `fixtures/*/*/output.ts` diff. An unexpected line there is a bug, even when
+every test is green.

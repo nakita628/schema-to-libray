@@ -815,7 +815,7 @@ export type EmptyOutput = v.InferOutput<typeof Empty>`
         neg: { $ref: '#/definitions/Neg' },
       },
     })
-    const expected = `import * as v from 'valibot'\n\ntype _Root = {neg?: _Neg}\n\ntype _Neg = unknown\n\nconst Neg: v.GenericSchema<unknown, _Neg> = v.custom<unknown>((val) => typeof val !== 'string')\n\nexport const Root: v.GenericSchema<unknown, _Root> = v.partial(v.object({neg:v.lazy(() => Neg)}))\n\nexport type RootOutput = v.InferOutput<typeof Root>`
+    const expected = `import * as v from 'valibot'\n\ntype _Root = {neg?: _Neg}\n\ntype _Neg = unknown\n\nconst Neg: v.GenericSchema<unknown, _Neg> = v.custom<unknown>((input) => typeof input !== 'string')\n\nexport const Root: v.GenericSchema<unknown, _Root> = v.partial(v.object({neg:v.lazy(() => Neg)}))\n\nexport type RootOutput = v.InferOutput<typeof Root>`
     expect(result).toBe(expected)
   })
 

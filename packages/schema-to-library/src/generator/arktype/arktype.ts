@@ -152,15 +152,17 @@ export function arktype(
       return arktypeWrap(expr, schema)
     }
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(val: unknown) => typeof val !== 'string'`,
-      number: `(val: unknown) => typeof val !== 'number'`,
-      integer: `(val: unknown) => typeof val !== 'number' || !Number.isInteger(val)`,
-      boolean: `(val: unknown) => typeof val !== 'boolean'`,
-      array: '(val: unknown) => !Array.isArray(val)',
-      object: `(val: unknown) => typeof val !== 'object' || val === null || Array.isArray(val)`,
-      null: '(val: unknown) => val !== null',
+      string: `(data: unknown) => typeof data !== 'string'`,
+      number: `(data: unknown) => typeof data !== 'number'`,
+      integer: `(data: unknown) => typeof data !== 'number' || !Number.isInteger(data)`,
+      boolean: `(data: unknown) => typeof data !== 'boolean'`,
+      array: '(data: unknown) => !Array.isArray(data)',
+      object: `(data: unknown) => typeof data !== 'object' || data === null || Array.isArray(data)`,
+      null: '(data: unknown) => data !== null',
     }
-    if ('const' in inner) return narrow(`(val: unknown) => val !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) {
+      return narrow(`(data: unknown) => data !== ${JSON.stringify(inner.const)}`)
+    }
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return narrow(predicate)
@@ -172,11 +174,11 @@ export function arktype(
       const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(val: unknown\) => /, '')})`)
-      if (bodies.length > 0) return narrow(`(val: unknown) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(data: unknown\) => /, '')})`)
+      if (bodies.length > 0) return narrow(`(data: unknown) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
-      return narrow(`(val: unknown) => !${JSON.stringify(inner.enum)}.includes(val as never)`)
+      return narrow(`(data: unknown) => !${JSON.stringify(inner.enum)}.includes(data as never)`)
     }
     return arktypeWrap('"unknown"', schema)
   }
@@ -228,7 +230,7 @@ export function arktype(
   }
   if (types.includes('boolean')) {
     if (isStringWireParam) {
-      return arktypeWrap(`type("'true' | 'false'").pipe((s) => s === 'true')`, schema)
+      return arktypeWrap(`type("'true' | 'false'").pipe((data) => data === 'true')`, schema)
     }
     return arktypeWrap('"boolean"', schema)
   }
@@ -297,7 +299,7 @@ export function arktype(
       ? hasArrayMessage
         ? narrowWith(
             base,
-            `(items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)})`,
+            `(data: unknown[], ctx) => data.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)})`,
           )
         : andWith(base, `"unknown[] == ${minItems}"`)
       : typeof minItems === 'number' && typeof maxItems === 'number'
@@ -305,23 +307,23 @@ export function arktype(
           ? narrowWith(
               narrowWith(
                 base,
-                `(items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
+                `(data: unknown[], ctx) => data.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
               ),
-              `(items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
+              `(data: unknown[], ctx) => data.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
             )
           : andWith(base, `"${minItems} <= unknown[] <= ${maxItems}"`)
         : typeof minItems === 'number'
           ? hasArrayMessage
             ? narrowWith(
                 base,
-                `(items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
+                `(data: unknown[], ctx) => data.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
               )
             : andWith(base, `"unknown[] >= ${minItems}"`)
           : typeof maxItems === 'number'
             ? hasArrayMessage
               ? narrowWith(
                   base,
-                  `(items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
+                  `(data: unknown[], ctx) => data.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
                 )
               : andWith(base, `"unknown[] <= ${maxItems}"`)
             : base
@@ -329,7 +331,7 @@ export function arktype(
       schema.uniqueItems === true
         ? narrowWith(
             lengthExpr,
-            `(items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''}`,
+            `(data: unknown[], ctx) => new Set(data).size === data.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''}`,
           )
         : lengthExpr
     const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
@@ -342,17 +344,17 @@ export function arktype(
       if (minC === undefined && maxC === undefined) {
         const msg = containsMessage ?? 'must contain at least one matching item'
         return [
-          `.narrow((arr: unknown[], ctx) => arr.some((i) => ${containsRt}.allows(i)) || ctx.mustBe(${JSON.stringify(msg)}))`,
+          `.narrow((data: unknown[], ctx) => data.some((item) => ${containsRt}.allows(item)) || ctx.mustBe(${JSON.stringify(msg)}))`,
         ]
       }
       const effectiveMin = minC ?? 1
       const minNarrow =
         effectiveMin > 0
-          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(minContainsMessage ?? `must contain at least ${effectiveMin} matching items`)}))`
+          ? `.narrow((data: unknown[], ctx) => data.filter((item) => ${containsRt}.allows(item)).length >= ${effectiveMin} || ctx.mustBe(${JSON.stringify(minContainsMessage ?? `must contain at least ${effectiveMin} matching items`)}))`
           : undefined
       const maxNarrow =
         maxC !== undefined
-          ? `.narrow((arr: unknown[], ctx) => arr.filter((i) => ${containsRt}.allows(i)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(maxContainsMessage ?? `must contain at most ${maxC} matching items`)}))`
+          ? `.narrow((data: unknown[], ctx) => data.filter((item) => ${containsRt}.allows(item)).length <= ${maxC} || ctx.mustBe(${JSON.stringify(maxContainsMessage ?? `must contain at most ${maxC} matching items`)}))`
           : undefined
       return [minNarrow, maxNarrow].filter((v): v is string => v !== undefined)
     })()

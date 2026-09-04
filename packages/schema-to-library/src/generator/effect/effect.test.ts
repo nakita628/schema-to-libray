@@ -229,7 +229,7 @@ describe('effect', () => {
             },
           ],
         },
-        'GeoJsonObjectSchema.check(Schema.makeFilter((v)=>Schema.is(Schema.Struct({type:Schema.Literals(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])}))(v)))',
+        'GeoJsonObjectSchema.check(Schema.makeFilter((input)=>Schema.is(Schema.Struct({type:Schema.Literals(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])}))(input)))',
       ],
       [
         {
@@ -277,28 +277,28 @@ describe('effect', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { not: { type: 'string' } },
-        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string'))",
+        "Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'string'))",
       ],
       [
         { not: { type: 'integer' } },
-        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'number' || !Number.isInteger(val)))",
+        "Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'number' || !Number.isInteger(input)))",
       ],
       [
         { not: { type: 'boolean' } },
-        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'boolean'))",
+        "Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'boolean'))",
       ],
       [
         { not: { type: 'string' }, nullable: true },
-        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'string')))",
       ],
       [
         { not: { type: 'string' }, type: ['null'] },
-        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'string')))",
       ],
-      [{ not: { const: 42 } }, 'Schema.Unknown.check(Schema.makeFilter((val) => val !== 42))'],
+      [{ not: { const: 42 } }, 'Schema.Unknown.check(Schema.makeFilter((input) => input !== 42))'],
       [
         { not: { enum: ['a', 'b'] } },
-        'Schema.Unknown.check(Schema.makeFilter((val) => !["a","b"].some((item) => item === val)))',
+        'Schema.Unknown.check(Schema.makeFilter((input) => !["a","b"].some((item) => item === input)))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -865,13 +865,13 @@ describe('effect', () => {
         effect(
           {
             type: 'string',
-            'x-filter': '.pipe(Schema.filter((v) => v.length > 0))',
+            'x-filter': '.pipe(Schema.filter((input) => input.length > 0))',
           },
           'Schema',
           false,
           unsafe,
         ),
-      ).toBe('Schema.String.pipe(Schema.filter((v) => v.length > 0))')
+      ).toBe('Schema.String.pipe(Schema.filter((input) => input.length > 0))')
     })
 
     it('appends x-transform chain', () => {
@@ -887,14 +887,14 @@ describe('effect', () => {
 
     it('silently ignores x-filter without flag', () => {
       expect(
-        effect({ type: 'string', 'x-filter': '.pipe(Schema.filter((v) => v.length > 0))' }),
+        effect({ type: 'string', 'x-filter': '.pipe(Schema.filter((input) => input.length > 0))' }),
       ).toBe('Schema.String')
     })
 
     it('silently ignores denylisted code', () => {
       expect(
         effect(
-          { type: 'string', 'x-filter': '.pipe(Schema.filter((v) => eval(v)))' },
+          { type: 'string', 'x-filter': '.pipe(Schema.filter((input) => eval(input)))' },
           'Schema',
           false,
           unsafe,
@@ -952,7 +952,7 @@ describe('effect', () => {
           'x-prefixItems-message': 'bad tuple',
         }),
       ).toBe(
-        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Tuple([Schema.String,Schema.Number]))(v),{message:"bad tuple"})).pipe(Schema.decodeTo(Schema.Tuple([Schema.String,Schema.Number])))',
+        'Schema.Unknown.check(Schema.makeFilter((input)=>Schema.is(Schema.Tuple([Schema.String,Schema.Number]))(input),{message:"bad tuple"})).pipe(Schema.decodeTo(Schema.Tuple([Schema.String,Schema.Number])))',
       )
     })
   })
@@ -962,7 +962,7 @@ describe('effect', () => {
       expect(
         effect({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
       ).toBe(
-        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Array(Schema.String))(v),{message:"bad items"})).pipe(Schema.decodeTo(Schema.Array(Schema.String)))',
+        'Schema.Unknown.check(Schema.makeFilter((input)=>Schema.is(Schema.Array(Schema.String))(input),{message:"bad items"})).pipe(Schema.decodeTo(Schema.Array(Schema.String)))',
       )
     })
   })
@@ -1001,7 +1001,7 @@ describe('effect', () => {
 
     it('path: boolean → Schema.BooleanFromString', () => {
       expect(effect({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        'Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,SchemaTransformation.transform({decode:(s)=>s==="true",encode:(b)=>b?"true":"false"})))',
+        'Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,SchemaTransformation.transform({decode:(input)=>input==="true",encode:(input)=>input?"true":"false"})))',
       )
     })
 
@@ -1063,26 +1063,29 @@ describe('effect not: type arrays / message', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { not: { type: ['string', 'number'] } },
-      "Schema.Unknown.check(Schema.makeFilter((val) => (typeof val !== 'string') && (typeof val !== 'number')))",
+      "Schema.Unknown.check(Schema.makeFilter((input) => (typeof input !== 'string') && (typeof input !== 'number')))",
     ],
     [
       { not: { type: 'number' } },
-      "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'number'))",
+      "Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'number'))",
     ],
     [
       { not: { type: 'array' } },
-      'Schema.Unknown.check(Schema.makeFilter((val) => !Array.isArray(val)))',
+      'Schema.Unknown.check(Schema.makeFilter((input) => !Array.isArray(input)))',
     ],
     [
       { not: { type: 'object' } },
-      "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'object' || val === null || Array.isArray(val)))",
+      "Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'object' || input === null || Array.isArray(input)))",
     ],
-    [{ not: { type: 'null' } }, 'Schema.Unknown.check(Schema.makeFilter((val) => val !== null))'],
+    [
+      { not: { type: 'null' } },
+      'Schema.Unknown.check(Schema.makeFilter((input) => input !== null))',
+    ],
     [{ not: { $ref: '#/components/schemas/Foo' } }, 'Schema.Unknown'],
     [{ not: { oneOf: [{ type: 'string' }, { type: 'number' }] } }, 'Schema.Unknown'],
     [
       { not: { type: 'string' }, 'x-not-message': 'no strings' },
-      `Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string',{message:"no strings"}))`,
+      `Schema.Unknown.check(Schema.makeFilter((input) => typeof input !== 'string',{message:"no strings"}))`,
     ],
     [{ not: { format: 'email' } }, 'Schema.Unknown'],
   ])('effect(%o) → %s', (input, expected) => {
@@ -1094,7 +1097,7 @@ describe('effect contains / minContains / maxContains', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i))))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.some((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item))))',
     ],
     [
       {
@@ -1103,15 +1106,15 @@ describe('effect contains / minContains / maxContains', () => {
         contains: { type: 'integer' },
         'x-contains-message': 'need int',
       },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)),{message:"need int"}))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.some((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)),{message:"need int"}))',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=2))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length>=2))',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=1),Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=3))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length>=1),Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length<=3))',
     ],
     [
       {
@@ -1123,7 +1126,7 @@ describe('effect contains / minContains / maxContains', () => {
         'x-minContains-message': 'few',
         'x-maxContains-message': 'many',
       },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=1,{message:"few"}),Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=2,{message:"many"}))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length>=1,{message:"few"}),Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length<=2,{message:"many"}))',
     ],
     [
       {
@@ -1133,7 +1136,7 @@ describe('effect contains / minContains / maxContains', () => {
         minContains: 0,
         maxContains: 2,
       },
-      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=2))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((input)=>input.filter((item)=>Schema.is(Schema.Number.check(Schema.isInt()))(item)).length<=2))',
     ],
   ])('effect(%o) → %s', (input, expected) => {
     expect(effect(input)).toBe(expected)

@@ -50,7 +50,7 @@ assignees: ''
 
 <!-- If applicable, add error logs or console output -->
 
-```
+```text
 // Paste your logs here
 ```
 

@@ -39,12 +39,12 @@ const B: Schema.Schema<_B> = Schema.Struct({
   type: Schema.Literal('B'),
   name: Schema.String,
   detail: Schema.suspend(() => D).check(
-    Schema.makeFilter((v) =>
+    Schema.makeFilter((input) =>
       Schema.is(
         Schema.Struct({
           comment: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed('N/A'))),
         }),
-      )(v),
+      )(input),
     ),
   ),
 })

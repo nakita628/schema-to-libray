@@ -311,7 +311,7 @@ export function zod(
     const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
     const unique =
       schema.uniqueItems === true
-        ? `.refine((items)=>new Set(items).size===items.length${uniqueError})`
+        ? `.refine((val)=>new Set(val).size===val.length${uniqueError})`
         : ''
     // v3.0: contains / minContains / maxContains as separate refines for
     // independent error messages (silent-bug fix).
@@ -326,7 +326,7 @@ export function zod(
       if (minC === undefined && maxC === undefined) {
         const containsArg = fallback ? `,${zodError(fallback)}` : ''
         parts.push(
-          `.refine((arr)=>{const Schema=${containsZod};return arr.some((i)=>Schema.safeParse(i).success)}${containsArg})`,
+          `.refine((val)=>{const Schema=${containsZod};return val.some((item)=>Schema.safeParse(item).success)}${containsArg})`,
         )
       } else {
         const effectiveMin = minC ?? 1
@@ -334,14 +334,14 @@ export function zod(
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
           const minContainsArg = minContainsMessage ? `,${zodError(minContainsMessage)}` : ''
           parts.push(
-            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length>=${effectiveMin}}${minContainsArg})`,
+            `.refine((val)=>{const Schema=${containsZod};return val.filter((item)=>Schema.safeParse(item).success).length>=${effectiveMin}}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
           const maxContainsArg = maxContainsMessage ? `,${zodError(maxContainsMessage)}` : ''
           parts.push(
-            `.refine((arr)=>{const Schema=${containsZod};return arr.filter((i)=>Schema.safeParse(i).success).length<=${maxC}}${maxContainsArg})`,
+            `.refine((val)=>{const Schema=${containsZod};return val.filter((item)=>Schema.safeParse(item).success).length<=${maxC}}${maxContainsArg})`,
           )
         }
       }

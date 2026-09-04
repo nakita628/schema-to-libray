@@ -3,12 +3,12 @@ import * as z from 'zod'
 export const Vehicle = z
   .looseObject({ type: z.enum(['car', 'truck']) })
   .refine(
-    (o) =>
-      !z.object({ type: z.literal('truck').exactOptional() }).safeParse(o).success ||
-      z.object({ cargoCapacity: z.number().min(0) }).safeParse(o).success,
+    (val) =>
+      !z.object({ type: z.literal('truck').exactOptional() }).safeParse(val).success ||
+      z.object({ cargoCapacity: z.number().min(0) }).safeParse(val).success,
   )
   .refine(
-    (o) =>
-      z.object({ type: z.literal('truck').exactOptional() }).safeParse(o).success ||
-      z.object({ passengerCount: z.int().min(1) }).safeParse(o).success,
+    (val) =>
+      z.object({ type: z.literal('truck').exactOptional() }).safeParse(val).success ||
+      z.object({ passengerCount: z.int().min(1) }).safeParse(val).success,
   )

@@ -17,13 +17,13 @@ function ensureRuntime(s: string): string {
 
 /**
  * Compose a `.narrow(...)` argument with an optional error message.
- * - With message: `(o, ctx) => predicate || ctx.mustBe("msg")`
- * - Without message: `(o) => predicate`
+ * - With message: `(data, ctx) => predicate || ctx.mustBe("msg")`
+ * - Without message: `(data) => predicate`
  */
 function narrowPredicate(predicate: string, message?: string): string {
   return message
-    ? `(o, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})`
-    : `(o) => ${predicate}`
+    ? `(data, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})`
+    : `(data) => ${predicate}`
 }
 
 /**
@@ -62,13 +62,13 @@ export function object(
   const propertyNamesNarrow = (): string => {
     if (schema.propertyNames?.pattern) {
       return narrowPredicate(
-        `Object.keys(o).every((k) => new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))`,
+        `Object.keys(data).every((key) => new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(key))`,
         propNamesMessage,
       )
     }
     if (schema.propertyNames?.enum) {
       return narrowPredicate(
-        `Object.keys(o).every((k) => ${JSON.stringify(schema.propertyNames.enum)}.includes(k))`,
+        `Object.keys(data).every((key) => ${JSON.stringify(schema.propertyNames.enum)}.includes(key))`,
         propNamesMessage,
       )
     }
@@ -80,7 +80,7 @@ export function object(
       ? Object.entries(schema.patternProperties).map(([pattern, propSchema]) => {
           const s = ensureRuntime(arktype(propSchema, rootName, isArktype, options))
           return narrowPredicate(
-            `Object.entries(o).every(([k, val]) => !new RegExp(${JSON.stringify(pattern)}).test(k) || ${s}.allows(val))`,
+            `Object.entries(data).every(([key, value]) => !new RegExp(${JSON.stringify(pattern)}).test(key) || ${s}.allows(value))`,
             patternPropsMessage,
           )
         })
@@ -129,16 +129,16 @@ export function object(
 
   const minPropertiesNarrow =
     typeof schema.minProperties === 'number'
-      ? narrowPredicate(`Object.keys(o).length >= ${schema.minProperties}`, minimumMessage)
+      ? narrowPredicate(`Object.keys(data).length >= ${schema.minProperties}`, minimumMessage)
       : ''
   const maxPropertiesNarrow =
     typeof schema.maxProperties === 'number'
-      ? narrowPredicate(`Object.keys(o).length <= ${schema.maxProperties}`, maximumMessage)
+      ? narrowPredicate(`Object.keys(data).length <= ${schema.maxProperties}`, maximumMessage)
       : ''
   const dependentRequiredNarrows: readonly string[] = schema.dependentRequired
     ? Object.entries(schema.dependentRequired).map(([key, deps]) => {
-        const depsCheck = deps.map((d) => `'${d}' in o`).join(' && ')
-        return narrowPredicate(`!('${key}' in o) || (${depsCheck})`, depReqMessage)
+        const depsCheck = deps.map((d) => `'${d}' in data`).join(' && ')
+        return narrowPredicate(`!('${key}' in data) || (${depsCheck})`, depReqMessage)
       })
     : []
   // v3.0: dependentSchemas — when key present, the whole object must
@@ -146,7 +146,7 @@ export function object(
   const dependentSchemasNarrows: readonly string[] = schema.dependentSchemas
     ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
         const s = ensureRuntime(arktype(subSchema, rootName, isArktype, options))
-        return narrowPredicate(`!('${key}' in o) || ${s}.allows(o)`, depSchMessage)
+        return narrowPredicate(`!('${key}' in data) || ${s}.allows(data)`, depSchMessage)
       })
     : []
   // v3.0: x-additionalProperties-message narrows extras-rejection
@@ -154,7 +154,7 @@ export function object(
   const additionalPropertiesNarrow =
     schema.additionalProperties === false && addlPropsMessage
       ? narrowPredicate(
-          `Object.keys(o).every((k) => ${JSON.stringify(Object.keys(schema.properties))}.includes(k))`,
+          `Object.keys(data).every((key) => ${JSON.stringify(Object.keys(schema.properties))}.includes(key))`,
           addlPropsMessage,
         )
       : ''
@@ -164,14 +164,14 @@ export function object(
     const declaredKeys = JSON.stringify(Object.keys(schema.properties ?? {}))
     if (u === false) {
       return narrowPredicate(
-        `Object.keys(o).every((k) => ${declaredKeys}.includes(k))`,
+        `Object.keys(data).every((key) => ${declaredKeys}.includes(key))`,
         unevalPropsRawMessage,
       )
     }
     if (typeof u === 'object') {
       const s = ensureRuntime(arktype(u, rootName, isArktype, options))
       return narrowPredicate(
-        `Object.entries(o).filter(([k]) => !${declaredKeys}.includes(k)).every(([,val]) => ${s}.allows(val))`,
+        `Object.entries(data).filter(([key]) => !${declaredKeys}.includes(key)).every(([, value]) => ${s}.allows(value))`,
         unevalPropsRawMessage,
       )
     }
@@ -193,10 +193,10 @@ export function object(
     const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenS) {
-      parts.push(narrowPredicate(`!${ifS}.allows(o) || ${thenS}.allows(o)`, thenMessage))
+      parts.push(narrowPredicate(`!${ifS}.allows(data) || ${thenS}.allows(data)`, thenMessage))
     }
     if (elseS) {
-      parts.push(narrowPredicate(`${ifS}.allows(o) || ${elseS}.allows(o)`, elseMessage))
+      parts.push(narrowPredicate(`${ifS}.allows(data) || ${elseS}.allows(data)`, elseMessage))
     }
     return parts
   })()

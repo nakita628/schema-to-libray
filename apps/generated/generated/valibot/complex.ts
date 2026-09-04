@@ -16,7 +16,7 @@ const E: v.GenericSchema<unknown, _E> = v.partial(
     reference: v.lazy(() => E),
     flags: v.pipe(
       v.array(v.string()),
-      v.check((items) => new Set(items).size === items.length),
+      v.check((input) => new Set(input).size === input.length),
     ),
     meta: v.record(v.string(), v.string()),
   }),

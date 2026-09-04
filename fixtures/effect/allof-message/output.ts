@@ -2,7 +2,7 @@ import { Schema } from 'effect'
 
 export const Merged = Schema.Unknown.check(
   Schema.makeFilter(
-    (v) =>
+    (input) =>
       Schema.is(
         Schema.Struct({
           ...Schema.Struct({ name: Schema.String.check(Schema.isMinLength(3)) }).fields,
@@ -10,7 +10,7 @@ export const Merged = Schema.Unknown.check(
             age: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
           }).fields,
         }),
-      )(v),
+      )(input),
     { message: 'merged validation failed' },
   ),
 ).pipe(

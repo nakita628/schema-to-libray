@@ -45,7 +45,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('type({a:"string"}).narrow((o) => Object.keys(o).length >= 2)')
+      ).toBe('type({a:"string"}).narrow((data) => Object.keys(data).length >= 2)')
     })
 
     it('emits both with x-minimum-message / x-maximum-message via ctx.mustBe', () => {
@@ -64,7 +64,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).length >= 1 || ctx.mustBe("too few")).narrow((o, ctx) => Object.keys(o).length <= 3 || ctx.mustBe("too many"))',
+        'type({a:"string"}).narrow((data, ctx) => Object.keys(data).length >= 1 || ctx.mustBe("too few")).narrow((data, ctx) => Object.keys(data).length <= 3 || ctx.mustBe("too many"))',
       )
     })
   })
@@ -83,7 +83,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({a:"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)))',
+        'type({a:"string"}).narrow((data) => Object.keys(data).every((key) => new RegExp("^[a-z]+$").test(key)))',
       )
     })
 
@@ -100,7 +100,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({a:"string"}).narrow((o) => Object.keys(o).every((k) => ["a","b","c"].includes(k)))',
+        'type({a:"string"}).narrow((data) => Object.keys(data).every((key) => ["a","b","c"].includes(key)))',
       )
     })
 
@@ -118,7 +118,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)) || ctx.mustBe("lowercase only"))',
+        'type({a:"string"}).narrow((data, ctx) => Object.keys(data).every((key) => new RegExp("^[a-z]+$").test(key)) || ctx.mustBe("lowercase only"))',
       )
     })
   })
@@ -137,7 +137,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({a:"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^x-").test(k) || type("string").allows(val)))',
+        'type({a:"string"}).narrow((data) => Object.entries(data).every(([key, value]) => !new RegExp("^x-").test(key) || type("string").allows(value)))',
       )
     })
 
@@ -153,7 +153,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({"[string]":"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^id_").test(k) || type("number").allows(val)))',
+        'type({"[string]":"string"}).narrow((data) => Object.entries(data).every(([key, value]) => !new RegExp("^id_").test(key) || type("number").allows(value)))',
       )
     })
   })
@@ -175,7 +175,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({card:"string","billing?":"string"}).narrow((o) => !(\'card\' in o) || (\'billing\' in o))',
+        'type({card:"string","billing?":"string"}).narrow((data) => !(\'card\' in data) || (\'billing\' in data))',
       )
     })
 
@@ -196,7 +196,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'type({"a?":"string","b?":"string","c?":"string"}).narrow((o, ctx) => !(\'a\' in o) || (\'b\' in o && \'c\' in o) || ctx.mustBe("a needs b and c"))',
+        'type({"a?":"string","b?":"string","c?":"string"}).narrow((data, ctx) => !(\'a\' in data) || (\'b\' in data && \'c\' in data) || ctx.mustBe("a needs b and c"))',
       )
     })
   })
@@ -230,7 +230,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('type({a:"string"}).narrow((o) => Object.keys(o).length >= 1).describe("bad props")')
+      ).toBe(
+        'type({a:"string"}).narrow((data) => Object.keys(data).length >= 1).describe("bad props")',
+      )
     })
   })
 })
@@ -243,7 +245,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' }, b: { type: 'string' } },
         dependentRequired: { a: ['b'] },
       },
-      `type({"a?":"string","b?":"string"}).narrow((o) => !('a' in o) || ('b' in o))`,
+      `type({"a?":"string","b?":"string"}).narrow((data) => !('a' in data) || ('b' in data))`,
     ],
     [
       {
@@ -252,7 +254,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         dependentRequired: { a: ['b'] },
         'x-dependentRequired-message': 'need b',
       },
-      `type({"a?":"string","b?":"string"}).narrow((o, ctx) => !('a' in o) || ('b' in o) || ctx.mustBe("need b"))`,
+      `type({"a?":"string","b?":"string"}).narrow((data, ctx) => !('a' in data) || ('b' in data) || ctx.mustBe("need b"))`,
     ],
     [
       {
@@ -260,7 +262,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' } },
         dependentSchemas: { a: { properties: { b: { type: 'number' } }, required: ['b'] } },
       },
-      `type({"a?":"string"}).narrow((o) => !('a' in o) || type({b:"number"}).allows(o))`,
+      `type({"a?":"string"}).narrow((data) => !('a' in data) || type({b:"number"}).allows(data))`,
     ],
     [
       {
@@ -269,7 +271,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         additionalProperties: false,
         'x-additionalProperties-message': 'no extras',
       },
-      'type({"a?":"string","+":"reject"}).narrow((o, ctx) => Object.keys(o).every((k) => ["a"].includes(k)) || ctx.mustBe("no extras"))',
+      'type({"a?":"string","+":"reject"}).narrow((data, ctx) => Object.keys(data).every((key) => ["a"].includes(key)) || ctx.mustBe("no extras"))',
     ],
     [
       { type: 'object', properties: { a: { type: 'string' } }, additionalProperties: false },
@@ -277,7 +279,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
     ],
     [
       { type: 'object', properties: { a: { type: 'string' } }, unevaluatedProperties: false },
-      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => ["a"].includes(k)))',
+      'type({"a?":"string"}).narrow((data) => Object.keys(data).every((key) => ["a"].includes(key)))',
     ],
     [
       {
@@ -285,7 +287,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' } },
         unevaluatedProperties: { type: 'string' },
       },
-      'type({"a?":"string"}).narrow((o) => Object.entries(o).filter(([k]) => !["a"].includes(k)).every(([,val]) => type("string").allows(val)))',
+      'type({"a?":"string"}).narrow((data) => Object.entries(data).filter(([key]) => !["a"].includes(key)).every(([, value]) => type("string").allows(value)))',
     ],
     [
       { type: 'object', properties: { a: { type: 'string' } }, unevaluatedProperties: true },
@@ -299,7 +301,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
         then: { required: ['a'] },
       },
-      `type({"a?":"string"}).narrow((o) => !type({"a?":"'x'"}).allows(o) || type("unknown").allows(o))`,
+      `type({"a?":"string"}).narrow((data) => !type({"a?":"'x'"}).allows(data) || type("unknown").allows(data))`,
     ],
     [
       {
@@ -308,7 +310,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         if: { properties: { a: { const: 'x' } } },
         else: { required: ['a'] },
       },
-      `type({"a?":"string"}).narrow((o) => type({"a?":"'x'"}).allows(o) || type("unknown").allows(o))`,
+      `type({"a?":"string"}).narrow((data) => type({"a?":"'x'"}).allows(data) || type("unknown").allows(data))`,
     ],
     [
       {
@@ -320,7 +322,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         else: { properties: { a: { type: 'string' } } },
         'x-if-message': 'iff',
       },
-      `type({"a?":"string"}).narrow((o, ctx) => !type({"a?":"'x'"}).allows(o) || type("unknown").allows(o) || ctx.mustBe("iff")).narrow((o, ctx) => type({"a?":"'x'"}).allows(o) || type({"a?":"string"}).allows(o) || ctx.mustBe("iff"))`,
+      `type({"a?":"string"}).narrow((data, ctx) => !type({"a?":"'x'"}).allows(data) || type("unknown").allows(data) || ctx.mustBe("iff")).narrow((data, ctx) => type({"a?":"'x'"}).allows(data) || type({"a?":"string"}).allows(data) || ctx.mustBe("iff"))`,
     ],
     [
       {
@@ -336,7 +338,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' } },
         propertyNames: { pattern: '^[a-z]+$' },
       },
-      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^[a-z]+$").test(k)))',
+      'type({"a?":"string"}).narrow((data) => Object.keys(data).every((key) => new RegExp("^[a-z]+$").test(key)))',
     ],
     [
       {
@@ -344,7 +346,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' } },
         propertyNames: { enum: ['a', 'b'] },
       },
-      'type({"a?":"string"}).narrow((o) => Object.keys(o).every((k) => ["a","b"].includes(k)))',
+      'type({"a?":"string"}).narrow((data) => Object.keys(data).every((key) => ["a","b"].includes(key)))',
     ],
     [
       {
@@ -352,7 +354,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         properties: { a: { type: 'string' } },
         patternProperties: { '^x-': { type: 'number' } },
       },
-      'type({"a?":"string"}).narrow((o) => Object.entries(o).every(([k, val]) => !new RegExp("^x-").test(k) || type("number").allows(val)))',
+      'type({"a?":"string"}).narrow((data) => Object.entries(data).every(([key, value]) => !new RegExp("^x-").test(key) || type("number").allows(value)))',
     ],
     [
       {
@@ -360,7 +362,7 @@ describe('object dependent / unevaluated / conditional keywords', () => {
         additionalProperties: { type: 'string' },
         propertyNames: { pattern: '^x' },
       },
-      'type({"[string]":"string"}).narrow((o) => Object.keys(o).every((k) => new RegExp("^x").test(k)))',
+      'type({"[string]":"string"}).narrow((data) => Object.keys(data).every((key) => new RegExp("^x").test(key)))',
     ],
   ])('object(%o) → %s', (input, expected) => {
     expect(object(input, 'Schema', false)).toBe(expected)

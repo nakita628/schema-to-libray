@@ -32,8 +32,8 @@ function replaceBase(inner: string, from: string, to: string): string {
  */
 const BOOLEAN_FROM_STRING =
   `Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,` +
-  `SchemaTransformation.transform({decode:(s)=>s==="true",` +
-  `encode:(b)=>b?"true":"false"})))`
+  `SchemaTransformation.transform({decode:(input)=>input==="true",` +
+  `encode:(input)=>input?"true":"false"})))`
 
 /**
  * True when a generated expression is a `Schema.Struct({...})`, optionally
@@ -59,7 +59,7 @@ function intersect(schemas: readonly string[]): string {
   if (schemas.every(isStructExpr)) {
     return `Schema.Struct({${schemas.map((s) => `...${s}.fields`).join(',')}})`
   }
-  return `${first}.check(${rest.map((s) => `Schema.makeFilter((v)=>Schema.is(${s})(v))`).join(',')})`
+  return `${first}.check(${rest.map((s) => `Schema.makeFilter((input)=>Schema.is(${s})(input))`).join(',')})`
 }
 
 /**
@@ -73,7 +73,7 @@ function intersect(schemas: readonly string[]): string {
  * inner schema's type through.
  */
 export function wholeValueMessage(inner: string, message: string): string {
-  return `Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(${inner})(v),${effectError(message)})).pipe(Schema.decodeTo(${inner}))`
+  return `Schema.Unknown.check(Schema.makeFilter((input)=>Schema.is(${inner})(input),${effectError(message)})).pipe(Schema.decodeTo(${inner}))`
 }
 
 /**
@@ -208,15 +208,15 @@ export function effect(
     const filtered = (predicate: string) =>
       effectWrap(`Schema.Unknown.check(Schema.makeFilter(${predicate}${filterOpts}))`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(val) => typeof val !== 'string'`,
-      number: `(val) => typeof val !== 'number'`,
-      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
-      boolean: `(val) => typeof val !== 'boolean'`,
-      array: '(val) => !Array.isArray(val)',
-      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
-      null: '(val) => val !== null',
+      string: `(input) => typeof input !== 'string'`,
+      number: `(input) => typeof input !== 'number'`,
+      integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
+      boolean: `(input) => typeof input !== 'boolean'`,
+      array: '(input) => !Array.isArray(input)',
+      object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
+      null: '(input) => input !== null',
     }
-    if ('const' in inner) return filtered(`(val) => val !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return filtered(`(input) => input !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return filtered(predicate)
@@ -228,13 +228,13 @@ export function effect(
       const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
-      if (bodies.length > 0) return filtered(`(val) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(input\) => /, '')})`)
+      if (bodies.length > 0) return filtered(`(input) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
       // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
       // is `unknown`); compare via `.some(===)` which accepts any operand.
-      return filtered(`(val) => !${JSON.stringify(inner.enum)}.some((item) => item === val)`)
+      return filtered(`(input) => !${JSON.stringify(inner.enum)}.some((item) => item === input)`)
     }
     return effectWrap('Schema.Unknown', schema)
   }
@@ -325,7 +325,7 @@ export function effect(
       if (minC === undefined && maxC === undefined) {
         const containsArg = fallback ? `,${effectError(fallback)}` : ''
         out.push(
-          `Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${containsArg})`,
+          `Schema.makeFilter((input)=>input.some((item)=>Schema.is(${containsSchema})(item))${containsArg})`,
         )
       } else {
         const effectiveMin = minC ?? 1
@@ -333,14 +333,14 @@ export function effect(
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
           const minContainsArg = minContainsMessage ? `,${effectError(minContainsMessage)}` : ''
           out.push(
-            `Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minContainsArg})`,
+            `Schema.makeFilter((input)=>input.filter((item)=>Schema.is(${containsSchema})(item)).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
           const maxContainsArg = maxContainsMessage ? `,${effectError(maxContainsMessage)}` : ''
           out.push(
-            `Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxContainsArg})`,
+            `Schema.makeFilter((input)=>input.filter((item)=>Schema.is(${containsSchema})(item)).length<=${maxC}${maxContainsArg})`,
           )
         }
       }

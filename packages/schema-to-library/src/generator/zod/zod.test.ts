@@ -1378,12 +1378,12 @@ describe('zod', () => {
     it('appends x-refine chain term after brand', () => {
       expect(
         zod(
-          { type: 'string', 'x-refine': '.refine((v) => v.length > 0)' },
+          { type: 'string', 'x-refine': '.refine((val) => val.length > 0)' },
           'Schema',
           false,
           unsafe,
         ),
-      ).toBe('z.string().refine((v) => v.length > 0)')
+      ).toBe('z.string().refine((val) => val.length > 0)')
     })
 
     it('appends x-transform after refine', () => {
@@ -1391,14 +1391,14 @@ describe('zod', () => {
         zod(
           {
             type: 'string',
-            'x-refine': '.refine((v) => v.length > 0)',
-            'x-transform': '.transform((v) => v.trim())',
+            'x-refine': '.refine((val) => val.length > 0)',
+            'x-transform': '.transform((val) => val.trim())',
           },
           'Schema',
           false,
           unsafe,
         ),
-      ).toBe('z.string().refine((v) => v.length > 0).transform((v) => v.trim())')
+      ).toBe('z.string().refine((val) => val.length > 0).transform((val) => val.trim())')
     })
 
     it('appends x-pipe last', () => {
@@ -1434,7 +1434,9 @@ describe('zod', () => {
     })
 
     it('silently ignores x-refine when the flag is not set', () => {
-      expect(zod({ type: 'string', 'x-refine': '.refine((v) => v.length > 0)' })).toBe('z.string()')
+      expect(zod({ type: 'string', 'x-refine': '.refine((val) => val.length > 0)' })).toBe(
+        'z.string()',
+      )
     })
 
     it('silently ignores values rejected by the denylist even when the flag is set', () => {
@@ -1702,13 +1704,13 @@ describe('zod', () => {
 
     it('emits then refine with x-then-message', () => {
       expect(zod(buildSchema({ 'x-then-message': 'then failed' }))).toBe(
-        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((val)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(val).success||z.any().safeParse(val).success,{error:"then failed"})',
       )
     })
 
     it('falls back to x-if-message for then when x-then-message absent', () => {
       expect(zod(buildSchema({ 'x-if-message': 'if shared' }))).toBe(
-        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"if shared"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((val)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(val).success||z.any().safeParse(val).success,{error:"if shared"})',
       )
     })
 
@@ -1722,7 +1724,7 @@ describe('zod', () => {
           }),
         ),
       ).toBe(
-        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((o)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"then failed"}).refine((o)=>z.object({a:z.literal("x").exactOptional()}).safeParse(o).success||z.any().safeParse(o).success,{error:"else failed"})',
+        'z.looseObject({a:z.string().exactOptional(),b:z.string().exactOptional()}).refine((val)=>!z.object({a:z.literal("x").exactOptional()}).safeParse(val).success||z.any().safeParse(val).success,{error:"then failed"}).refine((val)=>z.object({a:z.literal("x").exactOptional()}).safeParse(val).success||z.any().safeParse(val).success,{error:"else failed"})',
       )
     })
   })
@@ -1844,7 +1846,7 @@ describe('zod contains / minContains / maxContains', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.some((i)=>Schema.safeParse(i).success)})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.some((item)=>Schema.safeParse(item).success)})',
     ],
     [
       {
@@ -1853,15 +1855,15 @@ describe('zod contains / minContains / maxContains', () => {
         contains: { type: 'integer' },
         'x-contains-message': 'need int',
       },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.some((i)=>Schema.safeParse(i).success)},{error:"need int"})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.some((item)=>Schema.safeParse(item).success)},{error:"need int"})',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=2})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length>=2})',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=1}).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=3})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length>=1}).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length<=3})',
     ],
     [
       {
@@ -1873,7 +1875,7 @@ describe('zod contains / minContains / maxContains', () => {
         'x-minContains-message': 'few',
         'x-maxContains-message': 'many',
       },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length>=1},{error:"few"}).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=2},{error:"many"})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length>=1},{error:"few"}).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length<=2},{error:"many"})',
     ],
     [
       {
@@ -1883,7 +1885,7 @@ describe('zod contains / minContains / maxContains', () => {
         minContains: 0,
         maxContains: 2,
       },
-      'z.array(z.number()).refine((arr)=>{const Schema=z.int();return arr.filter((i)=>Schema.safeParse(i).success).length<=2})',
+      'z.array(z.number()).refine((val)=>{const Schema=z.int();return val.filter((item)=>Schema.safeParse(item).success).length<=2})',
     ],
   ])('zod(%o) → %s', (input, expected) => {
     expect(zod(input)).toBe(expected)

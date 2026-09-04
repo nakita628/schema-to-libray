@@ -47,15 +47,15 @@ export function object(
   if (typeof schema.additionalProperties === 'object') {
     const record = `z.record(z.string(),${zod(schema.additionalProperties, rootName, isZod, options)})`
     const recordPropNames = schema.propertyNames?.pattern
-      ? `.refine((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
+      ? `.refine((val)=>Object.keys(val).every((key)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(key))${propNamesErrorArg})`
       : schema.propertyNames?.enum
-        ? `.refine((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
+        ? `.refine((val)=>Object.keys(val).every((key)=>${JSON.stringify(schema.propertyNames.enum)}.includes(key))${propNamesErrorArg})`
         : ''
     const recordPatternProps = schema.patternProperties
       ? Object.entries(schema.patternProperties)
           .map(([pattern, propSchema]) => {
             const z = zod(propSchema, rootName, isZod, options)
-            return `.refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||${z}.safeParse(v).success)${patternErrorArg})`
+            return `.refine((val)=>Object.entries(val).every(([key,value])=>!new RegExp(${JSON.stringify(pattern)}).test(key)||${z}.safeParse(value).success)${patternErrorArg})`
           })
           .join('')
       : ''
@@ -110,30 +110,30 @@ export function object(
 
   const minProperties =
     typeof schema.minProperties === 'number'
-      ? `.refine((o)=>Object.keys(o).length>=${schema.minProperties}${minErrorArg})`
+      ? `.refine((val)=>Object.keys(val).length>=${schema.minProperties}${minErrorArg})`
       : ''
   const maxProperties =
     typeof schema.maxProperties === 'number'
-      ? `.refine((o)=>Object.keys(o).length<=${schema.maxProperties}${maxErrorArg})`
+      ? `.refine((val)=>Object.keys(val).length<=${schema.maxProperties}${maxErrorArg})`
       : ''
   const propertyNames = schema.propertyNames?.pattern
-    ? `.refine((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
+    ? `.refine((val)=>Object.keys(val).every((key)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(key))${propNamesErrorArg})`
     : schema.propertyNames?.enum
-      ? `.refine((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
+      ? `.refine((val)=>Object.keys(val).every((key)=>${JSON.stringify(schema.propertyNames.enum)}.includes(key))${propNamesErrorArg})`
       : ''
   const patternProperties = schema.patternProperties
     ? Object.entries(schema.patternProperties)
         .map(([pattern, propSchema]) => {
           const z = zod(propSchema, rootName, isZod, options)
-          return `.refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||${z}.safeParse(v).success)${patternErrorArg})`
+          return `.refine((val)=>Object.entries(val).every(([key,value])=>!new RegExp(${JSON.stringify(pattern)}).test(key)||${z}.safeParse(value).success)${patternErrorArg})`
         })
         .join('')
     : ''
   const dependentRequired = schema.dependentRequired
     ? Object.entries(schema.dependentRequired)
         .map(([key, deps]) => {
-          const depsCheck = deps.map((d) => `'${d}' in o`).join('&&')
-          return `.refine((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
+          const depsCheck = deps.map((d) => `'${d}' in val`).join('&&')
+          return `.refine((val)=>!('${key}' in val)||(${depsCheck})${depReqErrorArg})`
         })
         .join('')
     : ''
@@ -143,7 +143,7 @@ export function object(
     ? Object.entries(schema.dependentSchemas)
         .map(([key, subSchema]) => {
           const subZod = zod(subSchema, rootName, isZod, options)
-          return `.refine((o)=>!('${key}' in o)||${subZod}.safeParse(o).success${depSchErrorArg})`
+          return `.refine((val)=>!('${key}' in val)||${subZod}.safeParse(val).success${depSchErrorArg})`
         })
         .join('')
     : ''
@@ -160,11 +160,15 @@ export function object(
     const parts: string[] = []
     if (thenS) {
       const arg = thenMessage ? `,${zodError(thenMessage)}` : ''
-      parts.push(`.refine((o)=>!${ifS}.safeParse(o).success||${thenS}.safeParse(o).success${arg})`)
+      parts.push(
+        `.refine((val)=>!${ifS}.safeParse(val).success||${thenS}.safeParse(val).success${arg})`,
+      )
     }
     if (elseS) {
       const arg = elseMessage ? `,${zodError(elseMessage)}` : ''
-      parts.push(`.refine((o)=>${ifS}.safeParse(o).success||${elseS}.safeParse(o).success${arg})`)
+      parts.push(
+        `.refine((val)=>${ifS}.safeParse(val).success||${elseS}.safeParse(val).success${arg})`,
+      )
     }
     return parts.join('')
   })()

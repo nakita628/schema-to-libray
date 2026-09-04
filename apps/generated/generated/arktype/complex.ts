@@ -4,7 +4,7 @@ const types = scope({
   E: {
     'label?': 'string',
     'reference?': 'E',
-    'flags?': ['string[]', ':', (items: unknown[], ctx) => new Set(items).size === items.length],
+    'flags?': ['string[]', ':', (data: unknown[], ctx) => new Set(data).size === data.length],
     'meta?': { '[string]': 'string' },
   },
   D: {

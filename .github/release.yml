@@ -1,0 +1,23 @@
+# Groups the notes that `gh release create --generate-notes` builds from merged pull
+# request titles (see .github/workflows/release.yml). A pull request lands in the first
+# category whose label it carries, so the catch-all stays last and nothing is dropped.
+changelog:
+  categories:
+    - title: Breaking changes
+      labels:
+        - breaking
+    - title: Features
+      labels:
+        - enhancement
+    - title: Bug fixes
+      labels:
+        - bug
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Dependencies
+      labels:
+        - dependencies
+    - title: Other changes
+      labels:
+        - '*'

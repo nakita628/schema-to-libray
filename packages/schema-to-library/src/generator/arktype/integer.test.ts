@@ -69,19 +69,19 @@ describe('arktype integer per-keyword message', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { type: 'integer', minimum: 0, 'x-minimum-message': 'min!' },
-      'type("number.integer").narrow((n, ctx) => n >= 0 || ctx.mustBe("min!"))',
+      'type("number.integer").narrow((data, ctx) => data >= 0 || ctx.mustBe("min!"))',
     ],
     [
       { type: 'integer', maximum: 100, 'x-maximum-message': 'max!' },
-      'type("number.integer").narrow((n, ctx) => n <= 100 || ctx.mustBe("max!"))',
+      'type("number.integer").narrow((data, ctx) => data <= 100 || ctx.mustBe("max!"))',
     ],
     [
       { type: 'integer', exclusiveMinimum: 5, 'x-exclusiveMinimum-message': 'gt!' },
-      'type("number.integer").narrow((n, ctx) => n > 5 || ctx.mustBe("gt!"))',
+      'type("number.integer").narrow((data, ctx) => data > 5 || ctx.mustBe("gt!"))',
     ],
     [
       { type: 'integer', exclusiveMaximum: 5, 'x-exclusiveMaximum-message': 'lt!' },
-      'type("number.integer").narrow((n, ctx) => n < 5 || ctx.mustBe("lt!"))',
+      'type("number.integer").narrow((data, ctx) => data < 5 || ctx.mustBe("lt!"))',
     ],
     [
       {
@@ -90,7 +90,7 @@ describe('arktype integer per-keyword message', () => {
         exclusiveMinimum: true,
         'x-exclusiveMinimum-message': 'gt0!',
       },
-      'type("number.integer").narrow((n, ctx) => n > 0 || ctx.mustBe("gt0!"))',
+      'type("number.integer").narrow((data, ctx) => data > 0 || ctx.mustBe("gt0!"))',
     ],
     [
       {
@@ -99,19 +99,19 @@ describe('arktype integer per-keyword message', () => {
         exclusiveMaximum: true,
         'x-exclusiveMaximum-message': 'lt9!',
       },
-      'type("number.integer").narrow((n, ctx) => n < 9 || ctx.mustBe("lt9!"))',
+      'type("number.integer").narrow((data, ctx) => data < 9 || ctx.mustBe("lt9!"))',
     ],
     [
       { type: 'integer', multipleOf: 2, 'x-multipleOf-message': 'even!' },
-      'type("number.integer").narrow((n, ctx) => n % 2 === 0 || ctx.mustBe("even!"))',
+      'type("number.integer").narrow((data, ctx) => data % 2 === 0 || ctx.mustBe("even!"))',
     ],
     [
       { type: 'integer', minimum: 0, maximum: 9, 'x-minimum-message': 'only-min' },
-      'type("number.integer").narrow((n, ctx) => n >= 0 || ctx.mustBe("only-min")).narrow((n, ctx) => n <= 9 || ctx.mustBe("must be <= 9"))',
+      'type("number.integer").narrow((data, ctx) => data >= 0 || ctx.mustBe("only-min")).narrow((data, ctx) => data <= 9 || ctx.mustBe("must be <= 9"))',
     ],
     [
       { type: 'integer', minimum: 0, 'x-minimum-message': 'min!', 'x-error-message': 'E' },
-      'type("number.integer").narrow((n, ctx) => n >= 0 || ctx.mustBe("min!")).describe("E")',
+      'type("number.integer").narrow((data, ctx) => data >= 0 || ctx.mustBe("min!")).describe("E")',
     ],
     [{ type: 'integer', format: 'bigint', minimum: 0, 'x-minimum-message': 'min!' }, '"bigint"'],
   ])('integer(%o) → %s', (input, expected) => {

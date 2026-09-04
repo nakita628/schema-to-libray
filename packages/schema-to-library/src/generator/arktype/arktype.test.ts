@@ -132,28 +132,28 @@ describe('arktype', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { not: { type: 'string' } },
-        `type("unknown").narrow((val: unknown) => typeof val !== 'string')`,
+        `type("unknown").narrow((data: unknown) => typeof data !== 'string')`,
       ],
       [
         { not: { type: 'integer' } },
-        `type("unknown").narrow((val: unknown) => typeof val !== 'number' || !Number.isInteger(val))`,
+        `type("unknown").narrow((data: unknown) => typeof data !== 'number' || !Number.isInteger(data))`,
       ],
       [
         { not: { type: 'boolean' } },
-        `type("unknown").narrow((val: unknown) => typeof val !== 'boolean')`,
+        `type("unknown").narrow((data: unknown) => typeof data !== 'boolean')`,
       ],
       [
         { not: { type: 'string' }, nullable: true },
-        `type(type("unknown").narrow((val: unknown) => typeof val !== 'string')).or("null")`,
+        `type(type("unknown").narrow((data: unknown) => typeof data !== 'string')).or("null")`,
       ],
       [
         { not: { type: 'string' }, type: ['null'] },
-        `type(type("unknown").narrow((val: unknown) => typeof val !== 'string')).or("null")`,
+        `type(type("unknown").narrow((data: unknown) => typeof data !== 'string')).or("null")`,
       ],
-      [{ not: { const: 42 } }, `type("unknown").narrow((val: unknown) => val !== 42)`],
+      [{ not: { const: 42 } }, `type("unknown").narrow((data: unknown) => data !== 42)`],
       [
         { not: { enum: ['a', 'b'] } },
-        `type("unknown").narrow((val: unknown) => !["a","b"].includes(val as never))`,
+        `type("unknown").narrow((data: unknown) => !["a","b"].includes(data as never))`,
       ],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
@@ -508,16 +508,16 @@ describe('arktype', () => {
     it('appends x-narrow chain after type literal', () => {
       expect(
         arktype(
-          { type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' },
+          { type: 'string', 'x-narrow': '.narrow((data) => data.length > 0)' },
           'Schema',
           false,
           unsafe,
         ),
-      ).toBe('type("string").narrow((v) => v.length > 0)')
+      ).toBe('type("string").narrow((data) => data.length > 0)')
     })
 
     it('silently ignores x-narrow when flag is not set', () => {
-      expect(arktype({ type: 'string', 'x-narrow': '.narrow((v) => v.length > 0)' })).toBe(
+      expect(arktype({ type: 'string', 'x-narrow': '.narrow((data) => data.length > 0)' })).toBe(
         '"string"',
       )
     })
@@ -641,7 +641,7 @@ describe('arktype', () => {
 
     it("path: boolean → type(\"'true' | 'false'\").pipe", () => {
       expect(arktype({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        `type("'true' | 'false'").pipe((s) => s === 'true')`,
+        `type("'true' | 'false'").pipe((data) => data === 'true')`,
       )
     })
 
@@ -691,7 +691,7 @@ describe('arktype', () => {
           'x-unevaluatedProperties-message': 'no extras',
         }),
       ).toBe(
-        'type({a:"string"}).narrow((o, ctx) => Object.keys(o).every((k) => ["a"].includes(k)) || ctx.mustBe("no extras"))',
+        'type({a:"string"}).narrow((data, ctx) => Object.keys(data).every((key) => ["a"].includes(key)) || ctx.mustBe("no extras"))',
       )
     })
   })

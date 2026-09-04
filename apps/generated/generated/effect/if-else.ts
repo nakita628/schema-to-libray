@@ -5,19 +5,19 @@ export const Vehicle = Schema.StructWithRest(
   [Schema.Record(Schema.String, Schema.Unknown)],
 ).check(
   Schema.makeFilter(
-    (o) =>
-      !Schema.is(Schema.Struct({ type: Schema.optional(Schema.Literal('truck')) }))(o) ||
+    (input) =>
+      !Schema.is(Schema.Struct({ type: Schema.optional(Schema.Literal('truck')) }))(input) ||
       Schema.is(
         Schema.Struct({ cargoCapacity: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)) }),
-      )(o),
+      )(input),
   ),
   Schema.makeFilter(
-    (o) =>
-      Schema.is(Schema.Struct({ type: Schema.optional(Schema.Literal('truck')) }))(o) ||
+    (input) =>
+      Schema.is(Schema.Struct({ type: Schema.optional(Schema.Literal('truck')) }))(input) ||
       Schema.is(
         Schema.Struct({
           passengerCount: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)),
         }),
-      )(o),
+      )(input),
   ),
 )

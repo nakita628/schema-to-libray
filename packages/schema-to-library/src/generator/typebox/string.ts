@@ -96,7 +96,7 @@ export function string(schema: JSONSchema) {
     transforms.push(`.normalize(${JSON.stringify(schema['x-normalize'])})`)
   }
   if (transforms.length > 0) {
-    return `Codec(${stringExpr}).Decode((val: string) => val${transforms.join('')}).Encode((val: string) => val)`
+    return `Codec(${stringExpr}).Decode((value: string) => value${transforms.join('')}).Encode((value: string) => value)`
   }
   return stringExpr
 }

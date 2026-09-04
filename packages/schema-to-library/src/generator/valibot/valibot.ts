@@ -166,15 +166,15 @@ export function valibot(
     const custom = (predicate: string) =>
       valibotWrap(`v.custom<unknown>(${predicate}${errorPart})`, schema)
     const typePredicates: { readonly [k: string]: string } = {
-      string: `(val) => typeof val !== 'string'`,
-      number: `(val) => typeof val !== 'number'`,
-      integer: `(val) => typeof val !== 'number' || !Number.isInteger(val)`,
-      boolean: `(val) => typeof val !== 'boolean'`,
-      array: '(val) => !Array.isArray(val)',
-      object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
-      null: '(val) => val !== null',
+      string: `(input) => typeof input !== 'string'`,
+      number: `(input) => typeof input !== 'number'`,
+      integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
+      boolean: `(input) => typeof input !== 'boolean'`,
+      array: '(input) => !Array.isArray(input)',
+      object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
+      null: '(input) => input !== null',
     }
-    if ('const' in inner) return custom(`(val) => val !== ${JSON.stringify(inner.const)}`)
+    if ('const' in inner) return custom(`(input) => input !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
       const predicate = typePredicates[inner.type]
       if (predicate) return custom(predicate)
@@ -186,16 +186,16 @@ export function valibot(
       const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
-      if (bodies.length > 0) return custom(`(val) => ${bodies.join(' && ')}`)
+        .map((p) => `(${p.replace(/^\(input\) => /, '')})`)
+      if (bodies.length > 0) return custom(`(input) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
       // `Array<string>.includes(unknown)` is a type error (the custom predicate's
       // `val` is `unknown`); compare via `.some(===)` which accepts any operand.
-      return custom(`(val) => !${JSON.stringify(inner.enum)}.some((item) => item === val)`)
+      return custom(`(input) => !${JSON.stringify(inner.enum)}.some((item) => item === input)`)
     }
     const innerExpr = valibot(inner, rootName, isValibot, options)
-    return custom(`(val) => !v.safeParse(${innerExpr},val).success`)
+    return custom(`(input) => !v.safeParse(${innerExpr},input).success`)
   }
 
   if (schema.const !== undefined) {
@@ -245,7 +245,7 @@ export function valibot(
   if (types.includes('boolean')) {
     if (isStringWireParam) {
       return valibotWrap(
-        `v.pipe(v.picklist(['true','false']),v.transform((s)=>s==='true'))`,
+        `v.pipe(v.picklist(['true','false']),v.transform((input)=>input==='true'))`,
         schema,
         { stringWire: true },
       )
@@ -307,7 +307,7 @@ export function valibot(
       if (minC === undefined && maxC === undefined) {
         const containsArg = fallback ? `,${valibotError(fallback)}` : ''
         out.push(
-          `v.check((arr)=>arr.some((i)=>v.safeParse(${containsSchema},i).success)${containsArg})`,
+          `v.check((input)=>input.some((item)=>v.safeParse(${containsSchema},item).success)${containsArg})`,
         )
       } else {
         const effectiveMin = minC ?? 1
@@ -315,14 +315,14 @@ export function valibot(
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
           const minContainsArg = minContainsMessage ? `,${valibotError(minContainsMessage)}` : ''
           out.push(
-            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length>=${effectiveMin}${minContainsArg})`,
+            `v.check((input)=>input.filter((item)=>v.safeParse(${containsSchema},item).success).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
           const maxContainsArg = maxContainsMessage ? `,${valibotError(maxContainsMessage)}` : ''
           out.push(
-            `v.check((arr)=>arr.filter((i)=>v.safeParse(${containsSchema},i).success).length<=${maxC}${maxContainsArg})`,
+            `v.check((input)=>input.filter((item)=>v.safeParse(${containsSchema},item).success).length<=${maxC}${maxContainsArg})`,
           )
         }
       }
@@ -339,7 +339,7 @@ export function valibot(
         ? `v.maxLength(${schema.maxItems}${maxArg})`
         : undefined,
       schema.uniqueItems === true
-        ? `v.check((items) => new Set(items).size === items.length${uniqueArg})`
+        ? `v.check((input) => new Set(input).size === input.length${uniqueArg})`
         : undefined,
       ...containsActions,
     ].filter((v) => v !== undefined)
@@ -352,9 +352,13 @@ export function valibot(
   }
   if (types.includes('date')) {
     if (isStringWireParam) {
-      return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema, {
-        stringWire: true,
-      })
+      return valibotWrap(
+        `v.pipe(v.string(),v.transform((input)=>new Date(input)),v.date())`,
+        schema,
+        {
+          stringWire: true,
+        },
+      )
     }
     return valibotWrap('v.date()', schema)
   }
