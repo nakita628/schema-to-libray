@@ -8,7 +8,7 @@
     "coverage": "vp run schema-to-library#coverage",
     "deps": "mkdir -p /tmp/pnpm-store && pnpm config set store-dir /tmp/pnpm-store && rm -rf node_modules && rm -rf pnpm-lock.yaml && rm -rf ~/.pnpm-store && pnpm store prune && pnpm install --no-prefer-frozen-lockfile",
     "fix": "vp fmt && vp run -r check --fix && markdownlint-cli2 --fix && textlint --fix \"**/*.md\" \"**/*.mdc\"",
-    "lint": "markdownlint-cli2 && textlint \"**/*.md\" \"**/*.mdc\" && cspell --no-progress \"**/*.{md,mdc,ts,js,mjs,json,jsonc,yaml,yml}\" && secretlint --secretlintignore .secretlintignore --maskSecrets \"**/*\" && textlint --config .textlintrc.links.json \"**/*.md\" \"**/*.mdc\"",
+    "lint": "markdownlint-cli2 && textlint \"**/*.md\" \"**/*.mdc\" && cspell --no-progress --dot \"**/*.{md,mdc,ts,js,mjs,json,jsonc,yaml,yml}\" && secretlint --secretlintignore .secretlintignore --maskSecrets \"**/*\" && textlint --config .textlintrc.links.json \"**/*.md\" \"**/*.mdc\"",
     "test": "vp test && vp run schema-to-library#test"
   },
   "devDependencies": {

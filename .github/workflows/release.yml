@@ -6,18 +6,27 @@ on:
     types: [completed]
     branches: [main]
 
+# Nothing is granted by default; each job asks for exactly what it needs.
 permissions: {}
+
+# One release at a time, and never cancel one that has started creating a tag.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: Create the GitHub release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event.workflow_run.conclusion == 'success'
     permissions:
-      contents: write
+      contents: write # `gh release create` writes a release and its tag
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - name: Create release
         env:

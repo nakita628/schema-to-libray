@@ -6,36 +6,54 @@ on:
     types: [completed]
     branches: [main]
 
+# Nothing is granted by default; each job asks for exactly what it needs.
 permissions: {}
+
+# Publishing must never be interrupted, so a run in progress is left to finish. GitHub
+# keeps only the newest pending run, which is safe here: a deploy publishes the version
+# at its own commit and skips one that is already on the registry.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   check:
+    name: Check for an unpublished version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Reads the repository to compare package.json against the registry.
+    permissions:
+      contents: read
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - name: Check unpublished version
         id: ver
         run: |
           CUR=$(jq -r .version packages/schema-to-library/package.json)
-          npm view "schema-to-library@$CUR" version >/dev/null 2>&1 || echo "version=$CUR" >> $GITHUB_OUTPUT
+          npm view "schema-to-library@$CUR" version >/dev/null 2>&1 || echo "version=$CUR" >> "$GITHUB_OUTPUT"
 
   publish:
+    name: Publish to npm
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: check
     if: needs.check.outputs.version
     environment: release
     permissions:
-      id-token: write
+      contents: read # the checkout, nothing else
+      id-token: write # the OIDC token npm trusted publishing signs provenance with
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - run: corepack enable
 

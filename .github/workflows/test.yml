@@ -6,13 +6,60 @@ on:
       - main
   pull_request:
 
+# Nothing is granted by default; each job asks for exactly what it needs.
+permissions: {}
+
+# Only the tip of a branch or pull request is worth testing, so a push that supersedes
+# an earlier one cancels its run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    name: Lint, type-check and test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Reading the repository is the only thing this job does with the token.
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
-      - uses: voidzero-dev/setup-vp@v1
+      # actionlint publishes no first-party action, and the npm builds of it were
+      # abandoned in 2022, so the release binary is downloaded and checksum-verified
+      # here. Bump the version and the checksum together, from
+      # https://github.com/rhysd/actionlint/releases.
+      - name: Lint workflows
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -fsSL -o actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          # The matcher turns actionlint's output into inline annotations on the diff.
+          echo "::add-matcher::.github/actionlint-matcher.json"
+          ./actionlint -color
+          echo "::remove-matcher owner=actionlint::"
+          rm -f actionlint actionlint.tar.gz
+
+      # Security audit of the workflows themselves — unpinned actions, credential
+      # persistence, over-broad permissions. `advanced-security: false` keeps the
+      # findings in the job log and its annotations, so the job needs no extra
+      # permissions. Suppressions live in .github/zizmor.yml.
+      - uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
+        with:
+          advanced-security: false
+          annotations: true
+          # The strictest persona: it also asks for job names, concurrency limits and a
+          # comment on every elevated permission. The repository is clean at this level.
+          persona: pedantic
+
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
         with:
           node-version: '22'
           cache: true

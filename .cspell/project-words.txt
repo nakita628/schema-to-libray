@@ -16,17 +16,23 @@ uuidv
 valibot
 
 # Toolchain and vendors
+actionlint
 apidevtools
 llms
 openssf
 oxfmt
 oxlint
+pipx
+shellcheck
 sinclairzx
 textlint
 textlintrc
 tsdown
 vite
 vitest
+voidzero
+zizmor
+zizmorcore
 
 # Project and author names
 hekireki
@@ -35,6 +41,7 @@ takibi
 
 # Terms of art used in the docs and source
 addl
+allof
 codegen
 dirents
 msgpackr
