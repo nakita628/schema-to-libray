@@ -26,6 +26,7 @@ import { Shape as OneofShape } from '../oneof/output.ts'
 import { PatternBag } from '../pattern-properties/output.ts'
 import { Tuple } from '../prefix-items-unevaluated/output.ts'
 import { Config as ReadonlyConfig } from '../readonly/output.ts'
+import { Organization as ScopeMetadataOrganization } from '../scope-metadata/output.ts'
 import { Schema as SimpleSchema } from '../simple/output.ts'
 import { Order as SplitNestedOrder } from '../split-nested/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
@@ -736,6 +737,53 @@ describe('length-message', () => {
         code: 'predicate',
         message: 'code must be Code must be exactly 6 characters (was "")',
       },
+    ])
+  })
+})
+
+describe('scope-metadata (descriptions and intersections inside a scope)', () => {
+  it('valid: nested members, parent and audited intersection', () => {
+    const result = ScopeMetadataOrganization({
+      name: 'acme',
+      members: [{ userId: '00000000-0000-4000-8000-000000000000' }],
+      parent: { name: 'holding' },
+      audited: { userId: '00000000-0000-4000-8000-000000000001', note: 'ok' },
+    })
+    expect(result).toStrictEqual({
+      name: 'acme',
+      members: [{ userId: '00000000-0000-4000-8000-000000000000' }],
+      parent: { name: 'holding' },
+      audited: { userId: '00000000-0000-4000-8000-000000000001', note: 'ok' },
+    })
+  })
+
+  it('valid: only the required name', () => {
+    expect(ScopeMetadataOrganization({ name: 'acme' })).toStrictEqual({ name: 'acme' })
+  })
+
+  it('invalid: minItems on an alias array is enforced', () => {
+    expect(issues(ScopeMetadataOrganization({ name: 'acme', members: [] }))).toStrictEqual([
+      {
+        path: ['members'],
+        code: 'minLength',
+        message: 'members must be The members of the organization.',
+      },
+    ])
+  })
+
+  it('invalid: a recursive alias reference is still validated', () => {
+    expect(
+      issues(ScopeMetadataOrganization({ name: 'acme', parent: { name: 1 } as never })),
+    ).toStrictEqual([
+      { path: ['parent', 'name'], code: 'domain', message: 'parent.name must be The organization name. (was a number)' },
+    ])
+  })
+
+  it('invalid: the allOf intersection still requires the referenced member fields', () => {
+    expect(
+      issues(ScopeMetadataOrganization({ name: 'acme', audited: { note: 'ok' } as never })),
+    ).toStrictEqual([
+      { path: ['audited', 'userId'], code: 'required', message: "audited.userId must be a string or The user's id. (was missing)" },
     ])
   })
 })

@@ -33,7 +33,7 @@ const BOOLEAN_FROM_STRING =
  * `.fields` property survives (v4 rebuilds a struct as a struct).
  */
 function isStructExpr(code: string): boolean {
-  return /^Schema\.Struct\(\{/.test(code)
+  return code.startsWith('Schema.Struct({')
 }
 
 /**
@@ -49,7 +49,7 @@ function intersect(schemas: readonly string[]): string {
   const [first, ...rest] = schemas
   if (first === undefined) return 'Schema.Unknown'
   if (schemas.every(isStructExpr)) {
-    return `Schema.Struct({${schemas.map((s) => `...(${s}).fields`).join(',')}})`
+    return `Schema.Struct({${schemas.map((s) => `...${s}.fields`).join(',')}})`
   }
   return `${first}.check(${rest.map((s) => `Schema.makeFilter((v)=>Schema.is(${s})(v))`).join(',')})`
 }
@@ -153,7 +153,10 @@ export function effect(
     const schemas = schema.oneOf.map((s) => effect(s, rootName, isEffect, options))
     const oneOfMessage = schema['x-oneOf-message']
     const expr = `Schema.Union([${schemas.join(',')}])`
-    return effectWrap(oneOfMessage ? `${expr}.annotate(${effectError(oneOfMessage)})` : expr, schema)
+    return effectWrap(
+      oneOfMessage ? `${expr}.annotate(${effectError(oneOfMessage)})` : expr,
+      schema,
+    )
   }
 
   if (schema.anyOf) {
@@ -161,7 +164,10 @@ export function effect(
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const expr = `Schema.Union([${schemas.join(',')}])`
-    return effectWrap(anyOfMessage ? `${expr}.annotate(${effectError(anyOfMessage)})` : expr, schema)
+    return effectWrap(
+      anyOfMessage ? `${expr}.annotate(${effectError(anyOfMessage)})` : expr,
+      schema,
+    )
   }
 
   if (schema.allOf) {

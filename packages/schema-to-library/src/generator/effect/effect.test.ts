@@ -63,14 +63,14 @@ describe('effect', () => {
           ],
           nullable: true,
         },
-        'Schema.NullOr(Schema.Union(Schema.Struct({kind:Schema.Literal("A")}),Schema.Struct({kind:Schema.Literal("B")})))',
+        'Schema.NullOr(Schema.Union([Schema.Struct({kind:Schema.Literal("A")}),Schema.Struct({kind:Schema.Literal("B")})]))',
       ],
       [
         {
           type: 'object',
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'Schema.Union(ASchema,BSchema)',
+        'Schema.Union([ASchema,BSchema])',
       ],
       [
         {
@@ -78,14 +78,14 @@ describe('effect', () => {
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
           nullable: true,
         },
-        'Schema.NullOr(Schema.Union(ASchema,BSchema))',
+        'Schema.NullOr(Schema.Union([ASchema,BSchema]))',
       ],
       [
         {
           type: ['object', 'null'],
           oneOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'Schema.NullOr(Schema.Union(ASchema,BSchema))',
+        'Schema.NullOr(Schema.Union([ASchema,BSchema]))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -109,14 +109,14 @@ describe('effect', () => {
           ],
           nullable: true,
         },
-        'Schema.NullOr(Schema.Union(Schema.Struct({kind:Schema.Literal("A")}),Schema.Struct({kind:Schema.Literal("B")})))',
+        'Schema.NullOr(Schema.Union([Schema.Struct({kind:Schema.Literal("A")}),Schema.Struct({kind:Schema.Literal("B")})]))',
       ],
       [
         {
           type: 'object',
           anyOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'Schema.Union(ASchema,BSchema)',
+        'Schema.Union([ASchema,BSchema])',
       ],
       [
         {
@@ -124,14 +124,14 @@ describe('effect', () => {
           anyOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
           nullable: true,
         },
-        'Schema.NullOr(Schema.Union(ASchema,BSchema))',
+        'Schema.NullOr(Schema.Union([ASchema,BSchema]))',
       ],
       [
         {
           type: ['object', 'null'],
           anyOf: [{ $ref: '#/components/schemas/A' }, { $ref: '#/components/schemas/B' }],
         },
-        'Schema.NullOr(Schema.Union(ASchema,BSchema))',
+        'Schema.NullOr(Schema.Union([ASchema,BSchema]))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -159,7 +159,7 @@ describe('effect', () => {
             },
           ],
         },
-        'Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String}))',
+        'Schema.Struct({...Schema.Struct({a:Schema.String}).fields,...Schema.Struct({b:Schema.String}).fields})',
       ],
       [
         {
@@ -181,7 +181,7 @@ describe('effect', () => {
           ],
           nullable: true,
         },
-        'Schema.NullOr(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})))',
+        'Schema.NullOr(Schema.Struct({...Schema.Struct({a:Schema.String}).fields,...Schema.Struct({b:Schema.String}).fields}))',
       ],
       [
         {
@@ -203,7 +203,7 @@ describe('effect', () => {
           ],
           type: ['null'],
         },
-        'Schema.NullOr(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})))',
+        'Schema.NullOr(Schema.Struct({...Schema.Struct({a:Schema.String}).fields,...Schema.Struct({b:Schema.String}).fields}))',
       ],
       [
         {
@@ -229,7 +229,7 @@ describe('effect', () => {
             },
           ],
         },
-        'Schema.extend(GeoJsonObjectSchema,Schema.Struct({type:Schema.Literal("Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection")}))',
+        'GeoJsonObjectSchema.check(Schema.makeFilter((v)=>Schema.is(Schema.Struct({type:Schema.Literals(["Point","MultiPoint","LineString","MultiLineString","Polygon","MultiPolygon","GeometryCollection"])}))(v)))',
       ],
       [
         {
@@ -242,7 +242,7 @@ describe('effect', () => {
             { default: 'hello' },
           ],
         },
-        'Schema.optionalWith(Schema.Struct({a:Schema.String}),{default:() => "hello"})',
+        'Schema.Struct({a:Schema.String}).pipe(Schema.withDecodingDefault(Effect.succeed("hello")))',
       ],
       // 3+ element allOf is left-folded into nested binary Schema.extend because
       // effect's `Schema.extend(a, b)` API is strictly 2-ary.
@@ -255,7 +255,7 @@ describe('effect', () => {
             { type: 'object', required: ['c'], properties: { c: { type: 'string' } } },
           ],
         },
-        'Schema.extend(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})),Schema.Struct({c:Schema.String}))',
+        'Schema.Struct({...Schema.Struct({a:Schema.String}).fields,...Schema.Struct({b:Schema.String}).fields,...Schema.Struct({c:Schema.String}).fields})',
       ],
       [
         {
@@ -266,7 +266,7 @@ describe('effect', () => {
             { type: 'object', required: ['d'], properties: { d: { type: 'string' } } },
           ],
         },
-        'Schema.extend(Schema.extend(Schema.extend(Schema.Struct({a:Schema.String}),Schema.Struct({b:Schema.String})),Schema.Struct({c:Schema.String})),Schema.Struct({d:Schema.String}))',
+        'Schema.Struct({...Schema.Struct({a:Schema.String}).fields,...Schema.Struct({b:Schema.String}).fields,...Schema.Struct({c:Schema.String}).fields,...Schema.Struct({d:Schema.String}).fields})',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -277,28 +277,28 @@ describe('effect', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { not: { type: 'string' } },
-        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string'))",
+        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string'))",
       ],
       [
         { not: { type: 'integer' } },
-        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'number' || !Number.isInteger(val)))",
+        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'number' || !Number.isInteger(val)))",
       ],
       [
         { not: { type: 'boolean' } },
-        "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'boolean'))",
+        "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'boolean'))",
       ],
       [
         { not: { type: 'string' }, nullable: true },
-        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
       ],
       [
         { not: { type: 'string' }, type: ['null'] } as JSONSchema,
-        "Schema.NullOr(Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string')))",
+        "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
       ],
-      [{ not: { const: 42 } }, 'Schema.Unknown.pipe(Schema.filter((val) => val !== 42))'],
+      [{ not: { const: 42 } }, 'Schema.Unknown.check(Schema.makeFilter((val) => val !== 42))'],
       [
         { not: { enum: ['a', 'b'] } },
-        'Schema.Unknown.pipe(Schema.filter((val) => !["a","b"].some((item) => item === val)))',
+        'Schema.Unknown.check(Schema.makeFilter((val) => !["a","b"].some((item) => item === val)))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -319,43 +319,37 @@ describe('effect', () => {
 
   describe('enum', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ enum: ['A', 'B'] }, 'Schema.Literal("A","B")'],
+      [{ enum: ['A', 'B'] }, 'Schema.Literals(["A","B"])'],
       [
         { enum: ['A', 'B'], type: ['string'], nullable: true },
-        'Schema.NullOr(Schema.Literal("A","B"))',
+        'Schema.NullOr(Schema.Literals(["A","B"]))',
       ],
-      [{ enum: ['A', 'B'], type: ['string', 'null'] }, 'Schema.NullOr(Schema.Literal("A","B"))'],
-      [{ enum: [1, 2] }, 'Schema.Union(Schema.Literal(1),Schema.Literal(2))'],
-      [
-        { enum: [1, 2], type: ['number'], nullable: true },
-        'Schema.NullOr(Schema.Union(Schema.Literal(1),Schema.Literal(2)))',
-      ],
-      [
-        { enum: [1, 2], type: ['number', 'null'] },
-        'Schema.NullOr(Schema.Union(Schema.Literal(1),Schema.Literal(2)))',
-      ],
-      [{ enum: [true, false] }, 'Schema.Union(Schema.Literal(true),Schema.Literal(false))'],
+      [{ enum: ['A', 'B'], type: ['string', 'null'] }, 'Schema.NullOr(Schema.Literals(["A","B"]))'],
+      [{ enum: [1, 2] }, 'Schema.Literals([1,2])'],
+      [{ enum: [1, 2], type: ['number'], nullable: true }, 'Schema.NullOr(Schema.Literals([1,2]))'],
+      [{ enum: [1, 2], type: ['number', 'null'] }, 'Schema.NullOr(Schema.Literals([1,2]))'],
+      [{ enum: [true, false] }, 'Schema.Literals([true,false])'],
       [
         { enum: [true, false], type: ['boolean'], nullable: true },
-        'Schema.NullOr(Schema.Union(Schema.Literal(true),Schema.Literal(false)))',
+        'Schema.NullOr(Schema.Literals([true,false]))',
       ],
       [
         { enum: [true, false], type: ['boolean', 'null'] },
-        'Schema.NullOr(Schema.Union(Schema.Literal(true),Schema.Literal(false)))',
+        'Schema.NullOr(Schema.Literals([true,false]))',
       ],
       [{ enum: [null] }, 'Schema.Literal(null)'],
       [{ enum: [null], type: ['null'] }, 'Schema.NullOr(Schema.Literal(null))'],
       [{ enum: ['abc'] }, 'Schema.Literal("abc")'],
       [{ enum: ['abc'], type: ['string'], nullable: true }, 'Schema.NullOr(Schema.Literal("abc"))'],
       [{ enum: ['abc'], type: ['string', 'null'] }, 'Schema.NullOr(Schema.Literal("abc"))'],
-      [{ type: 'array', enum: [[1, 2]] }, 'Schema.Tuple(Schema.Literal(1),Schema.Literal(2))'],
+      [{ type: 'array', enum: [[1, 2]] }, 'Schema.Tuple([Schema.Literal(1),Schema.Literal(2)])'],
       [
         { type: 'array', nullable: true, enum: [[1, 2]] },
-        'Schema.NullOr(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)))',
+        'Schema.NullOr(Schema.Tuple([Schema.Literal(1),Schema.Literal(2)]))',
       ],
       [
         { type: ['array', 'null'], enum: [[1, 2]] },
-        'Schema.NullOr(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)))',
+        'Schema.NullOr(Schema.Tuple([Schema.Literal(1),Schema.Literal(2)]))',
       ],
       [
         {
@@ -365,7 +359,7 @@ describe('effect', () => {
             [3, 4],
           ],
         },
-        'Schema.Union(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)),Schema.Tuple(Schema.Literal(3),Schema.Literal(4)))',
+        'Schema.Union([Schema.Tuple([Schema.Literal(1),Schema.Literal(2)]),Schema.Tuple([Schema.Literal(3),Schema.Literal(4)])])',
       ],
       [
         {
@@ -376,7 +370,7 @@ describe('effect', () => {
             [3, 4],
           ],
         },
-        'Schema.NullOr(Schema.Union(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)),Schema.Tuple(Schema.Literal(3),Schema.Literal(4))))',
+        'Schema.NullOr(Schema.Union([Schema.Tuple([Schema.Literal(1),Schema.Literal(2)]),Schema.Tuple([Schema.Literal(3),Schema.Literal(4)])]))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -388,58 +382,67 @@ describe('effect', () => {
       [{ type: 'string' }, 'Schema.String'],
       [{ type: ['string'], nullable: true }, 'Schema.NullOr(Schema.String)'],
       [{ type: ['string', 'null'] }, 'Schema.NullOr(Schema.String)'],
-      [{ type: 'string', minLength: 1 }, 'Schema.String.pipe(Schema.minLength(1))'],
-      [{ type: 'string', maxLength: 10 }, 'Schema.String.pipe(Schema.maxLength(10))'],
+      [{ type: 'string', minLength: 1 }, 'Schema.String.check(Schema.isMinLength(1))'],
+      [{ type: 'string', maxLength: 10 }, 'Schema.String.check(Schema.isMaxLength(10))'],
       [
         { type: 'string', minLength: 1, maxLength: 10 },
-        'Schema.String.pipe(Schema.minLength(1),Schema.maxLength(10))',
+        'Schema.String.check(Schema.isMinLength(1),Schema.isMaxLength(10))',
       ],
-      [{ type: 'string', minLength: 5, maxLength: 5 }, 'Schema.String.pipe(Schema.length(5))'],
-      [{ type: 'string', pattern: '^\\w+$' }, 'Schema.String.pipe(Schema.pattern(/^\\w+$/))'],
+      [
+        { type: 'string', minLength: 5, maxLength: 5 },
+        'Schema.String.check(Schema.isLengthBetween(5,5))',
+      ],
+      [{ type: 'string', pattern: '^\\w+$' }, 'Schema.String.check(Schema.isPattern(/^\\w+$/))'],
       [
         { type: 'string', default: 'test' },
-        'Schema.optionalWith(Schema.String,{default:() => "test"})',
+        'Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed("test")))',
       ],
       [
         { type: 'string', default: 'test', nullable: true },
-        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
+        'Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("test")))',
       ],
       [
         { type: ['string', 'null'], default: 'test' },
-        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "test"})',
+        'Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("test")))',
       ],
       [
         { type: 'object', default: { key: 'defaultValue' } },
-        'Schema.optionalWith(Schema.Struct({}),{default:() => ({"key":"defaultValue"})})',
+        'Schema.Struct({}).pipe(Schema.withDecodingDefault(Effect.succeed({"key":"defaultValue"})))',
       ],
       [
         { type: 'string', format: 'email' },
-        'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/))',
+        'Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/))',
       ],
-      [{ type: 'string', format: 'uuid' }, 'Schema.UUID'],
-      [{ type: 'string', format: 'ulid' }, 'Schema.ULID'],
-      [{ type: 'string', format: 'uri' }, 'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))'],
+      [{ type: 'string', format: 'uuid' }, 'Schema.String.check(Schema.isUUID())'],
+      [{ type: 'string', format: 'ulid' }, 'Schema.String.check(Schema.isULID())'],
+      [
+        { type: 'string', format: 'uri' },
+        'Schema.String.check(Schema.isPattern(/^https?:\\/\\//))',
+      ],
       [
         { type: 'string', format: 'ipv4' },
-        'Schema.String.pipe(Schema.pattern(/^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$/))',
+        'Schema.String.check(Schema.isPattern(/^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$/))',
       ],
       [
         { type: 'string', format: 'ipv6' },
-        'Schema.String.pipe(Schema.pattern(/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/))',
+        'Schema.String.check(Schema.isPattern(/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/))',
       ],
       [
         { type: 'string', format: 'date-time' },
-        'Schema.String.pipe(Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/))',
+        'Schema.String.check(Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/))',
       ],
       [
         { type: 'string', format: 'date' },
-        'Schema.String.pipe(Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}$/))',
+        'Schema.String.check(Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}$/))',
       ],
       [
         { type: 'string', format: 'time' },
-        'Schema.String.pipe(Schema.pattern(/^\\d{2}:\\d{2}:\\d{2}/))',
+        'Schema.String.check(Schema.isPattern(/^\\d{2}:\\d{2}:\\d{2}/))',
       ],
-      [{ type: 'string', format: 'uuid', nullable: true }, 'Schema.NullOr(Schema.UUID)'],
+      [
+        { type: 'string', format: 'uuid', nullable: true },
+        'Schema.NullOr(Schema.String.check(Schema.isUUID()))',
+      ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })
@@ -450,26 +453,29 @@ describe('effect', () => {
       [{ type: 'number' }, 'Schema.Number'],
       [{ type: ['number'], nullable: true }, 'Schema.NullOr(Schema.Number)'],
       [{ type: ['number', 'null'] }, 'Schema.NullOr(Schema.Number)'],
-      [{ type: 'number', minimum: 0 }, 'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0))'],
-      [{ type: 'number', minimum: 100 }, 'Schema.Number.pipe(Schema.greaterThanOrEqualTo(100))'],
-      [{ type: 'number', maximum: 100 }, 'Schema.Number.pipe(Schema.lessThanOrEqualTo(100))'],
-      [{ type: 'number', maximum: 0 }, 'Schema.Number.pipe(Schema.lessThanOrEqualTo(0))'],
-      [{ type: 'number', multipleOf: 2 }, 'Schema.Number.pipe(Schema.multipleOf(2))'],
+      [{ type: 'number', minimum: 0 }, 'Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))'],
+      [{ type: 'number', minimum: 100 }, 'Schema.Number.check(Schema.isGreaterThanOrEqualTo(100))'],
+      [{ type: 'number', maximum: 100 }, 'Schema.Number.check(Schema.isLessThanOrEqualTo(100))'],
+      [{ type: 'number', maximum: 0 }, 'Schema.Number.check(Schema.isLessThanOrEqualTo(0))'],
+      [{ type: 'number', multipleOf: 2 }, 'Schema.Number.check(Schema.isMultipleOf(2))'],
       [
         { type: 'number', minimum: 0, maximum: 100 },
-        'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))',
+        'Schema.Number.check(Schema.isGreaterThanOrEqualTo(0),Schema.isLessThanOrEqualTo(100))',
       ],
-      [{ type: 'number', default: 100 }, 'Schema.optionalWith(Schema.Number,{default:() => 100})'],
+      [
+        { type: 'number', default: 100 },
+        'Schema.Number.pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
+      ],
       [
         { type: 'number', default: 100, nullable: true },
-        'Schema.optionalWith(Schema.NullOr(Schema.Number),{default:() => 100})',
+        'Schema.NullOr(Schema.Number).pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
       ],
       [
         { type: ['number', 'null'], default: 100 },
-        'Schema.optionalWith(Schema.NullOr(Schema.Number),{default:() => 100})',
+        'Schema.NullOr(Schema.Number).pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
       ],
-      [{ type: 'number', exclusiveMinimum: 5 }, 'Schema.Number.pipe(Schema.greaterThan(5))'],
-      [{ type: 'number', exclusiveMaximum: 10 }, 'Schema.Number.pipe(Schema.lessThan(10))'],
+      [{ type: 'number', exclusiveMinimum: 5 }, 'Schema.Number.check(Schema.isGreaterThan(5))'],
+      [{ type: 'number', exclusiveMaximum: 10 }, 'Schema.Number.check(Schema.isLessThan(10))'],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
     })
@@ -477,45 +483,48 @@ describe('effect', () => {
 
   describe('integer', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ type: 'integer' }, 'Schema.Number.pipe(Schema.int())'],
-      [{ type: ['integer'], nullable: true }, 'Schema.NullOr(Schema.Number.pipe(Schema.int()))'],
-      [{ type: ['integer', 'null'] }, 'Schema.NullOr(Schema.Number.pipe(Schema.int()))'],
+      [{ type: 'integer' }, 'Schema.Number.check(Schema.isInt())'],
+      [{ type: ['integer'], nullable: true }, 'Schema.NullOr(Schema.Number.check(Schema.isInt()))'],
+      [{ type: ['integer', 'null'] }, 'Schema.NullOr(Schema.Number.check(Schema.isInt()))'],
       [
         { type: 'integer', minimum: 0 },
-        'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0))',
+        'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(0))',
       ],
       [
         { type: 'integer', minimum: 100 },
-        'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(100))',
+        'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(100))',
       ],
       [
         { type: 'integer', maximum: 100 },
-        'Schema.Number.pipe(Schema.int(),Schema.lessThanOrEqualTo(100))',
+        'Schema.Number.check(Schema.isInt(),Schema.isLessThanOrEqualTo(100))',
       ],
       [
         { type: 'integer', maximum: 0 },
-        'Schema.Number.pipe(Schema.int(),Schema.lessThanOrEqualTo(0))',
+        'Schema.Number.check(Schema.isInt(),Schema.isLessThanOrEqualTo(0))',
       ],
-      [{ type: 'integer', multipleOf: 2 }, 'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))'],
+      [
+        { type: 'integer', multipleOf: 2 },
+        'Schema.Number.check(Schema.isInt(),Schema.isMultipleOf(2))',
+      ],
       [
         { type: 'integer', default: 100 },
-        'Schema.optionalWith(Schema.Number.pipe(Schema.int()),{default:() => 100})',
+        'Schema.Number.check(Schema.isInt()).pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
       ],
       [
         { type: 'integer', default: 100, nullable: true },
-        'Schema.optionalWith(Schema.NullOr(Schema.Number.pipe(Schema.int())),{default:() => 100})',
+        'Schema.NullOr(Schema.Number.check(Schema.isInt())).pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
       ],
       [
         { type: ['integer', 'null'], default: 100 },
-        'Schema.optionalWith(Schema.NullOr(Schema.Number.pipe(Schema.int())),{default:() => 100})',
+        'Schema.NullOr(Schema.Number.check(Schema.isInt())).pipe(Schema.withDecodingDefault(Effect.succeed(100)))',
       ],
       [
         { type: 'integer', exclusiveMinimum: 5 },
-        'Schema.Number.pipe(Schema.int(),Schema.greaterThan(5))',
+        'Schema.Number.check(Schema.isInt(),Schema.isGreaterThan(5))',
       ],
       [
         { type: 'integer', exclusiveMaximum: 10 },
-        'Schema.Number.pipe(Schema.int(),Schema.lessThan(10))',
+        'Schema.Number.check(Schema.isInt(),Schema.isLessThan(10))',
       ],
     ])('effect(%o) → %s', (input, expected) => {
       expect(effect(input)).toBe(expected)
@@ -523,23 +532,20 @@ describe('effect', () => {
 
     describe('format: bigint', () => {
       it.concurrent.each<[JSONSchema, string]>([
-        [{ type: 'integer', format: 'bigint' }, 'Schema.BigIntFromSelf'],
-        [
-          { type: 'integer', format: 'bigint', nullable: true },
-          'Schema.NullOr(Schema.BigIntFromSelf)',
-        ],
-        [{ type: ['integer', 'null'], format: 'bigint' }, 'Schema.NullOr(Schema.BigIntFromSelf)'],
+        [{ type: 'integer', format: 'bigint' }, 'Schema.BigInt'],
+        [{ type: 'integer', format: 'bigint', nullable: true }, 'Schema.NullOr(Schema.BigInt)'],
+        [{ type: ['integer', 'null'], format: 'bigint' }, 'Schema.NullOr(Schema.BigInt)'],
         [
           { type: 'integer', format: 'bigint', minimum: 0 },
-          'Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(BigInt(0)))',
+          'Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(0)))',
         ],
         [
           { type: 'integer', format: 'bigint', maximum: 100 },
-          'Schema.BigIntFromSelf.pipe(Schema.lessThanOrEqualToBigInt(BigInt(100)))',
+          'Schema.BigInt.check(Schema.isLessThanOrEqualToBigInt(BigInt(100)))',
         ],
         [
           { type: 'integer', format: 'bigint', minimum: 0, maximum: 100 },
-          'Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(BigInt(0)),Schema.lessThanOrEqualToBigInt(BigInt(100)))',
+          'Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(0)),Schema.isLessThanOrEqualToBigInt(BigInt(100)))',
         ],
       ])('effect(%o) → %s', (input, expected) => {
         expect(effect(input)).toBe(expected)
@@ -554,11 +560,11 @@ describe('effect', () => {
       [{ type: ['boolean', 'null'] }, 'Schema.NullOr(Schema.Boolean)'],
       [
         { type: 'boolean', default: true },
-        'Schema.optionalWith(Schema.Boolean,{default:() => true})',
+        'Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true)))',
       ],
       [
         { type: 'boolean', default: false },
-        'Schema.optionalWith(Schema.Boolean,{default:() => false})',
+        'Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false)))',
       ],
       [{ type: 'boolean', nullable: true }, 'Schema.NullOr(Schema.Boolean)'],
     ])('effect(%o) → %s', (input, expected) => {
@@ -585,19 +591,19 @@ describe('effect', () => {
       [{ type: 'array', items: { type: 'boolean' } }, 'Schema.Array(Schema.Boolean)'],
       [
         { type: 'array', items: { type: 'string' }, minItems: 1 },
-        'Schema.Array(Schema.String).pipe(Schema.minItems(1))',
+        'Schema.Array(Schema.String).check(Schema.isMinLength(1))',
       ],
       [
         { type: 'array', items: { type: 'string' }, maxItems: 10 },
-        'Schema.Array(Schema.String).pipe(Schema.maxItems(10))',
+        'Schema.Array(Schema.String).check(Schema.isMaxLength(10))',
       ],
       [
         { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 10 },
-        'Schema.Array(Schema.String).pipe(Schema.minItems(1),Schema.maxItems(10))',
+        'Schema.Array(Schema.String).check(Schema.isMinLength(1),Schema.isMaxLength(10))',
       ],
       [
         { type: 'array', items: { type: 'string' }, minItems: 5, maxItems: 5 },
-        'Schema.Array(Schema.String).pipe(Schema.itemsCount(5))',
+        'Schema.Array(Schema.String).check(Schema.isLengthBetween(5,5))',
       ],
       [
         {
@@ -616,7 +622,7 @@ describe('effect', () => {
             anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
           },
         },
-        'Schema.Array(Schema.Union(Schema.String,Schema.Number,Schema.Boolean))',
+        'Schema.Array(Schema.Union([Schema.String,Schema.Number,Schema.Boolean]))',
       ],
       [
         { type: 'array', nullable: true, items: { type: 'string' } },
@@ -658,7 +664,7 @@ describe('effect', () => {
           },
           required: ['name'],
         },
-        'Schema.Struct({name:Schema.String,age:Schema.optional(Schema.Number.pipe(Schema.int()))})',
+        'Schema.Struct({name:Schema.String,age:Schema.optional(Schema.Number.check(Schema.isInt()))})',
       ],
       [
         {
@@ -668,14 +674,14 @@ describe('effect', () => {
             age: { type: 'integer' },
           },
         },
-        'Schema.partial(Schema.Struct({name:Schema.String,age:Schema.Number.pipe(Schema.int())}))',
+        'Schema.Struct({name:Schema.optional(Schema.String),age:Schema.optional(Schema.Number.check(Schema.isInt()))})',
       ],
       [
         {
           type: 'object',
           additionalProperties: { type: 'string' },
         },
-        'Schema.Record({key:Schema.String,value:Schema.String})',
+        'Schema.Record(Schema.String,Schema.String)',
       ],
       [
         {
@@ -779,7 +785,7 @@ describe('effect', () => {
           oneOf: [{ $ref: '#/components/schemas/Cat' }, { $ref: '#/components/schemas/Dog' }],
         }
         expect(effect(schema, 'Schema', false, { openapi: true })).toBe(
-          'Schema.Union(CatSchema,DogSchema)',
+          'Schema.Union([CatSchema,DogSchema])',
         )
       })
     })
@@ -800,7 +806,7 @@ describe('effect', () => {
         [
           { anyOf: [{ $ref: '#/components/schemas/A' }, { type: 'string' }] },
           'TestSchema',
-          'Schema.Union(ASchema,Schema.String)',
+          'Schema.Union([ASchema,Schema.String])',
         ],
         // URL-encoded $ref with openapi
         [{ $ref: '#/components/schemas/My%20Schema' }, 'TestSchema', 'MySchemaSchema'],
@@ -846,7 +852,7 @@ describe('effect', () => {
 
     it('should handle default with nullable', () => {
       expect(effect({ type: 'string', nullable: true, default: 'x' })).toBe(
-        'Schema.optionalWith(Schema.NullOr(Schema.String),{default:() => "x"})',
+        'Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed("x")))',
       )
     })
   })
@@ -906,7 +912,7 @@ describe('effect', () => {
 
     it('should add Schema.brand() for number with constraints', () => {
       expect(effect({ type: 'number', minimum: 0, 'x-brand': 'Price' })).toBe(
-        'Schema.Number.pipe(Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Price"))',
+        'Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).pipe(Schema.brand("Price"))',
       )
     })
 
@@ -920,20 +926,20 @@ describe('effect', () => {
       // Schema.brand requires a Schema; optionalWith returns a PropertySignature.
       // Brand must wrap the inner Schema before optionalWith makes it optional.
       expect(effect({ type: 'string', default: 'foo', 'x-brand': 'Name' })).toBe(
-        'Schema.optionalWith(Schema.String.pipe(Schema.brand("Name")),{default:() => "foo"})',
+        'Schema.String.pipe(Schema.brand("Name")).pipe(Schema.withDecodingDefault(Effect.succeed("foo")))',
       )
     })
 
     it('should add Schema.brand() for integer', () => {
       expect(effect({ type: 'integer', minimum: 0, 'x-brand': 'Quantity' })).toBe(
-        'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0)).pipe(Schema.brand("Quantity"))',
+        'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(0)).pipe(Schema.brand("Quantity"))',
       )
     })
 
     it('should add Schema.brand() for array', () => {
       expect(
         effect({ type: 'array', items: { type: 'string' }, minItems: 1, 'x-brand': 'Tags' }),
-      ).toBe('Schema.Array(Schema.String).pipe(Schema.minItems(1)).pipe(Schema.brand("Tags"))')
+      ).toBe('Schema.Array(Schema.String).check(Schema.isMinLength(1)).pipe(Schema.brand("Tags"))')
     })
   })
 
@@ -946,7 +952,7 @@ describe('effect', () => {
           'x-prefixItems-message': 'bad tuple',
         }),
       ).toBe(
-        'Schema.transformOrFail(Schema.Unknown,Schema.Tuple(Schema.String,Schema.Number),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Tuple(Schema.String,Schema.Number))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad tuple")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
+        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Tuple([Schema.String,Schema.Number]))(v),{message:"bad tuple"})).pipe(Schema.decodeTo(Schema.Tuple([Schema.String,Schema.Number])))',
       )
     })
   })
@@ -956,7 +962,7 @@ describe('effect', () => {
       expect(
         effect({ type: 'array', items: { type: 'string' }, 'x-items-message': 'bad items' }),
       ).toBe(
-        'Schema.transformOrFail(Schema.Unknown,Schema.Array(Schema.String),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Array(Schema.String))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad items")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
+        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Array(Schema.String))(v),{message:"bad items"})).pipe(Schema.decodeTo(Schema.Array(Schema.String)))',
       )
     })
   })
@@ -969,9 +975,7 @@ describe('effect', () => {
           'x-anyOf-message': 'any',
           'x-implication-message': 'implication failed',
         } as JSONSchema),
-      ).toBe(
-        'Schema.Union(Schema.String,Schema.Number).annotations({message:()=>"implication failed"})',
-      )
+      ).toBe('Schema.Union([Schema.String,Schema.Number]).annotate({message:"implication failed"})')
     })
   })
 
@@ -984,7 +988,7 @@ describe('effect', () => {
           minItems: 1,
           'x-length-message': 'bad length',
         }),
-      ).toBe('Schema.Array(Schema.String).pipe(Schema.minItems(1,{message:()=>"bad length"}))')
+      ).toBe('Schema.Array(Schema.String).check(Schema.isMinLength(1,{message:"bad length"}))')
     })
   })
 
@@ -997,7 +1001,7 @@ describe('effect', () => {
 
     it('path: boolean → Schema.BooleanFromString', () => {
       expect(effect({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        'Schema.BooleanFromString',
+        'Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,SchemaTransformation.transform({decode:(s)=>s==="true",encode:(b)=>b?"true":"false"})))',
       )
     })
 
@@ -1025,7 +1029,7 @@ describe('effect', () => {
           'x-unevaluatedProperties-message': 'no extras',
         }),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.annotations({parseOptions:{onExcessProperty:"error"},message:()=>"no extras"}))',
+        'Schema.Struct({a:Schema.String}).annotate({parseOptions:{onExcessProperty:"error"},messageUnexpectedKey:"no extras"})',
       )
     })
   })
@@ -1038,7 +1042,7 @@ describe('effect', () => {
           prefixItems: [{ type: 'string' }, { type: 'boolean' }],
           unevaluatedItems: false,
         }),
-      ).toBe('Schema.Tuple(Schema.String,Schema.Boolean)')
+      ).toBe('Schema.Tuple([Schema.String,Schema.Boolean])')
     })
 
     it('emits Schema.Tuple with rest when unevaluatedItems is a schema', () => {
@@ -1049,7 +1053,7 @@ describe('effect', () => {
           unevaluatedItems: { type: 'integer' },
         }),
       ).toBe(
-        'Schema.Tuple({elements:[Schema.String,Schema.Boolean],rest:[Schema.Number.pipe(Schema.int())]})',
+        'Schema.TupleWithRest(Schema.Tuple([Schema.String,Schema.Boolean]),[Schema.Number.check(Schema.isInt())])',
       )
     })
   })
@@ -1059,26 +1063,26 @@ describe('effect not: type arrays / message', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { not: { type: ['string', 'number'] } },
-      "Schema.Unknown.pipe(Schema.filter((val) => (typeof val !== 'string') && (typeof val !== 'number')))",
+      "Schema.Unknown.check(Schema.makeFilter((val) => (typeof val !== 'string') && (typeof val !== 'number')))",
     ],
     [
       { not: { type: 'number' } },
-      "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'number'))",
+      "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'number'))",
     ],
     [
       { not: { type: 'array' } },
-      'Schema.Unknown.pipe(Schema.filter((val) => !Array.isArray(val)))',
+      'Schema.Unknown.check(Schema.makeFilter((val) => !Array.isArray(val)))',
     ],
     [
       { not: { type: 'object' } },
-      "Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'object' || val === null || Array.isArray(val)))",
+      "Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'object' || val === null || Array.isArray(val)))",
     ],
-    [{ not: { type: 'null' } }, 'Schema.Unknown.pipe(Schema.filter((val) => val !== null))'],
+    [{ not: { type: 'null' } }, 'Schema.Unknown.check(Schema.makeFilter((val) => val !== null))'],
     [{ not: { $ref: '#/components/schemas/Foo' } }, 'Schema.Unknown'],
     [{ not: { oneOf: [{ type: 'string' }, { type: 'number' }] } }, 'Schema.Unknown'],
     [
       { not: { type: 'string' }, 'x-not-message': 'no strings' },
-      `Schema.Unknown.pipe(Schema.filter((val) => typeof val !== 'string',{message:()=>"no strings"}))`,
+      `Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string',{message:"no strings"}))`,
     ],
     [{ not: { format: 'email' } }, 'Schema.Unknown'],
   ])('effect(%o) → %s', (input, expected) => {
@@ -1090,7 +1094,7 @@ describe('effect contains / minContains / maxContains', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' } },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.some((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i))))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i))))',
     ],
     [
       {
@@ -1099,15 +1103,15 @@ describe('effect contains / minContains / maxContains', () => {
         contains: { type: 'integer' },
         'x-contains-message': 'need int',
       },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.some((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)),{message:()=>"need int"}))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)),{message:"need int"}))',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, minContains: 2 },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=2))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=2))',
     ],
     [
       { type: 'array', items: { type: 'number' }, contains: { type: 'integer' }, maxContains: 3 },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=1),Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=3))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=1),Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=3))',
     ],
     [
       {
@@ -1119,7 +1123,7 @@ describe('effect contains / minContains / maxContains', () => {
         'x-minContains-message': 'few',
         'x-maxContains-message': 'many',
       },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length>=1,{message:()=>"few"}),Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=2,{message:()=>"many"}))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length>=1,{message:"few"}),Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=2,{message:"many"}))',
     ],
     [
       {
@@ -1129,7 +1133,7 @@ describe('effect contains / minContains / maxContains', () => {
         minContains: 0,
         maxContains: 2,
       },
-      'Schema.Array(Schema.Number).pipe(Schema.filter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.pipe(Schema.int()))(i)).length<=2))',
+      'Schema.Array(Schema.Number).check(Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(Schema.Number.check(Schema.isInt()))(i)).length<=2))',
     ],
   ])('effect(%o) → %s', (input, expected) => {
     expect(effect(input)).toBe(expected)

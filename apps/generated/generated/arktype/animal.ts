@@ -1,12 +1,16 @@
 import { scope } from 'arktype'
 
 const types = scope({
-  Animal: {
-    name: type('string').describe('The name of the animal'),
-    species: type('string').describe('The species of the animal'),
-    'offspring?': type('Animal[]').describe('List of child animals'),
-    '+': 'reject',
-  }.describe('An animal that can have offspring'),
+  Animal: [
+    {
+      name: ['string', '@', 'The name of the animal'],
+      species: ['string', '@', 'The species of the animal'],
+      'offspring?': ['Animal[]', '@', 'List of child animals'],
+      '+': 'reject',
+    },
+    '@',
+    'An animal that can have offspring',
+  ],
   Schema: 'Animal',
 }).export()
 

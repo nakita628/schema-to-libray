@@ -2,7 +2,7 @@ import { Schema } from 'effect'
 
 type _Schema_ = { readonly children?: readonly (typeof Schema_.Type)[] }
 
-export const Schema_: Schema.Codec<_Schema_> = Schema.Struct({
+export const Schema_: Schema.Schema<_Schema_> = Schema.Struct({
   children: Schema.optional(Schema.Array(Schema.suspend(() => Schema_))),
 })
 

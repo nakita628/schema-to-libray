@@ -467,15 +467,15 @@ describe('typebox', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { type: 'date' } as JSONSchema,
-        "Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())",
+        'Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
       ],
       [
         { type: 'date', nullable: true } as JSONSchema,
-        "Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])",
+        'Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])',
       ],
       [
         { type: ['date', 'null'] } as JSONSchema,
-        "Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])",
+        'Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -548,11 +548,7 @@ describe('typebox', () => {
     describe('openapi edge cases', () => {
       it.concurrent.each<[JSONSchema, string, string]>([
         // Self-reference: resolved name equals rootName
-        [
-          { $ref: '#/components/schemas/User' },
-          'UserSchema',
-          "Type.Ref('UserSchema')",
-        ],
+        [{ $ref: '#/components/schemas/User' }, 'UserSchema', "Type.Ref('UserSchema')"],
         // Nullable ref with openapi (double-wrapped: ref() wraps, then typebox() wraps again)
         [
           { $ref: '#/components/schemas/Pet', nullable: true },

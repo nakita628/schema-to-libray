@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 
 export const FizzBuzzString = Schema.Struct({
-  value: Schema.Literal(
+  value: Schema.Literals([
     '1',
     '2',
     'Fizz',
@@ -22,5 +22,5 @@ export const FizzBuzzString = Schema.Struct({
     'Fizz',
     '19',
     'Buzz',
-  ),
+  ]),
 })

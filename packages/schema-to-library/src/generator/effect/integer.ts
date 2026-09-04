@@ -51,9 +51,7 @@ export function integer(schema: JSONSchema) {
     schema.multipleOf !== undefined
       ? `Schema.isMultipleOf(${schema.multipleOf}${multipleOfErrorPart})`
       : undefined
-  const intCheck = errorMessage
-    ? `Schema.isInt(${effectError(errorMessage)})`
-    : 'Schema.isInt()'
+  const intCheck = errorMessage ? `Schema.isInt(${effectError(errorMessage)})` : 'Schema.isInt()'
   const checks = [intCheck, minimum, maximum, multipleOf].filter((v) => v !== undefined)
   return `Schema.Number.check(${checks.join(',')})`
 }

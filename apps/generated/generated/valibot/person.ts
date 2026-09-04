@@ -15,30 +15,30 @@ type _Folder = { name: string; children?: _Folder[] }
 
 type _Person = { name: string; position: string; subordinates?: _Person[] }
 
-const Animal: v.GenericSchema<_Animal> = v.strictObject({
+const Animal: v.GenericSchema<unknown, _Animal> = v.strictObject({
   name: v.string(),
   species: v.string(),
   offspring: v.optional(v.array(v.lazy(() => Animal))),
 })
 
-const Comment: v.GenericSchema<_Comment> = v.strictObject({
+const Comment: v.GenericSchema<unknown, _Comment> = v.strictObject({
   author: v.string(),
   text: v.string(),
   replies: v.optional(v.array(v.lazy(() => Comment))),
 })
 
-const Folder: v.GenericSchema<_Folder> = v.strictObject({
+const Folder: v.GenericSchema<unknown, _Folder> = v.strictObject({
   name: v.string(),
   children: v.optional(v.array(v.lazy(() => Folder))),
 })
 
-const Person: v.GenericSchema<_Person> = v.strictObject({
+const Person: v.GenericSchema<unknown, _Person> = v.strictObject({
   name: v.string(),
   position: v.string(),
   subordinates: v.optional(v.array(v.lazy(() => Person))),
 })
 
-export const SelfReferencingEntities: v.GenericSchema<_SelfReferencingEntities> = v.pipe(
+export const SelfReferencingEntities: v.GenericSchema<unknown, _SelfReferencingEntities> = v.pipe(
   v.partial(
     v.strictObject({
       animal: v.lazy(() => Animal),

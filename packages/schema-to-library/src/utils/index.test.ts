@@ -84,14 +84,18 @@ describe('helper', () => {
   })
 
   describe('effectError', () => {
-    it('should wrap plain string in message annotation', () => {
-      expect(effectError('Required field')).toBe('{message:()=>"Required field"}')
+    it('should wrap a plain string in a message annotation', () => {
+      expect(effectError('Required field')).toBe('{message:"Required field"}')
     })
 
-    it('should pass through arrow function in message annotation', () => {
+    it('should emit a string literal, since v4 types `message` as a string', () => {
       expect(effectError('(issue) => `Error: ${issue}`')).toBe(
-        '{message:(issue) => `Error: ${issue}`}',
+        '{message:"(issue) => `Error: ${issue}`"}',
       )
+    })
+
+    it('should escape quotes and newlines', () => {
+      expect(effectError('say "hi"\nnow')).toBe('{message:"say \\"hi\\"\\nnow"}')
     })
   })
 

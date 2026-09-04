@@ -23,4 +23,8 @@ jobs:
 
       - run: vp run schema-to-library#build
 
+      # Type-check every generated fixture against the real target library, so a
+      # generator emitting an API the library does not have fails the build.
+      - run: vp run -r typecheck
+
       - run: vp test --coverage

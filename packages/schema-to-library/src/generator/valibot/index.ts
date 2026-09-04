@@ -100,13 +100,21 @@ export function schemaToValibot(
       })()
     : ''
 
+  // A recursive declaration needs an explicit annotation, since the schema is
+  // referenced inside its own initializer. `GenericSchema<TInput, TOutput>`
+  // pins the input to the output when given a single argument, which rejects
+  // any schema whose input differs — a field with a `default`, say — so only
+  // the output is constrained here. `_X` describes the output, which is what
+  // `v.InferOutput` reads.
+  const annotation = (name: string) => `v.GenericSchema<unknown, _${name}>`
+
   // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toName(name)
-      return `const ${pc}: v.GenericSchema<_${pc}> = ${valibot(def, pc, true, genOptions)}`
+      return `const ${pc}: ${annotation(pc)} = ${valibot(def, pc, true, genOptions)}`
     })
     .join('\n\n')
 
@@ -116,7 +124,7 @@ export function schemaToValibot(
     : valibot(schema, rootName, true, genOptions)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: v.GenericSchema<_${rootName}> = ${rootSchema}`
+    ? `export const ${rootName}: ${annotation(rootName)} = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
   // Assemble output

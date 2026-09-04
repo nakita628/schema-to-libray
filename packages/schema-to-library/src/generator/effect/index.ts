@@ -71,13 +71,18 @@ export function schemaToEffect(
       })()
     : ''
 
+  // A recursive declaration needs an explicit annotation, since the schema is
+  // referenced inside its own initializer. `Schema.Schema<T>` constrains only
+  // the decoded `Type` — which is what `_X` describes and what the exported
+  // type reads — while `Schema.Codec<T>` would also pin `Encoded` to `T` and
+  // reject any field carrying a decoding default or other transformation.
   // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toName(name)
-      return `const ${pc}: Schema.Codec<_${pc}> = ${effect(def, pc, true, genOptions)}`
+      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true, genOptions)}`
     })
     .join('\n\n')
 
@@ -87,7 +92,7 @@ export function schemaToEffect(
     : effect(schema, rootName, true, genOptions)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: Schema.Codec<_${rootName}> = ${rootSchema}`
+    ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
   // `Effect` backs decoding defaults and `SchemaTransformation` backs the

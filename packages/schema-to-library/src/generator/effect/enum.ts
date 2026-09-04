@@ -8,7 +8,7 @@ import { effectError } from '../../utils/index.js'
  * `Schema.Literal`.
  *
  * `x-error-message` (whole-enum) is applied **only to the outermost
- * expression** via `.annotations(...)`. Inner Schema.Literal entries
+ * expression** via `.annotate(...)`. Inner Schema.Literal entries
  * inside a Union/Tuple never receive their own annotations — the outer
  * annotation already covers them.
  *

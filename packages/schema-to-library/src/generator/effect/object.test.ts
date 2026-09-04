@@ -26,14 +26,14 @@ describe('object', () => {
         type: 'object',
         properties: { foo: { type: 'string' } },
       },
-      'Schema.partial(Schema.Struct({foo:Schema.String}))',
+      'Schema.Struct({foo:Schema.optional(Schema.String)})',
     ],
     [
       {
         type: 'object',
         additionalProperties: { type: 'string' },
       },
-      'Schema.Record({key:Schema.String,value:Schema.String})',
+      'Schema.Record(Schema.String,Schema.String)',
     ],
   ])('object(%o) → %s', (input, expected) => {
     expect(object(input, 'Schema', false)).toBe(expected)
@@ -52,7 +52,9 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=2))')
+      ).toBe(
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).length>=2))',
+      )
     })
 
     it('emits both with x-minimum-message / x-maximum-message', () => {
@@ -71,7 +73,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).length>=1,{message:()=>"too few"}),Schema.filter((o)=>Object.keys(o).length<=3,{message:()=>"too many"}))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).length>=1,{message:"too few"}),Schema.makeFilter((o)=>Object.keys(o).length<=3,{message:"too many"}))',
       )
     })
   })
@@ -90,7 +92,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
       )
     })
 
@@ -107,7 +109,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
       )
     })
 
@@ -125,7 +127,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{message:()=>"lowercase only"}))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{message:"lowercase only"}))',
       )
     })
   })
@@ -144,7 +146,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).pipe(Schema.filter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||Schema.is(Schema.String)(val))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||Schema.is(Schema.String)(val))))',
       )
     })
 
@@ -160,7 +162,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Record({key:Schema.String,value:Schema.String}).pipe(Schema.filter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||Schema.is(Schema.Number)(val))))',
+        'Schema.Record(Schema.String,Schema.String).check(Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||Schema.is(Schema.Number)(val))))',
       )
     })
   })
@@ -182,7 +184,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "Schema.Struct({card:Schema.String,billing:Schema.optional(Schema.String)}).pipe(Schema.filter((o)=>!('card' in o)||('billing' in o)))",
+        "Schema.Struct({card:Schema.String,billing:Schema.optional(Schema.String)}).check(Schema.makeFilter((o)=>!('card' in o)||('billing' in o)))",
       )
     })
 
@@ -203,7 +205,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "Schema.partial(Schema.Struct({a:Schema.String,b:Schema.String,c:Schema.String})).pipe(Schema.filter((o)=>!('a' in o)||('b' in o&&'c' in o),{message:()=>\"a needs b and c\"}))",
+        "Schema.Struct({a:Schema.optional(Schema.String),b:Schema.optional(Schema.String),c:Schema.optional(Schema.String)}).check(Schema.makeFilter((o)=>!('a' in o)||('b' in o&&'c' in o),{message:\"a needs b and c\"}))",
       )
     })
   })
@@ -222,7 +224,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.transformOrFail(Schema.Unknown,Schema.Struct({a:Schema.String}),{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(Schema.Struct({a:Schema.String}))(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,"bad props")):ParseResult.succeed(result.right)},encode:ParseResult.succeed})',
+        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Struct({a:Schema.String}))(v),{message:"bad props"})).pipe(Schema.decodeTo(Schema.Struct({a:Schema.String})))',
       )
     })
   })

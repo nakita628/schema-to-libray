@@ -57,8 +57,7 @@ export function schemaToTypebox(
   // resolves.
   const rootSelfReferential = hasRootSelfReference(
     rootInDefs ? rootDefinition : schema,
-    (ref) =>
-      ref === '#' || ref === '' || (openapi && resolveOpenAPIRef(ref) === rootName),
+    (ref) => ref === '#' || ref === '' || (openapi && resolveOpenAPIRef(ref) === rootName),
   )
   const cyclicDefs = cyclicDefinitionNames(schema)
   const isCyclic = rootSelfReferential || cyclicDefs.size > 0

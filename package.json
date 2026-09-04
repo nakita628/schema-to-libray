@@ -11,8 +11,8 @@
     "release": "pnpm -F schema-to-library release"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.8",
-    "vite-plus": "^0.1.24"
+    "@vitest/coverage-v8": "^4.1.11",
+    "vite-plus": "^0.3.0"
   },
   "packageManager": "pnpm@11.6.0"
 }

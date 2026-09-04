@@ -7,7 +7,7 @@ export const User = Type.Object(
     age: Type.Optional(Type.Integer({ minimum: 0, description: 'Age of the user' })),
     email: Type.String({ format: 'email', description: 'Email address' }),
     isActive: Type.Optional(
-      Type.Optional(Type.Boolean({ description: 'Whether the user is active' }), { default: true }),
+      Type.Optional(Type.Boolean({ description: 'Whether the user is active', default: true })),
     ),
   },
   { additionalProperties: false },

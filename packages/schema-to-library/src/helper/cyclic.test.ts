@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { JSONSchema } from '../parser/index.js'
 import { cyclicDefinitionNames, hasRootSelfReference } from './cyclic.js'
 
 describe('hasRootSelfReference', () => {
@@ -37,7 +38,7 @@ describe('hasRootSelfReference', () => {
   })
 
   it('honours a custom self-reference predicate', () => {
-    const schema = {
+    const schema: JSONSchema = {
       type: 'object',
       properties: { self: { $ref: '#/components/schemas/User' } },
     }

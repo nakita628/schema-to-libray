@@ -13,7 +13,7 @@ It helps you automatically generate type-safe validation schemas and TypeScript 
 
 - **[Zod](https://zod.dev/)**
 - **[Valibot](https://valibot.dev/)**
-- **[Effect Schema](https://effect.website/)**
+- **[Effect Schema](https://effect.website/)** (v4)
 - **[TypeBox](https://github.com/sinclairzx81/typebox)**
 - **[Arktype](https://arktype.io/)**
 
@@ -64,7 +64,7 @@ import * as z from 'zod'
 export const User = z.object({
   name: z.string(),
   email: z.email(),
-  age: z.int().min(0).optional(),
+  age: z.int().min(0).exactOptional(),
 })
 ```
 
@@ -87,8 +87,8 @@ import { Schema } from 'effect'
 
 export const User = Schema.Struct({
   name: Schema.String,
-  email: Schema.String,
-  age: Schema.optional(Schema.Int.pipe(Schema.greaterThanOrEqualTo(0))),
+  email: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)),
+  age: Schema.optional(Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0))),
 })
 ```
 

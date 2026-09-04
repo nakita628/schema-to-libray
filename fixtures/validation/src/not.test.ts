@@ -12,8 +12,8 @@ const ZodNotString = z
 
 const ValibotNotString = v.custom<unknown>((value) => typeof value !== 'string')
 
-const EffectNotString = EffectSchema.Unknown.pipe(
-  EffectSchema.filter((value) => typeof value !== 'string'),
+const EffectNotString = EffectSchema.Unknown.check(
+  EffectSchema.makeFilter((value) => typeof value !== 'string'),
 )
 
 const TypeboxNotString = Type.Not(Type.String())

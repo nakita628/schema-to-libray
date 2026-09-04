@@ -266,7 +266,7 @@ describe('schema-to-effect', () => {
 
 export const User = Schema.Struct({
   name: Schema.String,
-  age: Schema.optional(Schema.Number.pipe(Schema.int())),
+  age: Schema.optional(Schema.Number.check(Schema.isInt())),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -299,7 +299,7 @@ describe('schema-to-effect --export-type', () => {
 
 export const User = Schema.Struct({
   name: Schema.String,
-  age: Schema.optional(Schema.Number.pipe(Schema.int())),
+  age: Schema.optional(Schema.Number.check(Schema.isInt())),
 })
 
 export type User = typeof User.Type
@@ -504,20 +504,18 @@ describe('x-error-message: schema-to-effect', () => {
     const expectedCode = `import { Schema } from 'effect'
 
 export const UserForm = Schema.Struct({
-  name: Schema.String.pipe(Schema.minLength(1)).annotations({ message: () => 'Name is required' }),
-  email: Schema.String.pipe(
-    Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),
-  ).annotations({ message: () => 'Invalid email' }),
+  name: Schema.String.check(Schema.isMinLength(1)).annotate({ message: 'Name is required' }),
+  email: Schema.String.check(
+    Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),
+  ).annotate({ message: 'Invalid email' }),
   age: Schema.optional(
-    Schema.Number.pipe(
-      Schema.int({ message: () => 'Invalid age' }),
-      Schema.greaterThanOrEqualTo(0),
-      Schema.lessThanOrEqualTo(150),
+    Schema.Number.check(
+      Schema.isInt({ message: 'Invalid age' }),
+      Schema.isGreaterThanOrEqualTo(0),
+      Schema.isLessThanOrEqualTo(150),
     ),
   ),
-  role: Schema.optional(
-    Schema.Literal('admin', 'user').annotations({ message: () => 'Invalid role' }),
-  ),
+  role: Schema.optional(Schema.Literals(['admin', 'user']).annotate({ message: 'Invalid role' })),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -673,21 +671,21 @@ describe('granular messages: schema-to-effect', () => {
     const expectedCode = `import { Schema } from 'effect'
 
 export const Product = Schema.Struct({
-  name: Schema.String.pipe(
-    Schema.minLength(1, { message: () => 'Name cannot be empty' }),
-    Schema.maxLength(100, { message: () => 'Name too long' }),
+  name: Schema.String.check(
+    Schema.isMinLength(1, { message: 'Name cannot be empty' }),
+    Schema.isMaxLength(100, { message: 'Name too long' }),
   ),
-  sku: Schema.String.pipe(
-    Schema.pattern(/^[A-Z]{3}-[0-9]{4}$/, { message: () => 'SKU must be like ABC-1234' }),
+  sku: Schema.String.check(
+    Schema.isPattern(/^[A-Z]{3}-[0-9]{4}$/, { message: 'SKU must be like ABC-1234' }),
   ),
-  price: Schema.Number.pipe(
-    Schema.greaterThanOrEqualTo(0, { message: () => 'Price cannot be negative' }),
+  price: Schema.Number.check(
+    Schema.isGreaterThanOrEqualTo(0, { message: 'Price cannot be negative' }),
   ),
   quantity: Schema.optional(
-    Schema.Number.pipe(
-      Schema.int(),
-      Schema.greaterThanOrEqualTo(0, { message: () => 'Quantity cannot be negative' }),
-      Schema.multipleOf(1, { message: () => 'Quantity must be whole number' }),
+    Schema.Number.check(
+      Schema.isInt(),
+      Schema.isGreaterThanOrEqualTo(0, { message: 'Quantity cannot be negative' }),
+      Schema.isMultipleOf(1, { message: 'Quantity must be whole number' }),
     ),
   ),
 })
@@ -769,13 +767,13 @@ describe('array/nullable/default: schema-to-effect', () => {
     expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-effect.ts' })
 
     const generatedCode = fs.readFileSync('test-array-effect.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    const expectedCode = `import { Effect, Schema } from 'effect'
 
 export const Config = Schema.Struct({
-  tags: Schema.Array(Schema.String).pipe(Schema.minItems(1)),
-  enabled: Schema.optionalWith(Schema.Boolean, { default: () => true }),
-  count: Schema.optional(Schema.NullOr(Schema.Number.pipe(Schema.int()))),
-  label: Schema.optionalWith(Schema.String, { default: () => 'untitled' }),
+  tags: Schema.Array(Schema.String).check(Schema.isMinLength(1)),
+  enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  count: Schema.optional(Schema.NullOr(Schema.Number.check(Schema.isInt()))),
+  label: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed('untitled'))),
 })
 `
     expect(generatedCode).toBe(expectedCode)
@@ -911,7 +909,7 @@ describe('oneOf: schema-to-effect', () => {
 
 export const Shape = Schema.Struct({
   kind: Schema.String,
-  value: Schema.Union(Schema.String, Schema.Number, Schema.Boolean),
+  value: Schema.Union([Schema.String, Schema.Number, Schema.Boolean]),
 })
 `
     expect(generatedCode).toBe(expectedCode)

@@ -5,26 +5,17 @@ import { _enum } from './enum.js'
 
 describe('effect enum', () => {
   it.concurrent.each<[JSONSchema, string]>([
-    [{ enum: ['A', 'B'] }, 'Schema.Literal("A","B")'],
+    [{ enum: ['A', 'B'] }, 'Schema.Literals(["A","B"])'],
     [{ enum: ['active'] }, 'Schema.Literal("active")'],
-    [{ enum: [1, 2], type: 'number' }, 'Schema.Union(Schema.Literal(1),Schema.Literal(2))'],
-    [
-      { enum: [true, false], type: 'boolean' },
-      'Schema.Union(Schema.Literal(true),Schema.Literal(false))',
-    ],
+    [{ enum: [1, 2], type: 'number' }, 'Schema.Literals([1,2])'],
+    [{ enum: [true, false], type: 'boolean' }, 'Schema.Literals([true,false])'],
     [{ enum: [null] }, 'Schema.Literal(null)'],
     [
       { enum: [[1, 2, 3]], type: 'array' },
-      'Schema.Tuple(Schema.Literal(1),Schema.Literal(2),Schema.Literal(3))',
+      'Schema.Tuple([Schema.Literal(1),Schema.Literal(2),Schema.Literal(3)])',
     ],
-    [
-      { enum: [1, 'a', true] },
-      'Schema.Union(Schema.Literal(1),Schema.Literal("a"),Schema.Literal(true))',
-    ],
-    [
-      { enum: ['a', null, 42] },
-      'Schema.Union(Schema.Literal("a"),Schema.Literal(null),Schema.Literal(42))',
-    ],
+    [{ enum: [1, 'a', true] }, 'Schema.Literals([1,"a",true])'],
+    [{ enum: ['a', null, 42] }, 'Schema.Literals(["a",null,42])'],
   ])('_enum(%o) → %s', (input, expected) => {
     expect(_enum(input)).toBe(expected)
   })
@@ -36,14 +27,14 @@ describe('effect enum', () => {
           enum: ['red', 'green', 'blue'],
           'x-error-message': 'Invalid color',
         },
-        'Schema.Literal("red","green","blue").annotations({message:()=>"Invalid color"})',
+        'Schema.Literals(["red","green","blue"]).annotate({message:"Invalid color"})',
       ],
       [
         {
           enum: ['active'],
           'x-error-message': 'Must be active',
         },
-        'Schema.Literal("active").annotations({message:()=>"Must be active"})',
+        'Schema.Literal("active").annotate({message:"Must be active"})',
       ],
       [
         {
@@ -51,7 +42,7 @@ describe('effect enum', () => {
           enum: [1, 2, 3],
           'x-error-message': 'Invalid number',
         },
-        'Schema.Union(Schema.Literal(1),Schema.Literal(2),Schema.Literal(3)).annotations({message:()=>"Invalid number"})',
+        'Schema.Literals([1,2,3]).annotate({message:"Invalid number"})',
       ],
     ])('_enum(%o) → %s', (input, expected) => {
       expect(_enum(input)).toBe(expected)
@@ -70,7 +61,7 @@ describe('effect enum', () => {
           ],
           type: 'array',
         },
-        'Schema.Union(Schema.Tuple(Schema.Literal(1),Schema.Literal(2)),Schema.Tuple(Schema.Literal(3),Schema.Literal(4)))',
+        'Schema.Union([Schema.Tuple([Schema.Literal(1),Schema.Literal(2)]),Schema.Tuple([Schema.Literal(3),Schema.Literal(4)])])',
       ],
     ])('_enum(%o) → %s', (input, expected) => {
       expect(_enum(input)).toBe(expected)

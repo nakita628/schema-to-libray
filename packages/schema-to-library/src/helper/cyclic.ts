@@ -1,7 +1,6 @@
 import type { JSONSchema } from '../parser/index.js'
 
-const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-  typeof v === 'object' && v !== null
+const isRecord = (v: unknown): v is { [k: string]: unknown } => typeof v === 'object' && v !== null
 
 /**
  * Collect the local definition names a schema refers to, following every

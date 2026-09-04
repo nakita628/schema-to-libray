@@ -10,18 +10,19 @@ type _B = { type: 'B'; name: string; detail: _D & { comment?: string } }
 
 type _C = { type: 'C'; entries: _E[] }
 
-const E: z.ZodType<_E> = z
-  .object({
-    label: z.string(),
-    reference: z.lazy(() => E),
-    flags: z.array(z.string()).refine((items) => new Set(items).size === items.length),
-    meta: z.record(z.string(), z.string()),
-  })
-  .partial()
+const E: z.ZodType<_E> = z.object({
+  label: z.string().exactOptional(),
+  reference: z.lazy(() => E).exactOptional(),
+  flags: z
+    .array(z.string())
+    .refine((items) => new Set(items).size === items.length)
+    .exactOptional(),
+  meta: z.record(z.string(), z.string()).exactOptional(),
+})
 
 const D: z.ZodType<_D> = z.object({
   score: z.int().min(0).max(100).default(50),
-  extra: z.union([z.null().nullable(), z.lazy(() => E)]).optional(),
+  extra: z.union([z.null().nullable(), z.lazy(() => E)]).exactOptional(),
 })
 
 const B: z.ZodType<_B> = z.object({
@@ -29,7 +30,7 @@ const B: z.ZodType<_B> = z.object({
   name: z.string(),
   detail: z.intersection(
     z.lazy(() => D),
-    z.object({ comment: z.string().default('N/A') }).partial(),
+    z.object({ comment: z.string().default('N/A').exactOptional() }),
   ),
 })
 

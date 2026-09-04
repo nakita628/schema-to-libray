@@ -60,10 +60,16 @@ export function schemaToArktype(
       ? defEntries
       : [...defEntries, `${rootName}:${arktype(schema, rootName, true, genOptions)}`]
 
+    // Entries may call `type(...)` — `arktypeWrap` reaches for it whenever a
+    // bare definition needs a method such as `.describe()` — so the import has
+    // to carry it alongside `scope`.
+    const scopeBody = `const types = scope({${scopeEntries.join(',')}}).export()`
+    const usesType = /\btype\(/.test(scopeBody)
+
     return [
       ...prefix,
-      `import { scope } from "arktype"`,
-      `const types = scope({${scopeEntries.join(',')}}).export()`,
+      `import { scope${usesType ? ', type' : ''} } from "arktype"`,
+      scopeBody,
       `export const ${rootName} = types.${rootName}`,
       ...(exportType ? [`export type ${rootName} = typeof ${rootName}.infer`] : []),
     ]

@@ -1,17 +1,15 @@
 import * as z from 'zod'
 
-export const Schema = z
-  .object({
-    first_name: z.string(),
-    last_name: z.string(),
-    birthday: z.iso.date(),
-    address: z
-      .object({
-        street_address: z.string(),
-        city: z.string(),
-        state: z.string(),
-        country: z.string(),
-      })
-      .partial(),
-  })
-  .partial()
+export const Schema = z.object({
+  first_name: z.string().exactOptional(),
+  last_name: z.string().exactOptional(),
+  birthday: z.iso.date().exactOptional(),
+  address: z
+    .object({
+      street_address: z.string().exactOptional(),
+      city: z.string().exactOptional(),
+      state: z.string().exactOptional(),
+      country: z.string().exactOptional(),
+    })
+    .exactOptional(),
+})

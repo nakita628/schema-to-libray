@@ -14,7 +14,7 @@ type _Member = {
   invitedBy?: _Member
 }
 
-const Member: v.GenericSchema<_Member> = v.pipe(
+const Member: v.GenericSchema<unknown, _Member> = v.pipe(
   v.strictObject({
     userId: v.pipe(
       v.pipe(v.string(), v.uuid()),
@@ -41,7 +41,7 @@ const Member: v.GenericSchema<_Member> = v.pipe(
   v.description('A person who is a member of the organization.'),
 )
 
-export const Organization: v.GenericSchema<_Organization> = v.pipe(
+export const Organization: v.GenericSchema<unknown, _Organization> = v.pipe(
   v.strictObject({
     id: v.pipe(v.pipe(v.string(), v.uuid()), v.description('The UUID of the organization.')),
     name: v.pipe(

@@ -1,6 +1,7 @@
 import {
+  type ArktypeWrapOptions,
   arktypeWrap as _arktypeWrap,
-  type CodeExtensionOptions,
+  isArktypeDefinition,
   isDeepLocalPointer,
 } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
@@ -18,15 +19,27 @@ import { string } from './string.js'
 
 const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
 
-const unionStr = (schemas: string[]) =>
+/**
+ * Combine two ArkType expressions.
+ *
+ * Inside `scope({...})` a definition may name a scope-local alias, which the
+ * global `type(...)` cannot resolve, so scope mode composes with ArkType's
+ * tuple expressions — which stay in definition syntax — instead of methods.
+ */
+const combine = (op: '&' | '|', inScope: boolean) => (acc: string, s: string) =>
+  inScope && isArktypeDefinition(acc)
+    ? `[${acc},"${op}",${s}]`
+    : `type(${acc}).${op === '&' ? 'and' : 'or'}(${s})`
+
+const unionStr = (schemas: string[], inScope = false) =>
   schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' | ')}"`
-    : schemas.reduce((acc, s) => `type(${acc}).or(${s})`)
+    : schemas.reduce(combine('|', inScope))
 
-const intersectionStr = (schemas: string[]) =>
+const intersectionStr = (schemas: string[], inScope = false) =>
   schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' & ')}"`
-    : schemas.reduce((acc, s) => `type(${acc}).and(${s})`)
+    : schemas.reduce(combine('&', inScope))
 
 export function arktype(
   schema: JSONSchema,
@@ -39,8 +52,10 @@ export function arktype(
     paramIn?: ParamIn
   },
 ): string {
-  const codeExtOpts: CodeExtensionOptions =
-    options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  const codeExtOpts: ArktypeWrapOptions = {
+    ...(options?.unsafeCodeExtensions === true && { unsafeCodeExtensions: true }),
+    ...(isArktype && { scopeMode: true }),
+  }
   const arktypeWrap = (arktypeStr: string, s: JSONSchema): string =>
     _arktypeWrap(arktypeStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
@@ -75,22 +90,27 @@ export function arktype(
     return arktypeWrap(ref(schema), schema)
   }
 
-  const describeWithMessage = (expr: string, msg: unknown): string =>
-    typeof msg === 'string'
-      ? `${isQuoted(expr) ? `type(${expr})` : expr}.describe(${JSON.stringify(msg)})`
-      : expr
+  const describeWithMessage = (expr: string, msg: unknown): string => {
+    if (typeof msg !== 'string') return expr
+    const text = JSON.stringify(msg)
+    if (isArktype && isArktypeDefinition(expr)) return `[${expr},"@",${text}]`
+    return `${isQuoted(expr) ? `type(${expr})` : expr}.describe(${text})`
+  }
 
   if (schema.oneOf) {
     if (!schema.oneOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.oneOf.map((s) => arktype(s, rootName, isArktype, options))
-    return arktypeWrap(describeWithMessage(unionStr(schemas), schema['x-oneOf-message']), schema)
+    return arktypeWrap(
+      describeWithMessage(unionStr(schemas, isArktype), schema['x-oneOf-message']),
+      schema,
+    )
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
     const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
-    return arktypeWrap(describeWithMessage(unionStr(schemas), anyOfMessage), schema)
+    return arktypeWrap(describeWithMessage(unionStr(schemas, isArktype), anyOfMessage), schema)
   }
 
   if (schema.allOf) {
@@ -107,7 +127,7 @@ export function arktype(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => arktype(s, rootName, isArktype, options))
     if (!schemas.length) return arktypeWrap('"unknown"', { ...schema, nullable })
-    const baseResult = schemas.length === 1 ? schemas[0] : intersectionStr(schemas)
+    const baseResult = schemas.length === 1 ? schemas[0] : intersectionStr(schemas, isArktype)
     return arktypeWrap(baseResult, { ...schema, nullable })
   }
 
@@ -252,26 +272,53 @@ export function arktype(
       containsMessage ||
       minContainsMessage ||
       maxContainsMessage
+    // `and` / `narrow` on a definition that may name a scope-local alias must
+    // stay in definition syntax; the global `type(...)` cannot resolve it.
+    const andWith = (a: string, b: string) =>
+      isArktype && isArktypeDefinition(a) ? `[${a},"&",${b}]` : `type(${a}).and(type(${b}))`
+    const narrowWith = (a: string, fn: string) =>
+      isArktype && isArktypeDefinition(a)
+        ? `[${a},":",${fn}]`
+        : `${isArktypeDefinition(a) ? `type(${a})` : a}.narrow(${fn})`
+
     const lengthExpr = isFixedLength
       ? hasArrayMessage
-        ? `type(${base}).narrow((items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)}))`
-        : `type(${base}).and(type("unknown[] == ${minItems}"))`
+        ? narrowWith(
+            base,
+            `(items: unknown[], ctx) => items.length === ${minItems} || ctx.mustBe(${JSON.stringify(fixedItemsMessage ?? `must contain exactly ${minItems} items`)})`,
+          )
+        : andWith(base, `"unknown[] == ${minItems}"`)
       : typeof minItems === 'number' && typeof maxItems === 'number'
         ? hasArrayMessage
-          ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
-          : `type(${base}).and(type("${minItems} <= unknown[] <= ${maxItems}"))`
+          ? narrowWith(
+              narrowWith(
+                base,
+                `(items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
+              ),
+              `(items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
+            )
+          : andWith(base, `"${minItems} <= unknown[] <= ${maxItems}"`)
         : typeof minItems === 'number'
           ? hasArrayMessage
-            ? `type(${base}).narrow((items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)}))`
-            : `type(${base}).and(type("unknown[] >= ${minItems}"))`
+            ? narrowWith(
+                base,
+                `(items: unknown[], ctx) => items.length >= ${minItems} || ctx.mustBe(${JSON.stringify(minItemsMessage ?? `must contain at least ${minItems} items`)})`,
+              )
+            : andWith(base, `"unknown[] >= ${minItems}"`)
           : typeof maxItems === 'number'
             ? hasArrayMessage
-              ? `type(${base}).narrow((items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)}))`
-              : `type(${base}).and(type("unknown[] <= ${maxItems}"))`
+              ? narrowWith(
+                  base,
+                  `(items: unknown[], ctx) => items.length <= ${maxItems} || ctx.mustBe(${JSON.stringify(maxItemsMessage ?? `must contain at most ${maxItems} items`)})`,
+                )
+              : andWith(base, `"unknown[] <= ${maxItems}"`)
             : base
     const uniqueExpr =
       schema.uniqueItems === true
-        ? `${isQuoted(lengthExpr) ? `type(${lengthExpr})` : lengthExpr}.narrow((items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''})`
+        ? narrowWith(
+            lengthExpr,
+            `(items: unknown[], ctx) => new Set(items).size === items.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''}`,
+          )
         : lengthExpr
     const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
     const containsNarrows = ((): readonly string[] => {

@@ -20,14 +20,14 @@ const ValibotShape = v.variant('kind', [
   v.object({ kind: v.literal('rectangle'), width: v.number(), height: v.number() }),
 ])
 
-const EffectShape = EffectSchema.Union(
+const EffectShape = EffectSchema.Union([
   EffectSchema.Struct({ kind: EffectSchema.Literal('circle'), radius: EffectSchema.Number }),
   EffectSchema.Struct({
     kind: EffectSchema.Literal('rectangle'),
     width: EffectSchema.Number,
     height: EffectSchema.Number,
   }),
-)
+])
 
 const TypeboxShape = Type.Union([
   Type.Object({ kind: Type.Literal('circle'), radius: Type.Number() }),

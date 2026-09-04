@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 
 type _A = { readonly id: string; readonly type: 'B' | 'C'; readonly payload: _B | _C }
 
@@ -19,49 +19,43 @@ type _B = {
 
 type _C = { readonly type: 'C'; readonly entries: readonly _E[] }
 
-const E: Schema.Schema<_E> = Schema.partial(
-  Schema.Struct({
-    label: Schema.String,
-    reference: Schema.suspend(() => E),
-    flags: Schema.Array(Schema.String).pipe(
-      Schema.filter((items) => new Set(items).size === items.length),
-    ),
-    meta: Schema.Record({ key: Schema.String, value: Schema.String }),
-  }),
-)
+const E: Schema.Schema<_E> = Schema.Struct({
+  label: Schema.optional(Schema.String),
+  reference: Schema.optional(Schema.suspend(() => E)),
+  flags: Schema.optional(Schema.Array(Schema.String).check(Schema.isUnique())),
+  meta: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+})
 
 const D: Schema.Schema<_D> = Schema.Struct({
-  score: Schema.optionalWith(
-    Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(0), Schema.lessThanOrEqualTo(100)),
-    { default: () => 50 },
-  ),
-  extra: Schema.optional(
-    Schema.Union(
-      Schema.NullOr(Schema.Null),
-      Schema.suspend(() => E),
-    ),
-  ),
+  score: Schema.Number.check(
+    Schema.isInt(),
+    Schema.isGreaterThanOrEqualTo(0),
+    Schema.isLessThanOrEqualTo(100),
+  ).pipe(Schema.withDecodingDefault(Effect.succeed(50))),
+  extra: Schema.optional(Schema.Union([Schema.NullOr(Schema.Null), Schema.suspend(() => E)])),
 })
 
 const B: Schema.Schema<_B> = Schema.Struct({
   type: Schema.Literal('B'),
   name: Schema.String,
-  detail: Schema.extend(
-    Schema.suspend(() => D),
-    Schema.Struct({ comment: Schema.optionalWith(Schema.String, { default: () => 'N/A' }) }),
+  detail: Schema.suspend(() => D).check(
+    Schema.makeFilter((v) =>
+      Schema.is(
+        Schema.Struct({
+          comment: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed('N/A'))),
+        }),
+      )(v),
+    ),
   ),
 })
 
 const C: Schema.Schema<_C> = Schema.Struct({
   type: Schema.Literal('C'),
-  entries: Schema.Array(Schema.suspend(() => E)).pipe(Schema.minItems(1)),
+  entries: Schema.Array(Schema.suspend(() => E)).check(Schema.isMinLength(1)),
 })
 
 export const A: Schema.Schema<_A> = Schema.Struct({
-  id: Schema.UUID,
-  type: Schema.Literal('B', 'C'),
-  payload: Schema.Union(
-    Schema.suspend(() => B),
-    Schema.suspend(() => C),
-  ),
+  id: Schema.String.check(Schema.isUUID()),
+  type: Schema.Literals(['B', 'C']),
+  payload: Schema.Union([Schema.suspend(() => B), Schema.suspend(() => C)]),
 })

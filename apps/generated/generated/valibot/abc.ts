@@ -6,8 +6,8 @@ type _C = string
 
 type _B = { c?: _C }
 
-const C: v.GenericSchema<_C> = v.string()
+const C: v.GenericSchema<unknown, _C> = v.string()
 
-const B: v.GenericSchema<_B> = v.partial(v.object({ c: v.lazy(() => C) }))
+const B: v.GenericSchema<unknown, _B> = v.partial(v.object({ c: v.lazy(() => C) }))
 
-export const A: v.GenericSchema<_A> = v.partial(v.object({ b: v.lazy(() => B) }))
+export const A: v.GenericSchema<unknown, _A> = v.partial(v.object({ b: v.lazy(() => B) }))

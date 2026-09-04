@@ -4,4 +4,4 @@ packages:
   - fixtures/*
 allowBuilds:
   esbuild: false
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: false

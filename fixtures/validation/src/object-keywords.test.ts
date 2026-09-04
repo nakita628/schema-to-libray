@@ -60,7 +60,7 @@ describe('minProperties: at least 2 keys', () => {
     const E = EffectSchema.Struct({
       a: EffectSchema.optional(EffectSchema.String),
       b: EffectSchema.optional(EffectSchema.String),
-    }).pipe(EffectSchema.filter((o: Record<string, unknown>) => Object.keys(o).length >= 2))
+    }).check(EffectSchema.makeFilter((o) => Object.keys(o).length >= 2))
     const isValid = EffectSchema.is(E)
     it.each(cases)('%s', (_, input, expected) => {
       expect(isValid(input)).toBe(expected)
@@ -228,9 +228,7 @@ describe('dependentRequired: card → billing', () => {
     const E = EffectSchema.Struct({
       card: EffectSchema.optional(EffectSchema.String),
       billing: EffectSchema.optional(EffectSchema.String),
-    }).pipe(
-      EffectSchema.filter((o: Record<string, unknown>) => !('card' in o) || 'billing' in o),
-    )
+    }).check(EffectSchema.makeFilter((o) => !('card' in o) || 'billing' in o))
     const isValid = EffectSchema.is(E)
     it.each(cases)('%s', (_, input, expected) => {
       expect(isValid(input)).toBe(expected)

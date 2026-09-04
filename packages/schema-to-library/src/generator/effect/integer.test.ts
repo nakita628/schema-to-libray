@@ -5,32 +5,35 @@ import { integer } from './integer.js'
 
 describe('effect integer', () => {
   it.concurrent.each<[JSONSchema, string]>([
-    [{ type: 'integer' }, 'Schema.Number.pipe(Schema.int())'],
+    [{ type: 'integer' }, 'Schema.Number.check(Schema.isInt())'],
     [
       { type: 'integer', minimum: 0 },
-      'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0))',
+      'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(0))',
     ],
     [
       { type: 'integer', maximum: 100 },
-      'Schema.Number.pipe(Schema.int(),Schema.lessThanOrEqualTo(100))',
+      'Schema.Number.check(Schema.isInt(),Schema.isLessThanOrEqualTo(100))',
     ],
     [
       { type: 'integer', minimum: 0, maximum: 100 },
-      'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0),Schema.lessThanOrEqualTo(100))',
+      'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(0),Schema.isLessThanOrEqualTo(100))',
     ],
-    [{ type: 'integer', multipleOf: 2 }, 'Schema.Number.pipe(Schema.int(),Schema.multipleOf(2))'],
-    [{ type: 'integer', format: 'bigint' }, 'Schema.BigIntFromSelf'],
+    [
+      { type: 'integer', multipleOf: 2 },
+      'Schema.Number.check(Schema.isInt(),Schema.isMultipleOf(2))',
+    ],
+    [{ type: 'integer', format: 'bigint' }, 'Schema.BigInt'],
     [
       { type: 'integer', format: 'bigint', minimum: 0 },
-      'Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(BigInt(0)))',
+      'Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(0)))',
     ],
     [
       { type: 'integer', exclusiveMinimum: 0 },
-      'Schema.Number.pipe(Schema.int(),Schema.greaterThan(0))',
+      'Schema.Number.check(Schema.isInt(),Schema.isGreaterThan(0))',
     ],
     [
       { type: 'integer', exclusiveMaximum: 100 },
-      'Schema.Number.pipe(Schema.int(),Schema.lessThan(100))',
+      'Schema.Number.check(Schema.isInt(),Schema.isLessThan(100))',
     ],
   ])('integer(%o) → %s', (input, expected) => {
     expect(integer(input)).toBe(expected)
@@ -40,7 +43,7 @@ describe('effect integer', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { type: 'integer', 'x-error-message': 'Must be integer' },
-        'Schema.Number.pipe(Schema.int({message:()=>"Must be integer"}))',
+        'Schema.Number.check(Schema.isInt({message:"Must be integer"}))',
       ],
       [
         {
@@ -48,7 +51,7 @@ describe('effect integer', () => {
           minimum: 0,
           'x-minimum-message': 'Must be non-negative',
         },
-        'Schema.Number.pipe(Schema.int(),Schema.greaterThanOrEqualTo(0,{message:()=>"Must be non-negative"}))',
+        'Schema.Number.check(Schema.isInt(),Schema.isGreaterThanOrEqualTo(0,{message:"Must be non-negative"}))',
       ],
       [
         {
@@ -56,7 +59,7 @@ describe('effect integer', () => {
           maximum: 100,
           'x-maximum-message': 'Must be at most 100',
         },
-        'Schema.Number.pipe(Schema.int(),Schema.lessThanOrEqualTo(100,{message:()=>"Must be at most 100"}))',
+        'Schema.Number.check(Schema.isInt(),Schema.isLessThanOrEqualTo(100,{message:"Must be at most 100"}))',
       ],
       [
         {
@@ -64,7 +67,7 @@ describe('effect integer', () => {
           multipleOf: 5,
           'x-multipleOf-message': 'Must be a multiple of 5',
         },
-        'Schema.Number.pipe(Schema.int(),Schema.multipleOf(5,{message:()=>"Must be a multiple of 5"}))',
+        'Schema.Number.check(Schema.isInt(),Schema.isMultipleOf(5,{message:"Must be a multiple of 5"}))',
       ],
       [
         {
@@ -74,7 +77,7 @@ describe('effect integer', () => {
           'x-error-message': 'Must be bigint',
           'x-minimum-message': 'Must be non-negative',
         },
-        'Schema.BigIntFromSelf.pipe(Schema.greaterThanOrEqualToBigInt(BigInt(0),{message:()=>"Must be non-negative"})).annotations({message:()=>"Must be bigint"})',
+        'Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(0),{message:"Must be non-negative"})).annotate({message:"Must be bigint"})',
       ],
     ])('integer(%o) → %s', (input, expected) => {
       expect(integer(input)).toBe(expected)

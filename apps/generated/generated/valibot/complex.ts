@@ -10,7 +10,7 @@ type _B = { type: 'B'; name: string; detail: _D & { comment?: string } }
 
 type _C = { type: 'C'; entries: _E[] }
 
-const E: v.GenericSchema<_E> = v.partial(
+const E: v.GenericSchema<unknown, _E> = v.partial(
   v.object({
     label: v.string(),
     reference: v.lazy(() => E),
@@ -22,12 +22,12 @@ const E: v.GenericSchema<_E> = v.partial(
   }),
 )
 
-const D: v.GenericSchema<_D> = v.object({
+const D: v.GenericSchema<unknown, _D> = v.object({
   score: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)), 50),
   extra: v.optional(v.union([v.nullable(v.null()), v.lazy(() => E)])),
 })
 
-const B: v.GenericSchema<_B> = v.object({
+const B: v.GenericSchema<unknown, _B> = v.object({
   type: v.literal('B'),
   name: v.string(),
   detail: v.intersect([
@@ -36,12 +36,12 @@ const B: v.GenericSchema<_B> = v.object({
   ]),
 })
 
-const C: v.GenericSchema<_C> = v.object({
+const C: v.GenericSchema<unknown, _C> = v.object({
   type: v.literal('C'),
   entries: v.pipe(v.array(v.lazy(() => E)), v.minLength(1)),
 })
 
-export const A: v.GenericSchema<_A> = v.object({
+export const A: v.GenericSchema<unknown, _A> = v.object({
   id: v.pipe(v.string(), v.uuid()),
   type: v.picklist(['B', 'C']),
   payload: v.union([v.lazy(() => B), v.lazy(() => C)]),

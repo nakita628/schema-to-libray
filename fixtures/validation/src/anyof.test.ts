@@ -12,7 +12,7 @@ const ZodStringOrNumber = z.union([z.string(), z.number()], {
 
 const ValibotStringOrNumber = v.union([v.string(), v.number()])
 
-const EffectStringOrNumber = EffectSchema.Union(EffectSchema.String, EffectSchema.Number)
+const EffectStringOrNumber = EffectSchema.Union([EffectSchema.String, EffectSchema.Number])
 
 const TypeboxStringOrNumber = Type.Union([Type.String(), Type.Number()])
 

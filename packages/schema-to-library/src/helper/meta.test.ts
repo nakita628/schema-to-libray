@@ -155,13 +155,13 @@ describe('typeboxWrap (default/nullable only)', () => {
 })
 
 describe('effectWrap with metadata', () => {
-  it('emits .annotations() for description', () => {
+  it('emits .annotate() for description', () => {
     expect(effectWrap('Schema.String', { description: 'a name' })).toBe(
-      'Schema.String.annotations({description:"a name"})',
+      'Schema.String.annotate({description:"a name"})',
     )
   })
 
-  it('routes non-standard fields under jsonSchema', () => {
+  it('keeps readOnly / writeOnly native and routes the rest under jsonSchema* keys', () => {
     expect(
       effectWrap('Schema.Number', {
         deprecated: true,
@@ -169,29 +169,29 @@ describe('effectWrap with metadata', () => {
         readOnly: true,
       } satisfies JSONSchema),
     ).toBe(
-      'Schema.Number.annotations({jsonSchema:{deprecated:true,externalDocs:{url:"https://ex.com"},readOnly:true}})',
+      'Schema.Number.annotate({jsonSchemaDeprecated:true,jsonSchemaExternalDocs:{url:"https://ex.com"},readOnly:true})',
     )
   })
 
-  it('routes examples through jsonSchema (loose, not Effect native examples)', () => {
+  it('routes examples through a loose key, not Effect native examples', () => {
     expect(effectWrap('Schema.String', { example: 'foo' })).toBe(
-      'Schema.String.annotations({jsonSchema:{examples:["foo"]}})',
+      'Schema.String.annotate({jsonSchemaExamples:["foo"]})',
     )
   })
 
-  it('keeps description native and examples under jsonSchema when both present', () => {
+  it('keeps description native and examples loose when both present', () => {
     expect(
       effectWrap('Schema.String', { description: 'a name', example: 'foo' } satisfies JSONSchema),
-    ).toBe('Schema.String.annotations({description:"a name",jsonSchema:{examples:["foo"]}})')
+    ).toBe('Schema.String.annotate({description:"a name",jsonSchemaExamples:["foo"]})')
   })
 
-  it('routes an incomplete object example through jsonSchema so generation does not type-check it', () => {
+  it('routes an incomplete object example loosely so generation does not type-check it', () => {
     // A spec example missing a required field must not break the generated Struct
-    // (OpenAPI examples are loose doc metadata; Effect's native `examples` would
-    // type-check them against the struct type and fail).
+    // (OpenAPI examples are loose doc metadata; Effect's native `examples` is
+    // typed `ReadonlyArray<T>` and would type-check them against the struct).
     expect(
       effectWrap('Schema.Struct({a:Schema.String})', { example: {} } satisfies JSONSchema),
-    ).toBe('Schema.Struct({a:Schema.String}).annotations({jsonSchema:{examples:[{}]}})')
+    ).toBe('Schema.Struct({a:Schema.String}).annotate({jsonSchemaExamples:[{}]})')
   })
 })
 

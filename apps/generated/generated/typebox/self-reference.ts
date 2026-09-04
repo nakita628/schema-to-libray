@@ -1,8 +1,12 @@
 import { Type, type Static } from 'typebox'
 
-const Node = Type.Object(
-  { name: Type.String(), children: Type.Optional(Type.Array(Node)) },
-  { additionalProperties: false },
+export const Schema = Type.Cyclic(
+  {
+    Node: Type.Object(
+      { name: Type.String(), children: Type.Optional(Type.Array(Type.Ref('Node'))) },
+      { additionalProperties: false },
+    ),
+    Schema: Type.Ref('Node'),
+  },
+  'Schema',
 )
-
-export const Schema = Node

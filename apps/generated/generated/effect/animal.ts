@@ -9,13 +9,13 @@ type _Animal = {
 }
 
 const Animal: Schema.Schema<_Animal> = Schema.Struct({
-  name: Schema.String.annotations({ description: 'The name of the animal' }),
-  species: Schema.String.annotations({ description: 'The species of the animal' }),
+  name: Schema.String.annotate({ description: 'The name of the animal' }),
+  species: Schema.String.annotate({ description: 'The species of the animal' }),
   offspring: Schema.optional(
-    Schema.Array(Schema.suspend(() => Animal)).annotations({
-      description: 'List of child animals',
-    }),
+    Schema.Array(Schema.suspend(() => Animal)).annotate({ description: 'List of child animals' }),
   ),
-}).annotations({ description: 'An animal that can have offspring' })
+})
+  .annotate({ parseOptions: { onExcessProperty: 'error' } })
+  .annotate({ description: 'An animal that can have offspring' })
 
 export const Schema_: Schema.Schema<_Schema_> = Schema.suspend(() => Animal)

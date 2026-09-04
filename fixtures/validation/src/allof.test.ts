@@ -16,10 +16,10 @@ const ValibotCombined = v.intersect([
   v.object({ age: v.number() }),
 ])
 
-const EffectCombined = EffectSchema.extend(
-  EffectSchema.Struct({ name: EffectSchema.String }),
-  EffectSchema.Struct({ age: EffectSchema.Number }),
-)
+const EffectCombined = EffectSchema.Struct({
+  ...EffectSchema.Struct({ name: EffectSchema.String }).fields,
+  ...EffectSchema.Struct({ age: EffectSchema.Number }).fields,
+})
 
 const TypeboxCombined = Type.Intersect([
   Type.Object({ name: Type.String() }),

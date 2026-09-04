@@ -6,28 +6,31 @@ import { string } from './string.js'
 describe('effect string', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [{ type: 'string' }, 'Schema.String'],
-    [{ type: 'string', format: 'uuid' }, 'Schema.UUID'],
+    [{ type: 'string', format: 'uuid' }, 'Schema.String.check(Schema.isUUID())'],
     [
       { type: 'string', format: 'email' },
-      'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/))',
+      'Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/))',
     ],
-    [{ type: 'string', format: 'uri' }, 'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))'],
+    [{ type: 'string', format: 'uri' }, 'Schema.String.check(Schema.isPattern(/^https?:\\/\\//))'],
     [
       { type: 'string', format: 'date' },
-      'Schema.String.pipe(Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}$/))',
+      'Schema.String.check(Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}$/))',
     ],
     [
       { type: 'string', format: 'date-time' },
-      'Schema.String.pipe(Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/))',
+      'Schema.String.check(Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/))',
     ],
-    [{ type: 'string', minLength: 1 }, 'Schema.String.pipe(Schema.minLength(1))'],
-    [{ type: 'string', maxLength: 100 }, 'Schema.String.pipe(Schema.maxLength(100))'],
+    [{ type: 'string', minLength: 1 }, 'Schema.String.check(Schema.isMinLength(1))'],
+    [{ type: 'string', maxLength: 100 }, 'Schema.String.check(Schema.isMaxLength(100))'],
     [
       { type: 'string', minLength: 3, maxLength: 20 },
-      'Schema.String.pipe(Schema.minLength(3),Schema.maxLength(20))',
+      'Schema.String.check(Schema.isMinLength(3),Schema.isMaxLength(20))',
     ],
-    [{ type: 'string', minLength: 5, maxLength: 5 }, 'Schema.String.pipe(Schema.length(5))'],
-    [{ type: 'string', pattern: '^[a-z]+$' }, 'Schema.String.pipe(Schema.pattern(/^[a-z]+$/))'],
+    [
+      { type: 'string', minLength: 5, maxLength: 5 },
+      'Schema.String.check(Schema.isLengthBetween(5,5))',
+    ],
+    [{ type: 'string', pattern: '^[a-z]+$' }, 'Schema.String.check(Schema.isPattern(/^[a-z]+$/))'],
   ])('string(%o) → %s', (input, expected) => {
     expect(string(input)).toBe(expected)
   })
@@ -36,11 +39,11 @@ describe('effect string', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { type: 'string', 'x-error-message': 'Name is required' },
-        'Schema.String.annotations({message:()=>"Name is required"})',
+        'Schema.String.annotate({message:"Name is required"})',
       ],
       [
         { type: 'string', format: 'uuid', 'x-error-message': 'Invalid UUID' },
-        'Schema.UUID.annotations({message:()=>"Invalid UUID"})',
+        'Schema.String.check(Schema.isUUID()).annotate({message:"Invalid UUID"})',
       ],
       [
         {
@@ -48,7 +51,7 @@ describe('effect string', () => {
           pattern: '^[a-z]+$',
           'x-pattern-message': 'Only lowercase letters',
         },
-        'Schema.String.pipe(Schema.pattern(/^[a-z]+$/,{message:()=>"Only lowercase letters"}))',
+        'Schema.String.check(Schema.isPattern(/^[a-z]+$/,{message:"Only lowercase letters"}))',
       ],
       [
         {
@@ -58,7 +61,7 @@ describe('effect string', () => {
           'x-minLength-message': 'Min 3 chars',
           'x-maxLength-message': 'Max 20 chars',
         },
-        'Schema.String.pipe(Schema.minLength(3,{message:()=>"Min 3 chars"}),Schema.maxLength(20,{message:()=>"Max 20 chars"}))',
+        'Schema.String.check(Schema.isMinLength(3,{message:"Min 3 chars"}),Schema.isMaxLength(20,{message:"Max 20 chars"}))',
       ],
       [
         {
@@ -68,7 +71,7 @@ describe('effect string', () => {
           'x-minLength-message': 'Must be exactly 10 characters',
           'x-maxLength-message': 'Must be exactly 10 characters',
         },
-        'Schema.String.pipe(Schema.length(10,{message:()=>"Must be exactly 10 characters"}))',
+        'Schema.String.check(Schema.isLengthBetween(10,10,{message:"Must be exactly 10 characters"}))',
       ],
       [
         {
@@ -77,7 +80,7 @@ describe('effect string', () => {
           'x-error-message': 'Invalid string',
           'x-minLength-message': 'Min 3 chars',
         },
-        'Schema.String.pipe(Schema.minLength(3,{message:()=>"Min 3 chars"})).annotations({message:()=>"Invalid string"})',
+        'Schema.String.check(Schema.isMinLength(3,{message:"Min 3 chars"})).annotate({message:"Invalid string"})',
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)
@@ -87,20 +90,20 @@ describe('effect string', () => {
   describe('FORMAT_MAP with length constraints', () => {
     it('should handle uuid with minLength', () => {
       expect(string({ type: 'string', format: 'uuid', minLength: 1 })).toBe(
-        'Schema.UUID.pipe(Schema.minLength(1))',
+        'Schema.String.check(Schema.isUUID(),Schema.isMinLength(1))',
       )
     })
 
     it('should handle ulid with minLength and maxLength', () => {
       expect(string({ type: 'string', format: 'ulid', minLength: 1, maxLength: 50 })).toBe(
-        'Schema.ULID.pipe(Schema.minLength(1),Schema.maxLength(50))',
+        'Schema.String.check(Schema.isULID(),Schema.isMinLength(1),Schema.isMaxLength(50))',
       )
     })
 
     it('should handle uuid with length and error message', () => {
       expect(
         string({ type: 'string', format: 'uuid', minLength: 1, 'x-error-message': 'Bad' }),
-      ).toBe('Schema.UUID.pipe(Schema.minLength(1)).annotations({message:()=>"Bad"})')
+      ).toBe('Schema.String.check(Schema.isUUID(),Schema.isMinLength(1)).annotate({message:"Bad"})')
     })
   })
 
@@ -109,19 +112,19 @@ describe('effect string', () => {
       expect(
         string({ type: 'string', format: 'email', 'x-pattern-message': 'Invalid email' }),
       ).toBe(
-        'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/,{message:()=>"Invalid email"}))',
+        'Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/,{message:"Invalid email"}))',
       )
     })
 
     it('should handle format without pattern message', () => {
       expect(string({ type: 'string', format: 'uri' })).toBe(
-        'Schema.String.pipe(Schema.pattern(/^https?:\\/\\//))',
+        'Schema.String.check(Schema.isPattern(/^https?:\\/\\//))',
       )
     })
 
     it('should handle email with length constraints', () => {
       expect(string({ type: 'string', format: 'email', minLength: 5, maxLength: 100 })).toBe(
-        'Schema.String.pipe(Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),Schema.minLength(5),Schema.maxLength(100))',
+        'Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),Schema.isMinLength(5),Schema.isMaxLength(100))',
       )
     })
   })
@@ -132,11 +135,15 @@ describe('effect string', () => {
     })
 
     it('emits Schema.Lowercase for x-toLowerCase', () => {
-      expect(string({ type: 'string', 'x-toLowerCase': true })).toBe('Schema.Lowercase')
+      expect(string({ type: 'string', 'x-toLowerCase': true })).toBe(
+        'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toLowerCase()))',
+      )
     })
 
     it('emits Schema.Uppercase for x-toUpperCase', () => {
-      expect(string({ type: 'string', 'x-toUpperCase': true })).toBe('Schema.Uppercase')
+      expect(string({ type: 'string', 'x-toUpperCase': true })).toBe(
+        'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toUpperCase()))',
+      )
     })
 
     it('falls back to Schema.String for x-normalize (no native Effect API)', () => {
@@ -145,25 +152,25 @@ describe('effect string', () => {
 
     it('emits Schema.startsWith filter for x-startsWith', () => {
       expect(string({ type: 'string', 'x-startsWith': 'https://' })).toBe(
-        'Schema.String.pipe(Schema.startsWith("https://"))',
+        'Schema.String.check(Schema.isStartsWith("https://"))',
       )
     })
 
     it('emits Schema.endsWith filter for x-endsWith', () => {
       expect(string({ type: 'string', 'x-endsWith': '.com' })).toBe(
-        'Schema.String.pipe(Schema.endsWith(".com"))',
+        'Schema.String.check(Schema.isEndsWith(".com"))',
       )
     })
 
     it('emits Schema.includes filter for x-includes', () => {
       expect(string({ type: 'string', 'x-includes': '/api/' })).toBe(
-        'Schema.String.pipe(Schema.includes("/api/"))',
+        'Schema.String.check(Schema.isIncludes("/api/"))',
       )
     })
 
     it('combines transform base with content filters', () => {
       expect(string({ type: 'string', 'x-trim': true, 'x-startsWith': 'http' })).toBe(
-        'Schema.Trim.pipe(Schema.startsWith("http"))',
+        'Schema.Trim.check(Schema.isStartsWith("http"))',
       )
     })
   })

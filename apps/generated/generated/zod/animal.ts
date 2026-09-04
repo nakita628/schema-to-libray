@@ -11,7 +11,7 @@ const Animal: z.ZodType<_Animal> = z
     offspring: z
       .array(z.lazy(() => Animal))
       .meta({ description: 'List of child animals' })
-      .optional(),
+      .exactOptional(),
   })
   .meta({ description: 'An animal that can have offspring' })
 
