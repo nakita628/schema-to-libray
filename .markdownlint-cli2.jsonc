@@ -1,0 +1,17 @@
+{
+  // `vp fmt` does not touch Markdown, so structure is this linter's job and wrapping
+  // stays a human judgement: MD013 is off because the README's feature bullets and
+  // reference tables are deliberately single long lines.
+  "globs": ["**/*.md", "**/*.mdc"],
+  "ignores": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    // A symlink to packages/schema-to-library/README.md, which is linted directly.
+    "README.md",
+  ],
+  "config": {
+    "default": true,
+    "MD013": false,
+  },
+}

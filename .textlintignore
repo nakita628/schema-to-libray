@@ -1,0 +1,6 @@
+node_modules
+**/node_modules/**
+**/dist/**
+**/coverage/**
+# A symlink to packages/schema-to-library/README.md, which is linted directly.
+/README.md

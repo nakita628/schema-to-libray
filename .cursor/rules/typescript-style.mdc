@@ -26,7 +26,7 @@ alone will not tell you.
 
 - **Relative imports keep the `.js` extension** (`./string.js`) — NodeNext resolution
   needs it at runtime and `tsc` will not tell you.
-- **No default exports**, and no `require`. ESM only, `node:` protocol for builtins.
+- **No default exports**, and no `require`. ESM only, `node:` protocol for built-in modules.
 - **No escape hatches**: no `any`, no non-null assertion, and `assertionStyle: 'never'` —
   `x as Y` does not compile here. Narrow with a type guard instead.
 - **Failures are values, not throws**, at the API boundary: `parseSchemaFile` and `fmt`

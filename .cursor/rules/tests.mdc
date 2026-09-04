@@ -35,8 +35,8 @@ or `x-*` extension gets a row per target library it affects.
   contains the fragment you looked for.
 - `it`, not `test` (`vitest/consistent-test-it`). No `expect` outside a test case.
 - Snapshots are a last resort and stay small (`vitest/no-large-snapshots`); the golden
-  files in `fixtures/` are this repo's snapshot mechanism.
-- Test files may cast and use `any` — the type-safety lint rules are relaxed for
+  files in `fixtures/` are this repository's snapshot mechanism.
+- Test files may cast and use `any` — the type-safety linter rules are relaxed for
   `**/*.test.ts` only. Production code has no such exemption.
 
 ## Running

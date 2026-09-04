@@ -1,0 +1,27 @@
+{
+  "plugins": {
+    "@textlint/markdown": {
+      "extensions": [".mdc"]
+    }
+  },
+  "filters": {
+    "comments": true
+  },
+  "rules": {
+    "terminology": {
+      "defaultTerms": true,
+      "terms": [
+        "ArkType",
+        "TypeBox",
+        "Valibot",
+        "Zod",
+        "Effect Schema",
+        "JSON Schema",
+        "OpenAPI",
+        "Renovate",
+        "Cursor"
+      ],
+      "exclude": ["readme(s)?", "regexp?(s)?"]
+    }
+  }
+}

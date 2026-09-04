@@ -1,0 +1,59 @@
+# Project vocabulary for cspell. One word per line, lowercase unless the word is
+# only ever written capitalised. Add a word here when it is a real name, API or
+# term of art; fix the text instead when cspell is right.
+
+# Target libraries and their APIs
+arktype
+cidrv
+elysia
+nonpositive
+picklist
+pipeable
+prefault
+stringbool
+typebox
+uuidv
+valibot
+
+# Toolchain and vendors
+apidevtools
+llms
+openssf
+oxfmt
+oxlint
+sinclairzx
+textlint
+textlintrc
+tsdown
+vite
+vitest
+
+# Project and author names
+hekireki
+nakita
+takibi
+
+# Terms of art used in the docs and source
+addl
+codegen
+dirents
+msgpackr
+arities
+combinators
+downstreams
+injectively
+metavar
+negotiables
+typeless
+
+# Test data
+cafue
+catus
+familiaris
+felis
+iage
+shiba
+sname
+tarou
+русский
+схема

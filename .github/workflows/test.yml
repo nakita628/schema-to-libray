@@ -24,6 +24,10 @@ jobs:
       # to each workspace by `vp run -r check`.
       - run: vp fmt --check
 
+      # Prose and metadata: Markdown structure, terminology, spelling and secret
+      # scanning. Nothing here needs a build, so it fails fast.
+      - run: vp run lint:docs
+
       - run: vp run -r check
 
       - run: vp run schema-to-library#build

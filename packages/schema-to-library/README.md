@@ -4,7 +4,7 @@
 
 ## Features
 
-- **Five targets from one document** — [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Effect Schema](https://effect.website/docs/schema/introduction/), [TypeBox](https://github.com/sinclairzx81/typebox) and [ArkType](https://arktype.io/), each written in that library's own idiom rather than a lowest common denominator
+- **Five targets from one document** — [Zod](https://zod.dev/), [Valibot](https://valibot.dev/), [Effect Schema](https://effect.website/docs/v4/schema/introduction), [TypeBox](https://github.com/sinclairzx81/typebox) and [ArkType](https://arktype.io/), each written in that library's own idiom rather than a lowest common denominator
 - **The whole vocabulary** — [Draft 2020-12](https://json-schema.org/draft/2020-12/json-schema-core) through Draft-04: combinators (`allOf` / `anyOf` / `oneOf` / `not`), conditionals (`if` / `then` / `else`), `$defs` / `definitions`, `prefixItems`, `contains`, `patternProperties`, `dependentRequired` / `dependentSchemas`, `unevaluated*`
 - **Recursive and circular `$ref`** — self-references and mutual cycles become `z.lazy` / `v.lazy` / `Schema.suspend` / `Type.Cyclic` / `scope`, with the type declaration each library needs to close the loop
 - **External `$ref`** — resolved and bundled through [json-schema-ref-parser](https://github.com/APIDevTools/json-schema-ref-parser), so a document split across files generates as one
@@ -36,7 +36,7 @@ npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 
 `schema-to-zod --help`:
 
-```
+```text
 DESCRIPTION
   Generate Zod schemas from a JSON Schema document
 
@@ -118,7 +118,7 @@ export const User = v.object({
 })
 ```
 
-#### [Effect Schema](https://effect.website/docs/schema/introduction/)
+#### [Effect Schema](https://effect.website/docs/v4/schema/introduction)
 
 ```ts
 import { Schema } from 'effect'
@@ -497,13 +497,13 @@ the schema; for Valibot it is a **pipe action** added to `v.pipe(...)`. The valu
 emitted verbatim, so name its callback parameter the way that library does — see
 [Callback naming](#callback-naming).
 
-| Library                                                           | Extensions                          | The value is                                |
-| ----------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
-| [Zod](https://zod.dev/)                                           | `x-refine`, `x-transform`, `x-pipe` | a chain fragment: `.refine(...)`            |
-| [Zod](https://zod.dev/)                                           | `x-codec`, `x-preprocess`           | a whole expression that replaces the schema |
-| [Valibot](https://valibot.dev/)                                   | `x-check`, `x-transform`, `x-pipe`  | a pipe action: `v.check(...)`               |
-| [Effect Schema](https://effect.website/docs/schema/introduction/) | `x-filter`, `x-transform`, `x-pipe` | a chain fragment: `.check(...)`             |
-| [ArkType](https://arktype.io/)                                    | `x-narrow`, `x-morph`, `x-pipe`     | a chain fragment: `.narrow(...)`            |
+| Library                                                             | Extensions                          | The value is                                |
+| ------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
+| [Zod](https://zod.dev/)                                             | `x-refine`, `x-transform`, `x-pipe` | a chain fragment: `.refine(...)`            |
+| [Zod](https://zod.dev/)                                             | `x-codec`, `x-preprocess`           | a whole expression that replaces the schema |
+| [Valibot](https://valibot.dev/)                                     | `x-check`, `x-transform`, `x-pipe`  | a pipe action: `v.check(...)`               |
+| [Effect Schema](https://effect.website/docs/v4/schema/introduction) | `x-filter`, `x-transform`, `x-pipe` | a chain fragment: `.check(...)`             |
+| [ArkType](https://arktype.io/)                                      | `x-narrow`, `x-morph`, `x-pipe`     | a chain fragment: `.narrow(...)`            |
 
 ```ts
 schemaToZod(schema, { unsafeCodeExtensions: true })

@@ -47,7 +47,7 @@ vp run schema-to-library#build
 vp run @fixtures/zod#generate      # and valibot / effect / typebox / arktype
 ```
 
-`fmt.ignorePatterns` excludes `fixtures/**` from repo formatting on purpose: those bytes
+`fmt.ignorePatterns` excludes `fixtures/**` from repository formatting on purpose: those bytes
 come from the generators' own oxfmt pass, and formatting them here would make the golden
 tests fail.
 

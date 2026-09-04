@@ -1,0 +1,17 @@
+{
+  "plugins": {
+    "@textlint/markdown": {
+      "extensions": [".mdc"]
+    }
+  },
+  "filters": {
+    "comments": true
+  },
+  "rules": {
+    "no-dead-link": {
+      "checkRelative": false,
+      "retry": 2,
+      "concurrency": 4
+    }
+  }
+}

@@ -20,12 +20,12 @@ generated files against the real library.
 | `fixtures/validation`, `fixtures/elysia` | runtime tests: the emitted schemas must actually accept/reject data |
 | `apps/generated` | end-to-end smoke: runs the built CLIs over `apps/generated/schema/*` and type-checks the result |
 
-`README.md` at the repo root is a symlink to `@packages/schema-to-library/README.md`;
+`README.md` at the repository root is a symlink to `@packages/schema-to-library/README.md`;
 there is one README, and it is the user-facing documentation.
 
 ## Commands
 
-The toolchain is [Vite+](https://vite.plus/) (`vp`), not npm scripts. `-r` is recursive
+The toolchain is [Vite+](https://viteplus.dev/) (`vp`), not npm scripts. `-r` is recursive
 over the workspace, `pkg#task` targets one workspace.
 
 ```bash
@@ -33,10 +33,11 @@ vp run -r check                    # format + lint + typecheck, every workspace
 vp fmt                             # format only (vp fmt --check in CI)
 vp run schema-to-library#build     # build dist/ — fixtures and apps/ import the built package
 vp run @fixtures/zod#generate      # regenerate one library's fixtures (needs a fresh build)
-vp test                            # fixture assertions, from the repo root config
+vp test                            # fixture assertions, from the root config
 vp run schema-to-library#test      # the library's own unit suite
 vp run schema-to-library#coverage  # 80% statements/branches/functions/lines, enforced
 vp run -r typecheck                # generated fixtures vs. the real target libraries
+vp run lint:docs                   # Markdown, terminology, spelling, secrets
 ```
 
 ## Non-negotiables

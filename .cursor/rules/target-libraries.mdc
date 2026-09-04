@@ -15,7 +15,7 @@ plan.
 | Zod | `zod@^4.5.4` | `import * as z from 'zod'` | [zod.dev](https://zod.dev/), [API](https://zod.dev/api) | [llms.txt](https://zod.dev/llms.txt), [llms-full.txt](https://zod.dev/llms-full.txt) |
 | Valibot | `valibot@^1.4.2` | `import * as v from 'valibot'` | [valibot.dev](https://valibot.dev/) | [llms.txt](https://valibot.dev/llms.txt), [llms-full.txt](https://valibot.dev/llms-full.txt), [llms-api.txt](https://valibot.dev/llms-api.txt) |
 | Effect Schema | `effect@^4.0.0-rc.112` | `import { Schema } from 'effect'` | [v4 Schema docs](https://effect.website/docs/v4/schema/introduction) | none published — read the v4 docs, not v3 answers |
-| TypeBox | `typebox@^1.3.25` | `import { Type, type Static } from 'typebox'` | [github.com/sinclairzx81/typebox](https://github.com/sinclairzx81/typebox) | none published — the README is the reference |
+| TypeBox | `typebox@^1.3.25` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — the README is the reference |
 | ArkType | `arktype@^2.2.3` | `import { type } from 'arktype'` | [arktype.io](https://arktype.io/) | [llms.txt](https://arktype.io/llms.txt) |
 
 The pins live in `@fixtures/zod/package.json` and its siblings — those are what
@@ -34,7 +34,7 @@ The pins live in `@fixtures/zod/package.json` and its siblings — those are wha
   and most material on the web is v3 — verify against
   `@fixtures/effect` output and the v4 docs before believing a v3 answer.
 
-## Version-specific traps that have bitten this repo
+## Version-specific traps that have bitten this repository
 
 - **Zod 4** exposes formats at the top level — `z.email()`, `z.uuid()`, `z.iso.datetime()`
   — not `z.string().email()`. Optional properties are emitted as `.exactOptional()`.
