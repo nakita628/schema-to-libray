@@ -151,11 +151,11 @@ export function string(schema: JSONSchema) {
   const coercePrefix = coerce && !format ? 'coerce.' : ''
   const formatOptions = format ? buildFormatOptions(schema) : []
   const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
-  const base = hash
-    ? hash
-    : format
+  const base =
+    hash ??
+    (format
       ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
-      : `z.${coercePrefix}string(${baseCallArg})`
+      : `z.${coercePrefix}string(${baseCallArg})`)
   const pattern = schema.pattern
     ? `.regex(${regexLiteral(schema.pattern)}${patternErrorPart})`
     : undefined

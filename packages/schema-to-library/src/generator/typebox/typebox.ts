@@ -1,4 +1,10 @@
-import { isDeepLocalPointer, typeboxWrap } from '../../helper/index.js'
+import {
+  isDeepLocalPointer,
+  isDefaultOnlyMember,
+  isNullTypeMember,
+  isShapelessMember,
+  typeboxWrap,
+} from '../../helper/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
@@ -62,10 +68,14 @@ function tbComp(
   return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
 }
 
+function messageOpt(msg: unknown): readonly string[] {
+  return typeof msg === 'string' ? [`errorMessage:${JSON.stringify(msg)}`] : []
+}
+
 export function typebox(
   schema: JSONSchema,
-  rootName: string = 'Schema',
-  isTypebox: boolean = false,
+  rootName = 'Schema',
+  isTypebox = false,
   options?: TypeboxOptions,
 ): string {
   const isStringWireParam =
@@ -121,11 +131,8 @@ export function typebox(
     return typeboxWrap(ref(schema), schema)
   }
 
-  const messageOpt = (msg: unknown): readonly string[] =>
-    typeof msg === 'string' ? [`errorMessage:${JSON.stringify(msg)}`] : []
-
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
+    if (schema.oneOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, options))
     return typeboxWrap(
       tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(schema['x-oneOf-message'])),
@@ -134,7 +141,7 @@ export function typebox(
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
+    if (schema.anyOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     return typeboxWrap(
@@ -144,20 +151,18 @@ export function typebox(
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return typeboxWrap(tbPrim('Type.Any', schema), schema)
-    const isNullType = (s: JSONSchema) =>
-      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    if (schema.allOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullType)
-    const defaultValue = schema.allOf.find(isDefaultOnly)?.default
+      schema.allOf.some(isNullTypeMember)
+    const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
-      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .filter((s) => !isShapelessMember(s))
       .map((s) => typebox(s, rootName, isTypebox, options))
-    if (!schemas.length) return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
+    if (schemas.length === 0) {
+      return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
+    }
     const baseResult =
       schemas.length === 1
         ? schemas[0]
@@ -211,8 +216,9 @@ export function typebox(
     )
   }
   if (schema.enum) return typeboxWrap(_enum(schema), schema)
-  if (schema.properties)
+  if (schema.properties) {
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
+  }
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return typeboxWrap(string(schema), schema)
@@ -267,39 +273,48 @@ export function typebox(
     // v3.0: per-keyword array messages aggregated into ajv-errors errorMessage.
     const arrayErrorMessageEntries: string[] = []
     const arrayErrorMessage = schema['x-error-message']
-    if (arrayErrorMessage)
+    if (arrayErrorMessage) {
       arrayErrorMessageEntries.push(`type:${JSON.stringify(arrayErrorMessage)}`)
+    }
     const arrayLengthMessage = schema['x-length-message']
     const arrayMinItemsMessage =
       schema['x-minItems-message'] ??
       (typeof schema.minItems === 'number' ? arrayLengthMessage : undefined)
-    if (arrayMinItemsMessage)
+    if (arrayMinItemsMessage) {
       arrayErrorMessageEntries.push(`minItems:${JSON.stringify(arrayMinItemsMessage)}`)
+    }
     const arrayMaxItemsMessage =
       schema['x-maxItems-message'] ??
       (typeof schema.maxItems === 'number' ? arrayLengthMessage : undefined)
-    if (arrayMaxItemsMessage)
+    if (arrayMaxItemsMessage) {
       arrayErrorMessageEntries.push(`maxItems:${JSON.stringify(arrayMaxItemsMessage)}`)
+    }
     const arrayUniqueItemsMessage = schema['x-uniqueItems-message']
-    if (arrayUniqueItemsMessage)
+    if (arrayUniqueItemsMessage) {
       arrayErrorMessageEntries.push(`uniqueItems:${JSON.stringify(arrayUniqueItemsMessage)}`)
+    }
     const arrayContainsMessage = schema['x-contains-message']
-    if (arrayContainsMessage)
+    if (arrayContainsMessage) {
       arrayErrorMessageEntries.push(`contains:${JSON.stringify(arrayContainsMessage)}`)
+    }
     const arrayMinContainsMessage = schema['x-minContains-message']
-    if (arrayMinContainsMessage)
+    if (arrayMinContainsMessage) {
       arrayErrorMessageEntries.push(`minContains:${JSON.stringify(arrayMinContainsMessage)}`)
+    }
     const arrayMaxContainsMessage = schema['x-maxContains-message']
-    if (arrayMaxContainsMessage)
+    if (arrayMaxContainsMessage) {
       arrayErrorMessageEntries.push(`maxContains:${JSON.stringify(arrayMaxContainsMessage)}`)
+    }
     const arrayItemsMessage = schema['x-items-message']
-    if (arrayItemsMessage)
+    if (arrayItemsMessage) {
       arrayErrorMessageEntries.push(`items:${JSON.stringify(arrayItemsMessage)}`)
+    }
     const arrayUnevaluatedItemsMessage = schema['x-unevaluatedItems-message']
-    if (arrayUnevaluatedItemsMessage)
+    if (arrayUnevaluatedItemsMessage) {
       arrayErrorMessageEntries.push(
         `unevaluatedItems:${JSON.stringify(arrayUnevaluatedItemsMessage)}`,
       )
+    }
     const arrayOpts = [
       typeof schema.minItems === 'number' ? `minItems:${schema.minItems}` : undefined,
       typeof schema.maxItems === 'number' ? `maxItems:${schema.maxItems}` : undefined,
@@ -311,8 +326,9 @@ export function typebox(
     return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
   }
 
-  if (types.includes('object'))
+  if (types.includes('object')) {
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
+  }
   if (types.includes('date')) {
     // TypeBox v1 dropped `Type.Date()` — it models JSON Schema only, and
     // `Date` has no JSON Schema type. The portable equivalent is a `Codec`
@@ -323,8 +339,9 @@ export function typebox(
       schema,
     )
   }
-  if (types.length === 1 && types[0] === 'null')
+  if (types.length === 1 && types[0] === 'null') {
     return typeboxWrap(tbPrim('Type.Null', schema), schema)
+  }
 
   return typeboxWrap(tbPrim('Type.Any', schema), schema)
 }

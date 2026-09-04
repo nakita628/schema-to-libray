@@ -1,6 +1,7 @@
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
-import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
+import { readCodeExtension } from './code-extensions.js'
+import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 
 /**
@@ -27,8 +28,9 @@ export function zodWrap(
       if (schema.format === 'bigint') return `BigInt(${value})`
       return `${value}`
     }
-    if (schema.type === 'date' && typeof value === 'string')
+    if (schema.type === 'date' && typeof value === 'string') {
       return `new Date(${JSON.stringify(value)})`
+    }
     return JSON.stringify(value)
   }
   const isNullable =

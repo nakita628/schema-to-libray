@@ -124,7 +124,7 @@ describe('code-extensions', () => {
 
     it('returns undefined for missing key', () => {
       expect(
-        readCodeExtension({} as import('../parser/index.js').JSONSchema, 'x-refine', {
+        readCodeExtension({}, 'x-refine', {
           unsafeCodeExtensions: true,
         }),
       ).toBeUndefined()

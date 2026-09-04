@@ -1,19 +1,16 @@
 #!/usr/bin/env node
+import { NodeRuntime, NodeServices } from '@effect/platform-node'
+import { Effect } from 'effect'
+
+import pkg from '../package.json' with { type: 'json' }
 import { cli } from './cli/index.js'
 import { schemaToArktype } from './generator/arktype/index.js'
 
-const HELP_TEXT = `Usage: schema-to-arktype <input.{json,yaml}> -o <output.ts>
-
-Options:
-  --export-type   include type export in output
-  --readonly      generate readonly types
-  -h, --help      display help for command`
-
-void cli(schemaToArktype, HELP_TEXT).then((result) => {
-  if (result?.ok) {
-    console.log(result.value)
-    return
-  }
-  console.error(result?.error)
-  process.exit(1)
-})
+NodeRuntime.runMain(
+  cli({
+    name: 'schema-to-arktype',
+    generator: schemaToArktype,
+    description: 'Generate ArkType schemas from a JSON Schema document',
+    version: pkg.version,
+  }).pipe(Effect.provide(NodeServices.layer)),
+)

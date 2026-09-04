@@ -1,4 +1,5 @@
 import type { JSONSchema } from '../parser/index.js'
+import { isRecord } from './value.js'
 
 export const ZOD_CODE_EXTENSION_KEYS = [
   'x-refine',
@@ -21,7 +22,7 @@ export const ALL_CODE_EXTENSION_KEYS: readonly string[] = [
     ...EFFECT_CODE_EXTENSION_KEYS,
     ...ARKTYPE_CODE_EXTENSION_KEYS,
   ]),
-].sort()
+].toSorted()
 
 const DENYLIST_PATTERN = new RegExp(
   [
@@ -70,14 +71,12 @@ export function isSafeCodeExtension(value: string): boolean {
  */
 export function findCodeExtensionKeysInSchema(schema: JSONSchema): readonly string[] {
   const found = new Set<string>()
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
   const stack: unknown[] = [schema]
   while (stack.length > 0) {
     const node = stack.pop()
     if (!isRecord(node)) continue
     for (const key of Object.keys(node)) {
-      if ((ALL_CODE_EXTENSION_KEYS as readonly string[]).includes(key)) found.add(key)
+      if (ALL_CODE_EXTENSION_KEYS.includes(key)) found.add(key)
     }
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) {
@@ -87,7 +86,7 @@ export function findCodeExtensionKeysInSchema(schema: JSONSchema): readonly stri
       }
     }
   }
-  return Array.from(found)
+  return [...found]
 }
 
 export const UNSAFE_GENERATED_MARKER = '// @generated-with-unsafe-code-extensions'
@@ -99,8 +98,6 @@ export const UNSAFE_GENERATED_MARKER = '// @generated-with-unsafe-code-extension
  * drop conditional validation silently; Valibot / Effect implement it.
  */
 export function hasIfThenElse(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
   const stack: unknown[] = [schema]
   while (stack.length > 0) {
     const node = stack.pop()
@@ -127,8 +124,6 @@ export const IF_THEN_ELSE_UNSUPPORTED_MARKER =
  * does not evaluate `not`. Callers use this to emit a known-limitation marker.
  */
 export function hasNotKeyword(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
   const stack: unknown[] = [schema]
   while (stack.length > 0) {
     const node = stack.pop()
@@ -162,7 +157,7 @@ export function readCodeExtension(
   options: CodeExtensionOptions | undefined,
 ): string | undefined {
   if (options?.unsafeCodeExtensions !== true) return undefined
-  const raw = (schema as { [k: string]: unknown })[key]
+  const raw = schema[key]
   if (typeof raw !== 'string') return undefined
   if (!isSafeCodeExtension(raw)) return undefined
   return raw

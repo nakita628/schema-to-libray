@@ -1,8 +1,12 @@
 import {
-  type CodeExtensionOptions,
   isDeepLocalPointer,
+  isDefaultOnlyMember,
+  isNullTypeMember,
+  isShapelessMember,
+  jsLiteral,
   valibotWrap as _valibotWrap,
 } from '../../helper/index.js'
+import type { CodeExtensionOptions } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -17,10 +21,24 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
+function prependPipe(prefix: readonly string[], inner: string): string {
+  if (inner.startsWith('v.pipe(') && inner.endsWith(')')) {
+    const body = inner.slice('v.pipe('.length, -1)
+    return `v.pipe(${prefix.join(',')},${body})`
+  }
+  return `v.pipe(${prefix.join(',')},${inner})`
+}
+
+function elementMessageWrap(inner: string, msg: string) {
+  const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+  const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+  return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${inner},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
+}
+
 export function valibot(
   schema: JSONSchema,
-  rootName: string = 'Schema',
-  isValibot: boolean = false,
+  rootName = 'Schema',
+  isValibot = false,
   options?: {
     openapi?: boolean
     readonly?: boolean
@@ -30,13 +48,6 @@ export function valibot(
 ): string {
   const isStringWireParam =
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
-  const prependPipe = (prefix: readonly string[], inner: string): string => {
-    if (inner.startsWith('v.pipe(') && inner.endsWith(')')) {
-      const body = inner.slice('v.pipe('.length, -1)
-      return `v.pipe(${prefix.join(',')},${body})`
-    }
-    return `v.pipe(${prefix.join(',')},${inner})`
-  }
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const valibotWrap = (
@@ -99,7 +110,7 @@ export function valibot(
   }
 
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return valibotWrap('v.any()', schema)
+    if (schema.oneOf.length === 0) return valibotWrap('v.any()', schema)
     const schemas = schema.oneOf.map((s) => valibot(s, rootName, isValibot, options))
     const oneOfMessage = schema['x-oneOf-message']
     const errorPart = oneOfMessage ? `,${valibotError(oneOfMessage)}` : ''
@@ -113,7 +124,7 @@ export function valibot(
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return valibotWrap('v.any()', schema)
+    if (schema.anyOf.length === 0) return valibotWrap('v.any()', schema)
     const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const errorPart = anyOfMessage ? `,${valibotError(anyOfMessage)}` : ''
@@ -121,20 +132,16 @@ export function valibot(
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return valibotWrap('v.any()', schema)
-    const isNullType = (s: JSONSchema) =>
-      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    if (schema.allOf.length === 0) return valibotWrap('v.any()', schema)
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullType)
-    const defaultValue = schema.allOf.find(isDefaultOnly)?.default
+      schema.allOf.some(isNullTypeMember)
+    const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
-      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .filter((s) => !isShapelessMember(s))
       .map((s) => valibot(s, rootName, isValibot, options))
-    if (!schemas.length) return valibotWrap('v.any()', { ...schema, nullable })
+    if (schemas.length === 0) return valibotWrap('v.any()', { ...schema, nullable })
     const intersected = schemas.length === 1 ? schemas[0] : `v.intersect([${schemas.join(',')}])`
     const allOfMessage = schema['x-allOf-message']
     const baseResult = allOfMessage
@@ -145,12 +152,7 @@ export function valibot(
         })()
       : intersected
     if (defaultValue !== undefined) {
-      const formatLiteral = (value: unknown): string => {
-        if (typeof value === 'boolean') return `${value}`
-        if (typeof value === 'number') return `${value}`
-        return JSON.stringify(value)
-      }
-      const withDefault = `v.optional(${baseResult},${formatLiteral(defaultValue)})`
+      const withDefault = `v.optional(${baseResult},${jsLiteral(defaultValue)})`
       return nullable ? `v.nullable(${withDefault})` : withDefault
     }
     return valibotWrap(baseResult, { ...schema, nullable })
@@ -213,8 +215,9 @@ export function valibot(
     )
   }
   if (schema.enum) return valibotWrap(_enum(schema), schema)
-  if (schema.properties)
+  if (schema.properties) {
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
+  }
 
   const types = normalizeTypes(schema.type)
   if (types.includes('string')) return valibotWrap(string(schema), schema)
@@ -248,11 +251,6 @@ export function valibot(
   }
 
   if (types.includes('array')) {
-    const elementMessageWrap = (inner: string, msg: string) => {
-      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
-      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
-      return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${inner},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
-    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => valibot(s, rootName, isValibot, options))
       // JSON Schema 2020-12 §11.3: unevaluatedItems applies beyond prefixItems.
@@ -296,7 +294,7 @@ export function valibot(
     // v3.0: contains / minContains / maxContains as separate checks
     const containsActions = (() => {
       const c = schema.contains
-      if (!c) return [] as readonly string[]
+      if (!c) return []
       const containsSchema = valibot(c, rootName, isValibot, options)
       const minC = schema.minContains
       const maxC = schema.maxContains
@@ -346,8 +344,9 @@ export function valibot(
     return readonly(valibotWrap(arrayExpr, schema))
   }
 
-  if (types.includes('object'))
+  if (types.includes('object')) {
     return readonly(valibotWrap(object(schema, rootName, isValibot, options), schema))
+  }
   if (types.includes('date')) {
     if (isStringWireParam) {
       return valibotWrap(`v.pipe(v.string(),v.transform((s)=>new Date(s)),v.date())`, schema, {

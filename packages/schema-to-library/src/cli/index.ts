@@ -1,66 +1,191 @@
-import fsp from 'node:fs/promises'
 import path from 'node:path'
 
+import { Console, Effect, FileSystem, Schema, Stdio } from 'effect'
+import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
+
 import { fmt } from '../format/index.js'
+import { isRecord } from '../helper/value.js'
 import type { JSONSchema } from '../parser/index.js'
 import { parseSchemaFile } from '../parser/index.js'
 
-function validateIO(input: string | undefined, output: string | undefined) {
-  if (typeof input !== 'string' || !(input.endsWith('.yaml') || input.endsWith('.json'))) {
-    return { ok: false, error: 'Input must be a .json, or .yaml file' } as const
-  }
-  if (typeof output !== 'string' || !output.endsWith('.ts')) {
-    return { ok: false, error: 'Output must be a .ts file' } as const
-  }
-  return { ok: true, input, output } as const
+/** A generator: a JSON Schema in, the TypeScript source of a validation schema out. */
+export type Generator = (
+  schema: JSONSchema,
+  options?: { exportType?: boolean; readonly?: boolean },
+) => string
+
+// `Schema.refine` both rejects the value at runtime and narrows the parsed type, so a
+// wrong extension never reaches the parser and the ones that do arrive as
+// `${string}.json | ${string}.yaml` without a cast. The template literal alone would do
+// the same check but reports "Expected a string matching template literal parts";
+// wrapping it in `Schema.is` and refining with it is what buys the sentence below.
+const InputPathSchema = Schema.String.pipe(
+  Schema.refine(
+    Schema.is(Schema.TemplateLiteral([Schema.String, Schema.Literals(['.json', '.yaml'])])),
+    { message: 'a JSON Schema document ending in .json or .yaml' },
+  ),
+)
+
+const OutputPathSchema = Schema.String.pipe(
+  Schema.refine(Schema.is(Schema.TemplateLiteral([Schema.String, '.ts'])), {
+    message: 'a TypeScript file path ending in .ts',
+  }),
+)
+
+/**
+ * The command line every `schema-to-*` binary accepts: what each piece means, and the
+ * schema every value is decoded through before {@link generate} ever sees it.
+ */
+const commandLine = {
+  input: Argument.file('input', { mustExist: true }).pipe(
+    Argument.withSchema(InputPathSchema),
+    Argument.withDescription('JSON Schema document to generate from'),
+    Argument.withMetavar('input.{json,yaml}'),
+  ),
+  // `Flag.string`, not `Flag.file`: the file primitive rewrites its value to an absolute
+  // path, and `--output` is echoed back in the "Generated" message, which should read as
+  // the path the caller typed.
+  output: Flag.string('output').pipe(
+    Flag.withAlias('o'),
+    Flag.withSchema(OutputPathSchema),
+    Flag.withDescription('TypeScript file the generated schema is written to'),
+    Flag.withMetavar('output.ts'),
+  ),
+  // `Flag.boolean` is still a required flag until it is given a default — without this,
+  // every invocation is rejected for not passing `--export-type`.
+  exportType: Flag.boolean('export-type').pipe(
+    Flag.withDescription('Include the inferred type export in the output'),
+    Flag.withDefault(false),
+  ),
+  readonly: Flag.boolean('readonly').pipe(
+    Flag.withDescription('Generate readonly types'),
+    Flag.withDefault(false),
+  ),
+} as const
+
+/**
+ * Runs one of the library's `{ ok }` functions in the error channel.
+ *
+ * `Effect.tryPromise` rather than `Effect.promise`: both functions answer with `ok:
+ * false` for the failures they expect, but a rejection they did not expect would
+ * otherwise become a defect and print a stack trace instead of a sentence.
+ */
+function attempt<A>(run: () => Promise<{ ok: true; value: A } | { ok: false; error: string }>) {
+  return Effect.gen(function* () {
+    const result = yield* Effect.tryPromise({
+      try: run,
+      catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    })
+    if (!result.ok) return yield* Effect.fail(new Error(result.error))
+    return result.value
+  })
 }
 
-export async function cli(
-  fn: (schema: JSONSchema, options?: { exportType?: boolean; readonly?: boolean }) => string,
-  helpText: string,
-) {
-  const args = process.argv.slice(2)
-  if (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) {
-    return { ok: true, value: helpText } as const
-  }
-  const exportType = args.includes('--export-type')
-  const readonlyMode = args.includes('--readonly')
-  const filteredArgs = args.filter((arg) => arg !== '--export-type' && arg !== '--readonly')
-  const i = filteredArgs[0]
-  const oIdx = filteredArgs.indexOf('-o')
-  const o = oIdx !== -1 ? filteredArgs[oIdx + 1] : undefined
-  const valid = validateIO(i, o)
-  if (!valid.ok) {
-    return { ok: false, error: valid.error } as const
-  }
-  const { input, output } = valid
-  const schemaResult = await parseSchemaFile(input)
-  if (!schemaResult.ok) {
-    return { ok: false, error: schemaResult.error } as const
-  }
-  const result = fn(schemaResult.value, {
-    exportType,
-    readonly: readonlyMode,
+/** The bundled document at `input`, or the parser's sentence about why it is not one. */
+function readSchema(input: string) {
+  return attempt(() => parseSchemaFile(input))
+}
+
+/** The formatted source, or the formatter's sentence about why it could not be. */
+function format(source: string) {
+  return attempt(() => fmt(source))
+}
+
+/**
+ * The sentence a failure is reported with.
+ *
+ * `FileSystem` normalises a host failure to `BadResource: FileSystem.writeFile (path)`,
+ * which says what could not be done but not why. The Node error it wrapped is kept on
+ * `reason.cause` and still carries the `ENOTDIR` / `EISDIR` line, so it is appended
+ * whenever there is one.
+ */
+function describeFailure(error: { readonly message: string }): string {
+  const reason = isRecord(error) ? error.reason : undefined
+  const cause = isRecord(reason) ? reason.cause : undefined
+  return cause instanceof Error && cause.message !== ''
+    ? `${error.message}: ${cause.message}`
+    : error.message
+}
+
+/**
+ * Everything the command does once the command line has parsed: read the document,
+ * generate, format, and write the file — creating the directories leading to it, so an
+ * output under a path that does not exist yet is written rather than refused.
+ *
+ * Everything past here fails with something carrying a `message`, so the single
+ * `mapError` at the end is where all of it turns into rendered CLI output. The
+ * `FileSystem` it writes through comes from the environment the caller provides.
+ */
+function generate(generator: Generator) {
+  return (args: Command.Command.Config.Infer<typeof commandLine>) =>
+    Effect.gen(function* () {
+      const schema = yield* readSchema(args.input)
+      const source = yield* format(
+        generator(schema, { exportType: args.exportType, readonly: args.readonly }),
+      )
+      const fs = yield* FileSystem.FileSystem
+      yield* fs.makeDirectory(path.dirname(args.output), { recursive: true })
+      yield* fs.writeFileString(args.output, source)
+      return yield* Console.log(`Generated: ${args.output}`)
+    }).pipe(
+      // A `CliError` is already something the runner knows how to render. Everything else
+      // is a parser, generator or filesystem failure that only carries a sentence.
+      Effect.mapError((error) =>
+        CliError.isCliError(error)
+          ? error
+          : new CliError.UserError({ cause: error, userMessage: describeFailure(error) }),
+      ),
+    )
+}
+
+/** What a `schema-to-*` binary has to say about itself. */
+export type CliOptions<Name extends string> = {
+  /** The binary name, as it appears in usage and error output. */
+  readonly name: Name
+  /** The generator the command runs. */
+  readonly generator: Generator
+  /** The one-line description shown at the top of `--help`. */
+  readonly description: string
+  /** The version `--version` reports. */
+  readonly version: string
+}
+
+/**
+ * The command for one generator: parsing, validation, `--help`, `--version` and shell
+ * completions are owned by `effect/unstable/cli`, {@link generate} is the rest.
+ *
+ * Every binary is the same command with a different name and generator, so they are built
+ * from one definition rather than five copies that can drift apart.
+ */
+export function makeCli<Name extends string>(options: CliOptions<Name>) {
+  return Command.make(options.name, commandLine, generate(options.generator)).pipe(
+    Command.withDescription(options.description),
+    Command.withExamples([
+      {
+        command: `${options.name} schema.json -o src/schema.ts`,
+        description: 'Generate a schema file',
+      },
+      {
+        command: `${options.name} schema.yaml -o src/schema.ts --export-type`,
+        description: 'Also export the inferred type',
+      },
+      {
+        command: `${options.name} schema.json -o src/schema.ts --readonly`,
+        description: 'Generate readonly types',
+      },
+    ]),
+  )
+}
+
+/** Runs a `schema-to-*` command against an explicit argument list. */
+export function runCli<Name extends string>(options: CliOptions<Name>, argv: readonly string[]) {
+  return Command.runWith(makeCli(options), { version: options.version })(argv)
+}
+
+/** The entry point each binary runs, reading its arguments the way `Command.run` does. */
+export function cli<Name extends string>(options: CliOptions<Name>) {
+  return Effect.gen(function* () {
+    const stdio = yield* Stdio.Stdio
+    return yield* runCli(options, yield* stdio.args)
   })
-  const fmtResult = await fmt(result)
-  if (!fmtResult.ok) {
-    return { ok: false, error: fmtResult.error } as const
-  }
-  try {
-    await fsp.mkdir(path.dirname(output), { recursive: true })
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-    } as const
-  }
-  try {
-    await fsp.writeFile(output, fmtResult.value, 'utf-8')
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : String(e),
-    } as const
-  }
-  return { ok: true, value: `Generated: ${output}` } as const
 }

@@ -37,8 +37,9 @@ export function integer(schema: JSONSchema) {
         ? `v.gtValue(${schema.minimum}${exMinErrorPart})`
         : `v.minValue(${schema.minimum}${minErrorPart})`
     }
-    if (typeof schema.exclusiveMinimum === 'number')
+    if (typeof schema.exclusiveMinimum === 'number') {
       return `v.gtValue(${schema.exclusiveMinimum}${exMinErrorPart})`
+    }
     return undefined
   })()
   const maximum = (() => {
@@ -47,8 +48,9 @@ export function integer(schema: JSONSchema) {
         ? `v.ltValue(${schema.maximum}${exMaxErrorPart})`
         : `v.maxValue(${schema.maximum}${maxErrorPart})`
     }
-    if (typeof schema.exclusiveMaximum === 'number')
+    if (typeof schema.exclusiveMaximum === 'number') {
       return `v.ltValue(${schema.exclusiveMaximum}${exMaxErrorPart})`
+    }
     return undefined
   })()
   const multipleOf =

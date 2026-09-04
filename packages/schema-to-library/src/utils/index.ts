@@ -47,7 +47,7 @@ export function toPascalCase(name: string) {
  * ```
  */
 export function encodeNonAscii(name: string) {
-  return Array.from(name)
+  return [...name]
     .map((ch) => {
       const cp = ch.codePointAt(0) ?? 0
       return cp > 0x7f ? `u${cp.toString(16)}` : ch
@@ -139,6 +139,17 @@ export function coerceDefault(
 }
 
 /**
+ * Whether a configured message is source text for an arrow function rather than a
+ * literal sentence.
+ *
+ * The `x-*-message` extensions accept either, and a library that takes a callback
+ * (Zod's `error`, Valibot's message argument) gets the source through unquoted.
+ */
+function isArrowExpression(source: string): boolean {
+  return /^\s*\(.*?\)\s*=>/.test(source)
+}
+
+/**
  * Format an error message argument using the Zod v4 unified `error` parameter.
  *
  * @example
@@ -148,7 +159,6 @@ export function coerceDefault(
  * ```
  */
 export function zodError(message: string) {
-  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
   return isArrowExpression(message) ? `{error:${message}}` : `{error:${JSON.stringify(message)}}`
 }
 
@@ -166,7 +176,7 @@ export function zodBaseError(
   if (requiredMessage !== undefined && typeMessage === undefined) {
     return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:undefined}`
   }
-  return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:${JSON.stringify(typeMessage as string)}}`
+  return `{error:(issue)=>issue.input===undefined?${JSON.stringify(requiredMessage)}:${JSON.stringify(typeMessage)}}`
 }
 
 /**
@@ -179,7 +189,6 @@ export function zodBaseError(
  * ```
  */
 export function valibotError(message: string) {
-  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
   return isArrowExpression(message) ? message : JSON.stringify(message)
 }
 
@@ -218,10 +227,10 @@ export function effectMessage(message: string) {
  *
  * @see {@link https://swagger.io/docs/specification/v3_0/components/|OpenAPI Components}
  */
-export const OPENAPI_COMPONENT_SUFFIX_MAP: ReadonlyArray<{
+export const OPENAPI_COMPONENT_SUFFIX_MAP: readonly {
   readonly prefix: string
   readonly suffix: string
-}> = [
+}[] = [
   { prefix: '#/components/schemas/', suffix: 'Schema' },
   { prefix: '#/components/parameters/', suffix: 'ParamsSchema' },
   { prefix: '#/components/headers/', suffix: 'HeaderSchema' },

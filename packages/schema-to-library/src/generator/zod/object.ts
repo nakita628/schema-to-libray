@@ -67,7 +67,8 @@ export function object(
     return 'z.object({})'
   }
 
-  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
+  const conditionalKeysReferenced =
+    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
   const objectType =
     schema.additionalProperties === true
       ? 'looseObject'

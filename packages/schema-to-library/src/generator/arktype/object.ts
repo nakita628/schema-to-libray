@@ -4,6 +4,10 @@ import { arktype } from './arktype.js'
 
 const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
 
+function composeNarrows(base: string, narrows: readonly string[]): string {
+  return narrows.length === 0 ? base : narrows.reduce((acc, n) => `${acc}.narrow(${n})`, base)
+}
+
 /** Wrap a raw arktype expression with `type(...)` if it's a bare quoted string. */
 const ensureRuntime = (s: string) => (isQuoted(s) ? `type(${s})` : s)
 
@@ -76,9 +80,6 @@ export function object(
           )
         })
       : []
-
-  const composeNarrows = (base: string, narrows: readonly string[]): string =>
-    narrows.length === 0 ? base : narrows.reduce((acc, n) => `${acc}.narrow(${n})`, base)
 
   // ── additionalProperties: schema → type({"[string]": ...}) + propertyNames + patternProperties ──
   if (typeof schema.additionalProperties === 'object') {
@@ -173,7 +174,7 @@ export function object(
   })()
 
   const ifThenElseNarrows = (() => {
-    if (!schema.if) return [] as string[]
+    if (!schema.if) return []
     const ifS = ensureRuntime(arktype(schema.if, rootName, isArktype, options))
     const thenS = schema.then
       ? ensureRuntime(arktype(schema.then, rootName, isArktype, options))
@@ -181,7 +182,7 @@ export function object(
     const elseS = schema.else
       ? ensureRuntime(arktype(schema.else, rootName, isArktype, options))
       : undefined
-    if (!thenS && !elseS) return [] as string[]
+    if (!thenS && !elseS) return []
     const ifMessage = schema['x-if-message']
     const thenMessage = schema['x-then-message'] ?? ifMessage
     const elseMessage = schema['x-else-message'] ?? ifMessage

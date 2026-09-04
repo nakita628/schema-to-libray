@@ -1,7 +1,9 @@
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
-import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
+import { readCodeExtension } from './code-extensions.js'
+import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
+import { jsLiteral } from './value.js'
 
 /**
  * Wraps an Effect Schema v4 schema string with `Schema.withDecodingDefault()`,
@@ -24,11 +26,6 @@ export function effectWrap(
   schema: JSONSchema,
   options?: CodeExtensionOptions,
 ): string {
-  const formatLiteral = (value: unknown): string => {
-    if (typeof value === 'boolean') return `${value}`
-    if (typeof value === 'number') return `${value}`
-    return JSON.stringify(value)
-  }
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
@@ -50,7 +47,7 @@ export function effectWrap(
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
   const withDefault = defaultResult?.keep
-    ? `${withCodeExts}.pipe(Schema.withDecodingDefault(Effect.succeed(${formatLiteral(defaultResult.value)})))`
+    ? `${withCodeExts}.pipe(Schema.withDecodingDefault(Effect.succeed(${jsLiteral(defaultResult.value)})))`
     : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)

@@ -1,7 +1,8 @@
 import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
-import { typebox, type TypeboxOptions } from './typebox.js'
+import { typebox } from './typebox.js'
+import type { TypeboxOptions } from './typebox.js'
 
 /**
  * Generate a TypeBox object schema for a JSON Schema object node.
@@ -65,53 +66,64 @@ export function object(
   // into a single ajv-errors–compatible `errorMessage` annotation.
   const objectErrorMessageEntries: string[] = []
   const objectErrorMessage = schema['x-error-message']
-  if (objectErrorMessage)
+  if (objectErrorMessage) {
     objectErrorMessageEntries.push(`type:${JSON.stringify(objectErrorMessage)}`)
+  }
   const objectMinPropertiesMessage = schema['x-minProperties-message']
-  if (objectMinPropertiesMessage)
+  if (objectMinPropertiesMessage) {
     objectErrorMessageEntries.push(`minProperties:${JSON.stringify(objectMinPropertiesMessage)}`)
+  }
   const objectMaxPropertiesMessage = schema['x-maxProperties-message']
-  if (objectMaxPropertiesMessage)
+  if (objectMaxPropertiesMessage) {
     objectErrorMessageEntries.push(`maxProperties:${JSON.stringify(objectMaxPropertiesMessage)}`)
+  }
   const objectAdditionalPropertiesMessage = schema['x-additionalProperties-message']
-  if (objectAdditionalPropertiesMessage)
+  if (objectAdditionalPropertiesMessage) {
     objectErrorMessageEntries.push(
       `additionalProperties:${JSON.stringify(objectAdditionalPropertiesMessage)}`,
     )
+  }
   const objectPropertyNamesMessage = schema['x-propertyNames-message']
-  if (objectPropertyNamesMessage)
+  if (objectPropertyNamesMessage) {
     objectErrorMessageEntries.push(`propertyNames:${JSON.stringify(objectPropertyNamesMessage)}`)
+  }
   const objectPatternPropertiesMessage = schema['x-patternProperties-message']
-  if (objectPatternPropertiesMessage)
+  if (objectPatternPropertiesMessage) {
     objectErrorMessageEntries.push(
       `patternProperties:${JSON.stringify(objectPatternPropertiesMessage)}`,
     )
+  }
   const objectDependentRequiredMessage = schema['x-dependentRequired-message']
-  if (objectDependentRequiredMessage)
+  if (objectDependentRequiredMessage) {
     objectErrorMessageEntries.push(
       `dependentRequired:${JSON.stringify(objectDependentRequiredMessage)}`,
     )
+  }
   const objectDependentSchemasMessage = schema['x-dependentSchemas-message']
-  if (objectDependentSchemasMessage)
+  if (objectDependentSchemasMessage) {
     objectErrorMessageEntries.push(
       `dependentSchemas:${JSON.stringify(objectDependentSchemasMessage)}`,
     )
+  }
   const objectRequiredMessage = schema['x-required-message']
-  if (objectRequiredMessage)
+  if (objectRequiredMessage) {
     objectErrorMessageEntries.push(`required:${JSON.stringify(objectRequiredMessage)}`)
+  }
   const objectPropertiesMessage = schema['x-properties-message']
-  if (objectPropertiesMessage)
+  if (objectPropertiesMessage) {
     objectErrorMessageEntries.push(`properties:${JSON.stringify(objectPropertiesMessage)}`)
+  }
   const objectIfMessage = schema['x-if-message']
   const objectThenMessage = schema['x-then-message'] ?? objectIfMessage
   if (objectThenMessage) objectErrorMessageEntries.push(`then:${JSON.stringify(objectThenMessage)}`)
   const objectElseMessage = schema['x-else-message'] ?? objectIfMessage
   if (objectElseMessage) objectErrorMessageEntries.push(`else:${JSON.stringify(objectElseMessage)}`)
   const objectUnevaluatedPropertiesMessage = schema['x-unevaluatedProperties-message']
-  if (objectUnevaluatedPropertiesMessage)
+  if (objectUnevaluatedPropertiesMessage) {
     objectErrorMessageEntries.push(
       `unevaluatedProperties:${JSON.stringify(objectUnevaluatedPropertiesMessage)}`,
     )
+  }
   const objectErrorMessageField =
     objectErrorMessageEntries.length > 0
       ? `errorMessage:{${objectErrorMessageEntries.join(',')}}`

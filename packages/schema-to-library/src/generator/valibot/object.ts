@@ -83,7 +83,8 @@ export function object(
     return 'v.object({})'
   }
 
-  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
+  const conditionalKeysReferenced =
+    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
   const objectKind =
     schema.additionalProperties === true
       ? 'looseObject'
@@ -149,11 +150,11 @@ export function object(
   const additionalPropertiesCheck = ''
   // v3.0: if/then/else (Draft-07+)
   const ifThenElseChecks = (() => {
-    if (!schema.if) return [] as string[]
+    if (!schema.if) return []
     const ifSchema = valibot(schema.if, rootName, isValibot, options)
     const thenSchema = schema.then ? valibot(schema.then, rootName, isValibot, options) : undefined
     const elseSchema = schema.else ? valibot(schema.else, rootName, isValibot, options) : undefined
-    if (!thenSchema && !elseSchema) return [] as string[]
+    if (!thenSchema && !elseSchema) return []
     const ifMessage = schema['x-if-message']
     const thenMessage = schema['x-then-message'] ?? ifMessage
     const elseMessage = schema['x-else-message'] ?? ifMessage

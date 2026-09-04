@@ -316,7 +316,7 @@ describe('valibot', () => {
         "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
       [
-        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        { not: { type: 'string' }, type: ['null'] },
         "v.nullable(v.custom<unknown>((val) => typeof val !== 'string'))",
       ],
       [{ not: { const: 42 } }, 'v.custom<unknown>((val) => val !== 42)'],
@@ -740,7 +740,7 @@ describe('valibot', () => {
       ],
       [
         {
-          type: ['any' as any, 'null'],
+          type: ['any', 'null'],
         },
         'v.nullable(v.any())',
       ],
@@ -761,7 +761,7 @@ describe('valibot', () => {
       ],
       [
         {
-          type: ['any' as any, 'null'],
+          type: ['any', 'null'],
           default: 'test',
         },
         'v.nullable(v.optional(v.any(),"test"))',
@@ -1079,7 +1079,7 @@ describe('valibot', () => {
           anyOf: [{ type: 'string' }, { type: 'number' }],
           'x-anyOf-message': 'any',
           'x-implication-message': 'implication failed',
-        } as JSONSchema),
+        }),
       ).toBe('v.union([v.string(),v.number()],"implication failed")')
     })
   })

@@ -98,7 +98,8 @@ export function object(
   // `if`/`then`/`else` sub-schemas may name keys the struct does not declare,
   // so the object has to keep unknown keys. v4 spells an index signature as
   // `Schema.StructWithRest(struct, [record])`.
-  const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
+  const conditionalKeysReferenced =
+    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
   const struct = `Schema.Struct({${props.join(',')}})`
   const rawBase = conditionalKeysReferenced
     ? `Schema.StructWithRest(${struct},[Schema.Record(Schema.String,Schema.Unknown)])`
@@ -143,11 +144,11 @@ export function object(
   // v3.2: if/then/else conditional schema. Routed through a filter: when `if`
   // matches, the object must also satisfy `then`; otherwise `else`.
   const ifThenElseFilters = (() => {
-    if (!schema.if) return [] as string[]
+    if (!schema.if) return []
     const ifSchema = effect(schema.if, rootName, isEffect, options)
     const thenSchema = schema.then ? effect(schema.then, rootName, isEffect, options) : ''
     const elseSchema = schema.else ? effect(schema.else, rootName, isEffect, options) : ''
-    if (!thenSchema && !elseSchema) return [] as string[]
+    if (!thenSchema && !elseSchema) return []
     const ifMessage = schema['x-if-message']
     const thenMessage = schema['x-then-message'] ?? ifMessage
     const elseMessage = schema['x-else-message'] ?? ifMessage

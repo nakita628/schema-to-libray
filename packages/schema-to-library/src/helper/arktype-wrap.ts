@@ -1,5 +1,10 @@
 import type { JSONSchema } from '../parser/index.js'
-import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
+import { readCodeExtension } from './code-extensions.js'
+import type { CodeExtensionOptions } from './code-extensions.js'
+
+function isQuoted(s: string) {
+  return s.startsWith('"') && s.endsWith('"')
+}
 
 /**
  * A bare ArkType definition — a string, object or tuple literal — as opposed to
@@ -54,7 +59,6 @@ export function arktypeWrap(
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   // A quoted definition takes the string-union shortcut instead of `.or`.
-  const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
   const withNullable = isNullable
     ? isQuoted(arktypeStr)
       ? `"${arktypeStr.slice(1, -1)} | null"`

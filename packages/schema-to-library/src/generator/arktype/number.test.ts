@@ -80,7 +80,7 @@ describe('arktype number per-keyword message', () => {
         minimum: 0,
         exclusiveMinimum: true,
         'x-exclusiveMinimum-message': 'gt0!',
-      } as JSONSchema,
+      },
       'type("number").narrow((n, ctx) => n > 0 || ctx.mustBe("gt0!"))',
     ],
     [
@@ -89,7 +89,7 @@ describe('arktype number per-keyword message', () => {
         maximum: 9,
         exclusiveMaximum: true,
         'x-exclusiveMaximum-message': 'lt9!',
-      } as JSONSchema,
+      },
       'type("number").narrow((n, ctx) => n < 9 || ctx.mustBe("lt9!"))',
     ],
     [

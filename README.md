@@ -31,11 +31,14 @@ npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 
 #### Options
 
-| Flag            | Description                   |
-| --------------- | ----------------------------- |
-| `--export-type` | Include type export in output |
-| `--readonly`    | Generate readonly types       |
-| `-h, --help`    | Display help for command      |
+| Flag                     | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `-o, --output <file.ts>` | TypeScript file the generated schema is written to    |
+| `--export-type`          | Include the inferred type export in the output        |
+| `--readonly`             | Generate readonly types                               |
+| `-h, --help`             | Show help information                                 |
+| `-v, --version`          | Show version information                              |
+| `--completions <shell>`  | Print a shell completion script (bash, zsh, fish, sh) |
 
 ### Example
 

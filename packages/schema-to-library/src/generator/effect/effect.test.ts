@@ -292,7 +292,7 @@ describe('effect', () => {
         "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
       ],
       [
-        { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+        { not: { type: 'string' }, type: ['null'] },
         "Schema.NullOr(Schema.Unknown.check(Schema.makeFilter((val) => typeof val !== 'string')))",
       ],
       [{ not: { const: 42 } }, 'Schema.Unknown.check(Schema.makeFilter((val) => val !== 42))'],
@@ -974,7 +974,7 @@ describe('effect', () => {
           anyOf: [{ type: 'string' }, { type: 'number' }],
           'x-anyOf-message': 'any',
           'x-implication-message': 'implication failed',
-        } as JSONSchema),
+        }),
       ).toBe('Schema.Union([Schema.String,Schema.Number]).annotate({message:"implication failed"})')
     })
   })

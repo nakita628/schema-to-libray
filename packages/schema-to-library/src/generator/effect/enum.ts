@@ -1,6 +1,13 @@
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
 
+function lit(v: unknown): string {
+  if (v === null) return 'null'
+  if (typeof v === 'string') return `"${v}"`
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  return JSON.stringify(v) ?? 'null'
+}
+
 /**
  * Generates an Effect Schema enum. Multi-value scalar enums map to
  * `Schema.Literals([...])` (v4 dropped the variadic `Schema.Literal(a, b)`
@@ -22,12 +29,6 @@ export function _enum(schema: JSONSchema) {
   const ht = (t: string): boolean =>
     schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
 
-  const lit = (v: unknown): string => {
-    if (v === null) return 'null'
-    if (typeof v === 'string') return `"${v}"`
-    if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-    return JSON.stringify(v) ?? 'null'
-  }
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']

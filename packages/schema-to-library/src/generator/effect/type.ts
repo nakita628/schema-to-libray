@@ -1,7 +1,7 @@
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 
-export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'): string {
+export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
   if (schema === undefined) return ''
 
   // $ref case
@@ -41,8 +41,9 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
   // const
   if (schema.const !== undefined) {
     if (typeof schema.const === 'string') return `"${schema.const}"`
-    if (typeof schema.const === 'number' || typeof schema.const === 'boolean')
+    if (typeof schema.const === 'number' || typeof schema.const === 'boolean') {
       return String(schema.const)
+    }
     return JSON.stringify(schema.const) ?? 'null'
   }
 
@@ -80,8 +81,9 @@ function intersection(schemas: readonly JSONSchema[], rootName: string): string 
     .filter((s) => {
       if (s.type === 'null') return false
       if (s.nullable === true && Object.keys(s).length === 1) return false
-      if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined))
+      if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined)) {
         return false
+      }
       return true
     })
     .map((s) => type(s, rootName))
