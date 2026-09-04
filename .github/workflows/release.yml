@@ -2,37 +2,168 @@ name: release
 
 on:
   workflow_run:
-    workflows: [deploy]
+    workflows: [Test]
     types: [completed]
     branches: [main]
 
 # Nothing is granted by default; each job asks for exactly what it needs.
 permissions: {}
 
-# One release at a time, and never cancel one that has started creating a tag.
+# One release at a time, and never cancel one that has started tagging or publishing.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Create the GitHub release
+  check:
+    name: Check for an unpublished version
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event.workflow_run.conclusion == 'success'
+    # Only a commit that was pushed to main and whose Test run passed is releasable.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     permissions:
-      contents: write # `gh release create` writes a release and its tag
+      contents: read # reads package.json, to compare it against the registry
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      unpublished: ${{ steps.ver.outputs.unpublished }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
-      - name: Create release
+      - name: Read the version and its npm publish state
+        id: ver
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version packages/schema-to-library/package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # A registry hiccup must never read as "not published yet", so a failed or
+          # unparsable query stops the run instead of publishing on a guess.
+          if ! VERSIONS=$(npm view schema-to-library versions --json); then
+            echo "::error::Failed to query the npm registry for schema-to-library versions. Check https://status.npmjs.org/ and re-run the workflow"
+            exit 1
+          fi
+          # `npm view` answers with a bare string while only one version is published,
+          # so the response is flattened into a list before it is searched.
+          if ! PUBLISHED=$(echo "$VERSIONS" | jq --arg version "$VERSION" '[.] | flatten | index($version) != null'); then
+            echo "::error::Unexpected npm registry response. Re-run the workflow"
+            exit 1
+          fi
+          if [ "$PUBLISHED" = "true" ]; then
+            echo "unpublished=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "unpublished=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  tag:
+    name: Tag the released commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: check
+    permissions:
+      contents: write # creates refs/tags/v$VERSION through the API
+    steps:
+      # The tag is created over the API, so the job needs neither a checkout nor a
+      # credential left on disk for `git push`.
+      - name: Create or verify the tag
         env:
           GH_TOKEN: ${{ github.token }}
-          TARGET: ${{ github.event.workflow_run.head_sha }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.check.outputs.version }}
+          UNPUBLISHED: ${{ needs.check.outputs.unpublished }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          VERSION=$(jq -r .version packages/schema-to-library/package.json)
-          gh release view "v$VERSION" >/dev/null 2>&1 && { echo "release v$VERSION already exists; skip"; exit 0; }
-          gh release create "v$VERSION" --generate-notes --target "$TARGET"
+          set -euo pipefail
+          # `matching-refs` answers with an empty list rather than a 404, which keeps a
+          # missing tag distinguishable from a failed request. It matches by prefix, so
+          # the exact ref is picked out below.
+          if ! REFS=$(gh api "repos/$GH_REPO/git/matching-refs/tags/v$VERSION"); then
+            echo "::error::Failed to read the tags of $GH_REPO. Check connectivity to GitHub and re-run the workflow"
+            exit 1
+          fi
+          REF=$(echo "$REFS" | jq -r --arg ref "refs/tags/v$VERSION" \
+            'map(select(.ref == $ref)) | first | if . == null then "" else .object.type + " " + .object.sha end')
+
+          if [ -z "$REF" ]; then
+            if [ "$UNPUBLISHED" = "false" ]; then
+              echo "::error::schema-to-library@$VERSION is already published, but tag v$VERSION does not exist. Cannot safely determine the published commit. Tag the commit that was actually published (git tag v$VERSION <sha> && git push origin v$VERSION), or bump the version and push again"
+              exit 1
+            fi
+            gh api --silent -X POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/v$VERSION" -f "sha=$HEAD_SHA"
+            echo "tagged $HEAD_SHA as v$VERSION"
+            exit 0
+          fi
+
+          TAG_TYPE=${REF%% *}
+          TAG_SHA=${REF#* }
+          # An annotated tag points at a tag object; its commit is one dereference away.
+          if [ "$TAG_TYPE" = "tag" ]; then
+            TAG_SHA=$(gh api "repos/$GH_REPO/git/tags/$TAG_SHA" --jq .object.sha)
+          fi
+          if [ "$TAG_SHA" = "$HEAD_SHA" ]; then
+            echo "tag v$VERSION already points to $HEAD_SHA; skip"
+            exit 0
+          fi
+          # A later push that did not bump the version is not a failure once the version
+          # it carries has already been published and released from its own commit.
+          if [ "$UNPUBLISHED" = "false" ] && gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION already fully released from $TAG_SHA; nothing to do for $HEAD_SHA"
+            exit 0
+          fi
+          echo "::error::v$VERSION already points to another commit ($TAG_SHA, expected $HEAD_SHA). Re-run the release workflow for $TAG_SHA, or bump the version in packages/schema-to-library/package.json and push again"
+          exit 1
+
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [check, tag]
+    if: needs.check.outputs.unpublished == 'true'
+    environment: release
+    permissions:
+      contents: read # the checkout, nothing else
+      id-token: write # the OIDC token npm trusted publishing signs provenance with
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1
+        with:
+          node-version: '22'
+          cache: true
+
+      - run: vp install
+
+      - run: vp run schema-to-library#build
+
+      # vp has no publish command, so the tarball goes out through pnpm, which attaches
+      # npm provenance from the OIDC token granted above.
+      - run: corepack enable && pnpm -F schema-to-library publish --no-git-checks
+
+  release:
+    name: Create the GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [check, tag, publish]
+    # A version already on npm still gets its GitHub release, as long as nothing before
+    # this failed: `publish` is skipped in that case rather than successful.
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.tag.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
+    permissions:
+      contents: write # `gh release create` writes the release
+    steps:
+      # The release is cut from the tag the previous job verified, so no checkout either.
+      - name: Create the release if it is missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "release v$VERSION already exists; skip"
+            exit 0
+          fi
+          gh release create "v$VERSION" --verify-tag --generate-notes

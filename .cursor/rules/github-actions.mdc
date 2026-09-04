@@ -38,7 +38,8 @@ at that level. Keep it that way:
   group.** Test cancels superseded runs; the publish chain never cancels a run in
   progress.
 - **`persist-credentials: false` on every checkout.** Nothing here pushes with the
-  checkout credentials; `deploy` and `release` use `GH_TOKEN` explicitly.
+  checkout credentials: `release` tags and releases over the API with an explicit
+  `GH_TOKEN`, and the two jobs that only talk to that API check nothing out at all.
 - **Quote shell variables** — `>> "$GITHUB_OUTPUT"`, not `>> $GITHUB_OUTPUT`. shellcheck
   runs inside actionlint on the runner even though it is absent locally.
 - **`${{ vars.* }}` is rejected outright.** `@.github/actionlint.yaml` declares
@@ -48,11 +49,26 @@ at that level. Keep it that way:
   in `test.yml`, from the release page. `@.github/actionlint-matcher.json` is the official
   problem matcher and only needs replacing when actionlint changes its output format.
 
-## The publish chain
+## The release chain
 
-`Test` → `deploy` → `release`, wired with `workflow_run` so a release can only come from
-a commit whose tests already passed. zizmor flags `workflow_run` as a dangerous trigger by
-design; the two workflows are listed in `@.github/zizmor.yml` with the reason they are
-safe here (empty top-level permissions, an `if` on `conclusion == 'success'`, and every
-checkout pinned to `workflow_run.head_sha`). Suppress a finding there, with a reason,
-never by widening a rule away.
+`Test` → `release`, wired with `workflow_run` so a release can only come from a commit
+whose tests already passed. zizmor flags `workflow_run` as a dangerous trigger by design;
+`release.yml` is listed in `@.github/zizmor.yml` with the reason it is safe here (empty
+top-level permissions, an `if` on `conclusion == 'success'`, and every checkout pinned to
+`workflow_run.head_sha`). Suppress a finding there, with a reason, never by widening a
+rule away.
+
+`release.yml` holds the whole chain as four jobs, so the tag, the tarball and the GitHub
+release can never drift apart:
+
+| Job | Does | Skipped when |
+| --- | --- | --- |
+| `check` | reads the version and asks npm whether it is published | the Test run failed, or was not a push |
+| `tag` | creates `v<version>` on the released commit, or verifies the existing one points there | never — it fails loudly on a mismatch |
+| `publish` | builds and `pnpm publish`, with provenance from the `release` environment | the version is already on npm |
+| `release` | `gh release create v<version> --verify-tag` | the release already exists |
+
+Two rules hold that together. A registry or API query that *fails* stops the run rather
+than being read as "not published yet", and a tag that already points at another commit
+is an error unless that version was fully released from there. Everything else is
+idempotent, so re-running the workflow on the same commit is always safe.

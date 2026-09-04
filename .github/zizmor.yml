@@ -1,11 +1,10 @@
 # https://docs.zizmor.sh/configuration/
 rules:
   dangerous-triggers:
-    # The publish chain is deliberately built on `workflow_run`: Test → deploy → release,
-    # so that a release can only ever come from a commit whose test run already passed.
-    # Both workflows are guarded — `permissions: {}` at the top, an `if` that requires
-    # `conclusion == 'success'` (and, for deploy, `event == 'push'`), and every checkout
-    # pinned to `workflow_run.head_sha` — which is what makes the trigger safe here.
+    # The release chain is deliberately built on `workflow_run`: Test → release, so that
+    # a publish can only ever come from a commit whose test run already passed. The
+    # workflow is guarded — `permissions: {}` at the top, an `if` that requires
+    # `conclusion == 'success'` and `event == 'push'`, and every checkout pinned to
+    # `workflow_run.head_sha` — which is what makes the trigger safe here.
     ignore:
-      - deploy.yml
       - release.yml
