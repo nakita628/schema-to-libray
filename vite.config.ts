@@ -11,24 +11,6 @@ export default defineConfig({
     include: ['fixtures/*/src/*.test.ts'],
     testTimeout: 10_000,
   },
-  // `options.typeAware` / `typeCheck` are only honoured in the root config, so the
-  // switches live here while `packages/schema-to-library` owns the rules they drive.
-  lint: {
-    // Generated output and the dev harness: `fixtures/**` is committed generator output
-    // (its bytes come from the generators' own oxfmt pass) and `apps/**` drives the
-    // built CLIs over sample schemas. `packages/schema-to-library` carries the rules.
-    ignorePatterns: ['**/dist/**', 'fixtures/**', 'apps/**'],
-    options: {
-      typeAware: true,
-      typeCheck: true,
-      // A rule that stops firing must have its `oxlint-disable` comment deleted with it,
-      // otherwise the suppression silently outlives its reason.
-      reportUnusedDisableDirectives: 'deny',
-      // Nothing here is configured as a warning; this keeps a rule that defaults to
-      // `warn` from slipping through `vp check` unnoticed.
-      denyWarnings: true,
-    },
-  },
   // Single source of truth for formatting style. Vite+ merges this root config into every
   // workspace config, so `packages/schema-to-library` inherits these options and only
   // declares what is specific to it.

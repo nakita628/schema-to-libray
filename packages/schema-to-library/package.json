@@ -81,8 +81,10 @@
   "scripts": {
     "build": "vp pack",
     "check": "vp check",
+    "coverage": "vp test --coverage",
     "fix": "vp check --fix",
-    "prepack": "cp ../../README.md .",
+    "postpack": "rm -f README.md && ln -s ../../README.md README.md",
+    "prepack": "rm -f README.md && cp ../../README.md .",
     "test": "vp test"
   },
   "dependencies": {

@@ -3,8 +3,3 @@ node_modules
 coverage
 dist
 .claude
-
-# Copied in from the repository root by `pnpm -F schema-to-library prepack`, so the
-# published package carries it and the repository keeps one copy. (pnpm already
-# supplies the root LICENSE to a workspace package's tarball by itself.)
-packages/schema-to-library/README.md

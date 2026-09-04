@@ -52,6 +52,16 @@ export default defineConfig({
     // The repository conventions a glob cannot express (declaration shape, predicate
     // naming, where an Effect may be run); see lint/custom.js.
     jsPlugins: ['./lint/custom.js'],
+    options: {
+      typeAware: true,
+      typeCheck: true,
+      // A rule that stops firing must have its `oxlint-disable` comment deleted with it,
+      // otherwise the suppression silently outlives its reason.
+      reportUnusedDisableDirectives: 'deny',
+      // Nothing here is configured as a warning; this keeps a rule that defaults to
+      // `warn` from slipping through `vp check` unnoticed.
+      denyWarnings: true,
+    },
     categories: {
       correctness: 'error',
       suspicious: 'error',
