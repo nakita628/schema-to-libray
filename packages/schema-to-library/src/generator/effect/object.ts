@@ -1,6 +1,6 @@
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { effectError, makeSafeKey } from '../../utils/index.js'
-import { effect } from './effect.js'
+import { effect, wholeValueMessage } from './effect.js'
 
 /**
  * Generate an Effect Schema object node.
@@ -9,7 +9,7 @@ import { effect } from './effect.js'
  * (otherwise). Combinators (oneOf/anyOf/allOf/not) delegate to the main
  * `effect` entry. JSON Schema 2020-12 keywords (`minProperties`,
  * `maxProperties`, `propertyNames`, `patternProperties`, `dependentRequired`)
- * are emitted as `Schema.filter(...)` actions composed via `.pipe(...)`.
+ * become `Schema.makeFilter(...)` filters passed to the schema's `.check(...)`.
  */
 export function object(
   schema: JSONSchema,
@@ -45,10 +45,10 @@ export function object(
 
   const propertyNamesFilter = (): string => {
     if (schema.propertyNames?.pattern) {
-      return `Schema.filter((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
+      return `Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
     }
     if (schema.propertyNames?.enum) {
-      return `Schema.filter((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
+      return `Schema.makeFilter((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
     }
     return ''
   }
@@ -57,23 +57,23 @@ export function object(
     schema.patternProperties
       ? Object.entries(schema.patternProperties).map(([pattern, propSchema]) => {
           const s = effect(propSchema, rootName, isEffect, options)
-          return `Schema.filter((o)=>Object.entries(o).every(([k,val])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||Schema.is(${s})(val))${patternErrorArg})`
+          return `Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||Schema.is(${s})(val))${patternErrorArg})`
         })
       : []
 
   // ── additionalProperties: schema → Schema.Record(...) + propertyNames + patternProperties ──
   if (typeof schema.additionalProperties === 'object') {
-    const record = `Schema.Record({key:Schema.String,value:${effect(schema.additionalProperties, rootName, isEffect, options)}})`
-    const actions = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
-    return actions.length > 0 ? `${record}.pipe(${actions.join(',')})` : record
+    const record = `Schema.Record(Schema.String,${effect(schema.additionalProperties, rootName, isEffect, options)})`
+    const checks = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
+    return checks.length > 0 ? `${record}.check(${checks.join(',')})` : record
   }
 
   if (!schema.properties) {
     // v3.2: patternProperties without properties → unknown-typed Record + filter.
     if (schema.patternProperties) {
-      const record = 'Schema.Record({key:Schema.String,value:Schema.Unknown})'
-      const actions = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
-      return actions.length > 0 ? `${record}.pipe(${actions.join(',')})` : record
+      const record = 'Schema.Record(Schema.String,Schema.Unknown)'
+      const checks = [propertyNamesFilter(), ...patternPropertiesFilters()].filter((a) => a !== '')
+      return checks.length > 0 ? `${record}.check(${checks.join(',')})` : record
     }
     if (schema.additionalProperties === true) return 'Schema.Unknown'
     return 'Schema.Struct({})'
@@ -86,50 +86,38 @@ export function object(
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
       const isRequired = required.includes(key)
-      // Schema.optionalWith already returns a PropertySignature; do not double-wrap.
-      const isAlreadyPropertySignature = parsed.startsWith('Schema.optionalWith(')
-      return isRequired || isAlreadyPropertySignature
+      // `Schema.withDecodingDefault` already makes the encoded key optional, so
+      // a defaulted property must not be wrapped again.
+      const hasDecodingDefault = parsed.includes('Schema.withDecodingDefault(')
+      return isRequired || hasDecodingDefault
         ? `${safeKey}:${parsed}`
         : `${safeKey}:Schema.optional(${parsed})`
     })
     .filter((p) => p !== null)
 
-  // Schema.partial cannot wrap a Struct that already contains transformation-bearing
-  // PropertySignatures (e.g. Schema.optionalWith with default), so only use the
+  // `if`/`then`/`else` sub-schemas may name keys the struct does not declare,
+  // so the object has to keep unknown keys. v4 spells an index signature as
+  // `Schema.StructWithRest(struct, [record])`.
   const conditionalKeysReferenced = Boolean(schema.if || schema.then || schema.else)
-  const restSignature = conditionalKeysReferenced
-    ? ',Schema.Record({key:Schema.String,value:Schema.Unknown})'
-    : ''
-  // partial shorthand when every prop is a plain Schema.optional(Schema) wrapper.
-  const rawBase =
-    required.length === 0 &&
-    props.length > 0 &&
-    props.every((p) => /:Schema\.optional\(/.test(p) && !/Schema\.optionalWith\(/.test(p))
-      ? `Schema.partial(Schema.Struct({${props
-          .map((p) => p.replace(/^(.+?):Schema\.optional\((.+)\)$/, '$1:$2'))
-          .join(',')}}${restSignature}))`
-      : `Schema.Struct({${props.join(',')}}${restSignature})`
+  const struct = `Schema.Struct({${props.join(',')}})`
+  const rawBase = conditionalKeysReferenced
+    ? `Schema.StructWithRest(${struct},[Schema.Record(Schema.String,Schema.Unknown)])`
+    : struct
   const propsMessage = schema['x-properties-message']
-  const partialBase = propsMessage
-    ? (() => {
-        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
-        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
-        return `Schema.transformOrFail(Schema.Unknown,${rawBase},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${rawBase})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
-      })()
-    : rawBase
+  const partialBase = propsMessage ? wholeValueMessage(rawBase, propsMessage) : rawBase
 
   const minPropertiesFilter =
     typeof schema.minProperties === 'number'
-      ? `Schema.filter((o)=>Object.keys(o).length>=${schema.minProperties}${minErrorArg})`
+      ? `Schema.makeFilter((o)=>Object.keys(o).length>=${schema.minProperties}${minErrorArg})`
       : ''
   const maxPropertiesFilter =
     typeof schema.maxProperties === 'number'
-      ? `Schema.filter((o)=>Object.keys(o).length<=${schema.maxProperties}${maxErrorArg})`
+      ? `Schema.makeFilter((o)=>Object.keys(o).length<=${schema.maxProperties}${maxErrorArg})`
       : ''
   const dependentRequiredFilters: readonly string[] = schema.dependentRequired
     ? Object.entries(schema.dependentRequired).map(([key, deps]) => {
         const depsCheck = deps.map((d) => `'${d}' in o`).join('&&')
-        return `Schema.filter((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
+        return `Schema.makeFilter((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
       })
     : []
   // v3.0: dependentSchemas — when key present, the whole object must
@@ -137,23 +125,23 @@ export function object(
   const dependentSchemasFilters: readonly string[] = schema.dependentSchemas
     ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
         const s = effect(subSchema, rootName, isEffect, options)
-        return `Schema.filter((o)=>!('${key}' in o)||Schema.is(${s})(o)${depSchErrorArg})`
+        return `Schema.makeFilter((o)=>!('${key}' in o)||Schema.is(${s})(o)${depSchErrorArg})`
       })
     : []
   // Effect Schema enforces strict decoding via the `parseOptions` annotation,
-  // which sets `onExcessProperty: 'error'` at schema level. We attach the
-  // custom message through `Schema.annotations({message: ...})`.
+  // which sets `onExcessProperty: 'error'` at schema level. v4 reports an
+  // unexpected key as its own issue, so the custom message goes on
+  // `messageUnexpectedKey` rather than the node-wide `message`.
   const isStrictExtras =
     schema.additionalProperties === false || schema.unevaluatedProperties === false
-  const additionalPropertiesFilter = ''
   const strictExtrasAnnotation = isStrictExtras
     ? strictExtrasMessage
-      ? `Schema.annotations({parseOptions:{onExcessProperty:"error"},message:()=>${JSON.stringify(strictExtrasMessage)}})`
-      : `Schema.annotations({parseOptions:{onExcessProperty:"error"}})`
+      ? `.annotate({parseOptions:{onExcessProperty:"error"},messageUnexpectedKey:${JSON.stringify(strictExtrasMessage)}})`
+      : `.annotate({parseOptions:{onExcessProperty:"error"}})`
     : ''
 
-  // v3.2: if/then/else conditional schema. Routed through Schema.filter:
-  // when `if` matches, the object must also satisfy `then`; otherwise `else`.
+  // v3.2: if/then/else conditional schema. Routed through a filter: when `if`
+  // matches, the object must also satisfy `then`; otherwise `else`.
   const ifThenElseFilters = (() => {
     if (!schema.if) return [] as string[]
     const ifSchema = effect(schema.if, rootName, isEffect, options)
@@ -167,27 +155,28 @@ export function object(
     if (thenSchema) {
       const arg = thenMessage ? `,${effectError(thenMessage)}` : errorArg
       parts.push(
-        `Schema.filter((o)=>!Schema.is(${ifSchema})(o)||Schema.is(${thenSchema})(o)${arg})`,
+        `Schema.makeFilter((o)=>!Schema.is(${ifSchema})(o)||Schema.is(${thenSchema})(o)${arg})`,
       )
     }
     if (elseSchema) {
       const arg = elseMessage ? `,${effectError(elseMessage)}` : errorArg
-      parts.push(`Schema.filter((o)=>Schema.is(${ifSchema})(o)||Schema.is(${elseSchema})(o)${arg})`)
+      parts.push(
+        `Schema.makeFilter((o)=>Schema.is(${ifSchema})(o)||Schema.is(${elseSchema})(o)${arg})`,
+      )
     }
     return parts
   })()
 
-  const actions = [
+  const checks = [
     minPropertiesFilter,
     maxPropertiesFilter,
     propertyNamesFilter(),
     ...patternPropertiesFilters(),
     ...dependentRequiredFilters,
     ...dependentSchemasFilters,
-    additionalPropertiesFilter,
-    strictExtrasAnnotation,
     ...ifThenElseFilters,
   ].filter((a) => a !== '')
 
-  return actions.length > 0 ? `${partialBase}.pipe(${actions.join(',')})` : partialBase
+  const checked = checks.length > 0 ? `${partialBase}.check(${checks.join(',')})` : partialBase
+  return `${checked}${strictExtrasAnnotation}`
 }

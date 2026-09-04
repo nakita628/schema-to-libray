@@ -1,16 +1,16 @@
 import { Schema } from 'effect'
 
-export const Bag = Schema.Array(Schema.Number.pipe(Schema.int())).pipe(
-  Schema.filter(
+export const Bag = Schema.Array(Schema.Number.check(Schema.isInt())).check(
+  Schema.makeFilter(
     (arr) =>
       arr.filter((i) =>
-        Schema.is(Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(10)))(i),
+        Schema.is(Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(10)))(i),
       ).length >= 1,
   ),
-  Schema.filter(
+  Schema.makeFilter(
     (arr) =>
       arr.filter((i) =>
-        Schema.is(Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(10)))(i),
+        Schema.is(Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(10)))(i),
       ).length <= 3,
   ),
 )

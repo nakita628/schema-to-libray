@@ -4,16 +4,18 @@ import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.
 import { serializeJSValue } from './meta.js'
 
 /**
- * Wraps an Effect schema string with `Schema.optionalWith()`, `Schema.NullOr()`,
- * `Schema.brand()` and `.annotations({...})` based on `default` / `nullable` /
- * `x-brand` and OpenAPI metadata fields.
+ * Wraps an Effect Schema v4 schema string with `Schema.withDecodingDefault()`,
+ * `Schema.NullOr()`, `Schema.brand()` and `.annotate({...})` based on
+ * `default` / `nullable` / `x-brand` and OpenAPI metadata fields.
  *
- * Metadata mapping (Effect `Schema.annotations`):
+ * Metadata mapping (v4 `.annotate`):
  * - `description` → `description`
- * - `examples` (or `[example]` when only singular present) → `examples`
- * - `deprecated` / `externalDocs` / `readOnly` / `writeOnly` → `jsonSchema: {...}`
- *   (Effect routes non-standard JSON Schema fields through the `jsonSchema`
- *   annotation to avoid polluting the standard annotation namespace.)
+ * - `readOnly` / `writeOnly` → same-named annotations (v4 promoted both to
+ *   first-class fields on `Annotations.Augment`)
+ * - `examples` (or `[example]` when only singular present), `deprecated` and
+ *   `externalDocs` → carried as loose annotation keys, since v4 types the
+ *   native `examples` annotation as `ReadonlyArray<T>` and OpenAPI specs may
+ *   carry incomplete examples that would fail to type-check.
  *
  * @see https://effect.website/docs/schema/annotations/
  */
@@ -30,9 +32,8 @@ export function effectWrap(
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
-  // NullOr must wrap a Schema, not a PropertySignature. When both nullable and
-  // default are present, NullOr goes inside optionalWith so the inner argument
-  // is still a Schema and the outer optionalWith yields a valid PropertySignature.
+  // `Schema.NullOr` wraps a schema, so it goes inside the decoding default:
+  // `withDecodingDefault` composes onto whatever schema it is piped from.
   const withNullable = isNullable ? `Schema.NullOr(${effectStr})` : effectStr
   const brand = schema['x-brand']
   const withBrand =
@@ -42,35 +43,29 @@ export function effectWrap(
   const pipeExt = readCodeExtension(schema, 'x-pipe', options)
   const codeChain = [filter, transformExt, pipeExt].filter((v): v is string => v !== undefined)
   const withCodeExts = codeChain.length === 0 ? withBrand : `${withBrand}${codeChain.join('')}`
-  // optionalWith is always outermost (it returns a PropertySignature, not a Schema).
-  // An object literal `{...}` after `() =>` parses as a block, so wrap it in
-  // parens to force an object-literal expression.
-  const thunkBody = (value: unknown): string => {
-    const literal = formatLiteral(value)
-    return literal.startsWith('{') ? `(${literal})` : literal
-  }
+  // v4 replaced `Schema.optionalWith(s, {default})` with a pipeable
+  // `Schema.withDecodingDefault(Effect.succeed(value))`, which already makes
+  // the encoded key optional. The default is an `Encoded` value, which is what
+  // `coerceDefault` produces.
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
   const withDefault = defaultResult?.keep
-    ? `Schema.optionalWith(${withCodeExts},{default:() => ${thunkBody(defaultResult.value)}})`
+    ? `${withCodeExts}.pipe(Schema.withDecodingDefault(Effect.succeed(${formatLiteral(defaultResult.value)})))`
     : withCodeExts
 
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   const ann: Record<string, unknown> = {}
   if (schema.description !== undefined) ann.description = schema.description
-  const jsonSchemaAnn: Record<string, unknown> = {}
-  // Route `examples` through `jsonSchema` (loose, not type-checked) rather than
-  // Effect's native `examples` annotation (typed `ReadonlyArray<A>`). OpenAPI
-  // examples are documentation metadata, not constraints, and specs may carry
-  // incomplete examples; type-checking them would break generation on valid input.
-  if (examples !== undefined) jsonSchemaAnn.examples = examples
-  if (schema.deprecated !== undefined) jsonSchemaAnn.deprecated = schema.deprecated
-  if (schema.externalDocs !== undefined) jsonSchemaAnn.externalDocs = schema.externalDocs
-  if (schema.readOnly !== undefined) jsonSchemaAnn.readOnly = schema.readOnly
-  if (schema.writeOnly !== undefined) jsonSchemaAnn.writeOnly = schema.writeOnly
-  if (Object.keys(jsonSchemaAnn).length > 0) {
-    ann.jsonSchema = jsonSchemaAnn
-  }
+  // v4 types `examples` as `ReadonlyArray<T>`. OpenAPI examples are
+  // documentation metadata, not constraints, and specs may carry incomplete
+  // examples; keeping them under a loose key avoids failing generation on
+  // otherwise valid input. `Annotations` has a string index signature, so
+  // unknown keys are accepted.
+  if (examples !== undefined) ann.jsonSchemaExamples = examples
+  if (schema.deprecated !== undefined) ann.jsonSchemaDeprecated = schema.deprecated
+  if (schema.externalDocs !== undefined) ann.jsonSchemaExternalDocs = schema.externalDocs
+  if (schema.readOnly !== undefined) ann.readOnly = schema.readOnly
+  if (schema.writeOnly !== undefined) ann.writeOnly = schema.writeOnly
   if (Object.keys(ann).length === 0) return withDefault
-  return `${withDefault}.annotations(${serializeJSValue(ann)})`
+  return `${withDefault}.annotate(${serializeJSValue(ann)})`
 }

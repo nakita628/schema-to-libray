@@ -1,5 +1,6 @@
 import {
   findCodeExtensionKeysInSchema,
+  hasRootSelfReference,
   resolveSchemaDependenciesFromSchema,
   UNSAFE_GENERATED_MARKER,
 } from '../../helper/index.js'
@@ -7,36 +8,6 @@ import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
-
-/**
- * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
- */
-function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
-
-  const stack: unknown[] = Object.entries(schema)
-    .filter(([key]) => key !== 'definitions' && key !== '$defs')
-    .map(([, value]) => value)
-
-  while (stack.length > 0) {
-    const node = stack.pop()
-    if (!isRecord(node)) continue
-    if ('$ref' in node && node.$ref === '#') return true
-    for (const [key, value] of Object.entries(node)) {
-      if (key === 'definitions' || key === '$defs') continue
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          if (isRecord(item)) stack.push(item)
-        }
-      } else if (isRecord(value)) {
-        stack.push(value)
-      }
-    }
-  }
-
-  return false
-}
 
 /**
  * Convert JSON Schema to Effect Schema code
@@ -75,7 +46,7 @@ export function schemaToEffect(
   }
 
   const hasDefinitions = Object.keys(definitions).length > 0
-  const needsTypeDef = hasDefinitions || hasSelfReference(schema)
+  const needsTypeDef = hasDefinitions || hasRootSelfReference(schema)
 
   const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
@@ -106,7 +77,7 @@ export function schemaToEffect(
       const def = definitions[name]
       if (!def) return `// ⚠️ missing definition for ${name}`
       const pc = toName(name)
-      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true, genOptions)}`
+      return `const ${pc}: Schema.Codec<_${pc}> = ${effect(def, pc, true, genOptions)}`
     })
     .join('\n\n')
 
@@ -116,16 +87,18 @@ export function schemaToEffect(
     : effect(schema, rootName, true, genOptions)
 
   const rootExport = needsTypeDef
-    ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`
+    ? `export const ${rootName}: Schema.Codec<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
-  // Detect if x-allOf-message wrap is used (introduces Either and ParseResult usage)
-  const usesTransformWrap =
-    rootSchema.includes('ParseResult.') &&
-    (rootSchema.includes('Either.isLeft') || schemaDefsCode.includes('Either.isLeft'))
-  const importLine = usesTransformWrap
-    ? `import { Either, ParseResult, Schema } from "effect"`
-    : `import { Schema } from "effect"`
+  // `Effect` backs decoding defaults and `SchemaTransformation` backs the
+  // string case/boolean conversions; import each only when one is emitted.
+  const emitted = `${schemaDefsCode}\n${rootExport}`
+  const modules = [
+    ...(emitted.includes('Effect.succeed(') ? ['Effect'] : []),
+    'Schema',
+    ...(emitted.includes('SchemaTransformation.') ? ['SchemaTransformation'] : []),
+  ]
+  const importLine = `import { ${modules.join(', ')} } from "effect"`
 
   // Assemble output
   return [

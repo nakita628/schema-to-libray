@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
 
-export const Config = Schema.Record({ key: Schema.String, value: Schema.String })
+export const Config = Schema.Record(Schema.String, Schema.String)
 
 export type Config = typeof Config.Type

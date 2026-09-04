@@ -1,4 +1,4 @@
-import { Either, Schema } from 'effect'
+import { Result, Schema } from 'effect'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { Config as AdditionalPropsConfig } from '../additional-properties/output.ts'
@@ -24,55 +24,55 @@ import { Order as SplitNestedOrder } from '../split-nested/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
 import { User as TitleUser } from '../title/output.ts'
 
-const decode = <A, I>(schema: Schema.Schema<A, I, never>, value: unknown) =>
-  Schema.decodeUnknownEither(schema)(value)
+const decode = <A, I>(schema: Schema.Codec<A, I>, value: unknown) =>
+  Schema.decodeUnknownResult(schema)(value)
 
 describe('error-messages runtime', () => {
   it('valid', () => {
     const result = decode(ErrorMessagesUser, { name: 'tarou', age: 20, tags: ['a'] })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL name too short', () => {
     const result = decode(ErrorMessagesUser, { name: 'a', age: 20, tags: ['a'] })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: a string matching the pattern ^[a-zA-Z]+$ & minLength(3) & maxLength(20); readonly age: int & greaterThanOrEqualTo(0) & lessThanOrEqualTo(120) & multipleOf(1); readonly tags: minItems(1) & maxItems(5) }\n└─ ["name"]\n   └─ Name too short',
+          'Name too short\n  at ["name"]',
       })
     }
   })
   it('FAIL name pattern', () => {
     const result = decode(ErrorMessagesUser, { name: 'tar1', age: 20, tags: ['a'] })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: a string matching the pattern ^[a-zA-Z]+$ & minLength(3) & maxLength(20); readonly age: int & greaterThanOrEqualTo(0) & lessThanOrEqualTo(120) & multipleOf(1); readonly tags: minItems(1) & maxItems(5) }\n└─ ["name"]\n   └─ Only alphabetic characters',
+          'Only alphabetic characters\n  at ["name"]',
       })
     }
   })
   it('FAIL age negative', () => {
     const result = decode(ErrorMessagesUser, { name: 'tarou', age: -1, tags: ['a'] })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: a string matching the pattern ^[a-zA-Z]+$ & minLength(3) & maxLength(20); readonly age: int & greaterThanOrEqualTo(0) & lessThanOrEqualTo(120) & multipleOf(1); readonly tags: minItems(1) & maxItems(5) }\n└─ ["age"]\n   └─ Age must be positive',
+          'Age must be positive\n  at ["age"]',
       })
     }
   })
   it('FAIL missing tags', () => {
     const result = decode(ErrorMessagesUser, { name: 'tarou', age: 20 })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: a string matching the pattern ^[a-zA-Z]+$ & minLength(3) & maxLength(20); readonly age: int & greaterThanOrEqualTo(0) & lessThanOrEqualTo(120) & multipleOf(1); readonly tags: minItems(1) & maxItems(5) }\n└─ ["tags"]\n   └─ is missing',
+          'Missing key\n  at ["tags"]',
       })
     }
   })
@@ -81,26 +81,26 @@ describe('error-messages runtime', () => {
 describe('allof runtime', () => {
   it('valid', () => {
     const result = decode(Combined, { name: 'a', age: 1 })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL missing age', () => {
     const result = decode(Combined, { name: 'a' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
-        message: '{ readonly name: string; readonly age: number }\n└─ ["age"]\n   └─ is missing',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
+        message: 'Missing key\n  at ["age"]',
       })
     }
   })
   it('FAIL wrong type', () => {
     const result = decode(Combined, { name: 'a', age: 'x' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly age: number }\n└─ ["age"]\n   └─ Expected number, actual "x"',
+          'Expected number\n  at ["age"]',
       })
     }
   })
@@ -109,16 +109,16 @@ describe('allof runtime', () => {
 describe('allof-message runtime', () => {
   it('valid', () => {
     const result = decode(Merged, { name: 'taro', age: 5 })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL', () => {
     const result = decode(Merged, { name: 'ab', age: -1 })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '(unknown <-> { readonly name: minLength(3); readonly age: int & greaterThanOrEqualTo(0) })\n└─ Transformation process failure\n   └─ merged validation failed',
+          'merged validation failed',
       })
     }
   })
@@ -127,19 +127,19 @@ describe('allof-message runtime', () => {
 describe('anyof runtime', () => {
   it('valid string', () => {
     const result = decode(StringOrNumber, 'hi')
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid number', () => {
     const result = decode(StringOrNumber, 5)
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL', () => {
     const result = decode(StringOrNumber, true)
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
-        message: 'string | number\n├─ Expected string, actual true\n└─ Expected number, actual true',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
+        message: 'Must be string or number',
       })
     }
   })
@@ -148,20 +148,20 @@ describe('anyof runtime', () => {
 describe('oneof runtime', () => {
   it('valid circle', () => {
     const result = decode(Shape, { kind: 'circle', radius: 1 })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid rectangle', () => {
     const result = decode(Shape, { kind: 'rectangle', width: 1, height: 2 })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL unknown kind', () => {
     const result = decode(Shape, { kind: 'triangle' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly kind: "circle"; readonly radius: number } | { readonly kind: "rectangle"; readonly width: number; readonly height: number }\n└─ { readonly kind: "circle" | "rectangle" }\n   └─ ["kind"]\n      └─ Expected "circle" | "rectangle", actual "triangle"',
+          'Must be a valid shape',
       })
     }
   })
@@ -170,14 +170,14 @@ describe('oneof runtime', () => {
 describe('not runtime', () => {
   it('valid number', () => {
     const result = decode(NotString, 1)
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL string', () => {
     const result = decode(NotString, 'x')
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message: 'Must not be a string',
       })
     }
@@ -187,16 +187,16 @@ describe('not runtime', () => {
 describe('additional-properties runtime', () => {
   it('valid', () => {
     const result = decode(AdditionalPropsConfig, { a: 'b' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL wrong value type', () => {
     const result = decode(AdditionalPropsConfig, { a: 1 })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly [x: string]: string }\n└─ ["a"]\n   └─ Expected string, actual 1',
+          'Expected string\n  at ["a"]',
       })
     }
   })
@@ -205,16 +205,16 @@ describe('additional-properties runtime', () => {
 describe('readonly runtime', () => {
   it('valid', () => {
     const result = decode(ReadonlyConfig, { name: 'a', tags: ['t'] })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL missing tags', () => {
     const result = decode(ReadonlyConfig, { name: 'a' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly tags: ReadonlyArray<string>; readonly count?: int | undefined }\n└─ ["tags"]\n   └─ is missing',
+          'Missing key\n  at ["tags"]',
       })
     }
   })
@@ -223,20 +223,20 @@ describe('readonly runtime', () => {
 describe('$defs runtime', () => {
   it('valid w/o address', () => {
     const result = decode(DefsUser, { name: 'a' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid w/ address', () => {
     const result = decode(DefsUser, { name: 'a', address: { street: 's', city: 'c' } })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL missing city', () => {
     const result = decode(DefsUser, { name: 'a', address: { street: 's' } })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly address?: <suspended schema> | undefined }\n└─ ["address"]\n   └─ <suspended schema> | undefined\n      ├─ { readonly street: string; readonly city: string }\n      │  └─ ["city"]\n      │     └─ is missing\n      └─ Expected undefined, actual {"street":"s"}',
+          'Missing key\n  at ["address"]["city"]',
       })
     }
   })
@@ -245,20 +245,20 @@ describe('$defs runtime', () => {
 describe('definitions runtime', () => {
   it('valid empty', () => {
     const result = decode(DefinitionsA, {})
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid nested', () => {
     const result = decode(DefinitionsA, { b: { c: 'x' } })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL wrong leaf', () => {
     const result = decode(DefinitionsA, { b: { c: 1 } })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly b?: <suspended schema> | undefined }\n└─ ["b"]\n   └─ <suspended schema> | undefined\n      ├─ { readonly c?: string | undefined }\n      │  └─ ["c"]\n      │     └─ string | undefined\n      │        ├─ Expected string, actual 1\n      │        └─ Expected undefined, actual 1\n      └─ Expected undefined, actual {"c":1}',
+          'Expected string\n  at ["b"]["c"]',
       })
     }
   })
@@ -272,7 +272,7 @@ describe('nested runtime', () => {
       items: [{ name: 'x', price: 1, quantity: 1 }],
       status: 'pending',
     })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL bad status', () => {
     const result = decode(NestedOrder, {
@@ -281,12 +281,12 @@ describe('nested runtime', () => {
       items: [],
       status: 'x',
     })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly id: int; readonly customer: { readonly name: minLength(1); readonly email: a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ }; readonly items: ReadonlyArray<{ readonly name: string; readonly price: greaterThanOrEqualTo(0); readonly quantity: int & greaterThanOrEqualTo(1) }>; readonly status: "pending" | "confirmed" | "shipped" | "delivered" }\n└─ ["status"]\n   └─ "pending" | "confirmed" | "shipped" | "delivered"\n      ├─ Expected "pending", actual "x"\n      ├─ Expected "confirmed", actual "x"\n      ├─ Expected "shipped", actual "x"\n      └─ Expected "delivered", actual "x"',
+          'Expected "pending" | "confirmed" | "shipped" | "delivered"\n  at ["status"]',
       })
     }
   })
@@ -295,16 +295,16 @@ describe('nested runtime', () => {
 describe('simple runtime', () => {
   it('valid', () => {
     const result = decode(SimpleSchema, { name: 'a' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL missing name', () => {
     const result = decode(SimpleSchema, { age: 1 })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly age?: number | undefined }\n└─ ["name"]\n   └─ is missing',
+          'Missing key\n  at ["name"]',
       })
     }
   })
@@ -320,7 +320,7 @@ describe('brand runtime', () => {
       tags: ['t'],
       name: 'x',
     })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL bad uuid', () => {
     const result = decode(BrandedTypes, {
@@ -331,12 +331,12 @@ describe('brand runtime', () => {
       tags: ['t'],
       name: 'x',
     })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly userId: a Universally Unique Identifier & Brand<"UserId">; readonly email: a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ & Brand<"Email">; readonly price: greaterThanOrEqualTo(0) & Brand<"Price">; readonly quantity: int & greaterThanOrEqualTo(0) & Brand<"Quantity">; readonly tags: minItems(1) & maxItems(10) & Brand<"Tags">; readonly name: string }\n└─ ["userId"]\n   └─ a Universally Unique Identifier & Brand<"UserId">\n      └─ Predicate refinement failure\n         └─ Expected a Universally Unique Identifier, actual "not-uuid"',
+          'Expected a UUID\n  at ["userId"]',
       })
     }
   })
@@ -345,20 +345,20 @@ describe('brand runtime', () => {
 describe('circular runtime', () => {
   it('valid empty', () => {
     const result = decode(CircularA, {})
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid nested', () => {
     const result = decode(CircularA, { b: { a: { b: undefined } } })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL wrong type', () => {
     const result = decode(CircularA, { b: 1 })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly b?: <suspended schema> | undefined }\n└─ ["b"]\n   └─ <suspended schema> | undefined\n      ├─ Expected { readonly a?: <suspended schema> | undefined }, actual 1\n      └─ Expected undefined, actual 1',
+          'Expected object\n  at ["b"]',
       })
     }
   })
@@ -367,16 +367,16 @@ describe('circular runtime', () => {
 describe('self-reference runtime', () => {
   it('valid', () => {
     const result = decode(SelfRefSchema, { children: [{ children: [] }] })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL wrong children', () => {
     const result = decode(SelfRefSchema, { children: 'x' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly children?: ReadonlyArray<<suspended schema>> | undefined }\n└─ ["children"]\n   └─ ReadonlyArray<<suspended schema>> | undefined\n      ├─ Expected ReadonlyArray<<suspended schema>>, actual "x"\n      └─ Expected undefined, actual "x"',
+          'Expected array | undefined\n  at ["children"]',
       })
     }
   })
@@ -385,16 +385,16 @@ describe('self-reference runtime', () => {
 describe('meta runtime', () => {
   it('valid', () => {
     const result = decode(MetaUser, { id: 1, email: 'a@b.com' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL bad email', () => {
     const result = decode(MetaUser, { id: 1, email: 'x' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          'A user account\n└─ ["email"]\n   └─ email address\n      └─ Predicate refinement failure\n         └─ Expected email address, actual "x"',
+          'Expected a string matching the RegExp ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\n  at ["email"]',
       })
     }
   })
@@ -403,16 +403,16 @@ describe('meta runtime', () => {
 describe('title runtime', () => {
   it('valid', () => {
     const result = decode(TitleUser, { name: 'a', email: 'a@b.com' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL bad email', () => {
     const result = decode(TitleUser, { name: 'a', email: 'x' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly email: a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$ }\n└─ ["email"]\n   └─ a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\n      └─ Predicate refinement failure\n         └─ Expected a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$, actual "x"',
+          'Expected a string matching the RegExp ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\n  at ["email"]',
       })
     }
   })
@@ -425,7 +425,7 @@ describe('split-nested runtime', () => {
       customer: { name: 'a', email: 'a@b.com' },
       status: 'pending',
     })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL bad id', () => {
     const result = decode(SplitNestedOrder, {
@@ -433,12 +433,12 @@ describe('split-nested runtime', () => {
       customer: { name: 'a', email: 'a@b.com' },
       status: 'pending',
     })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly id: int; readonly customer: { readonly name: string; readonly email: a string matching the pattern ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$; readonly address?: { readonly street: string; readonly city: string } | undefined }; readonly status: "pending" | "shipped" | "delivered" }\n└─ ["id"]\n   └─ int\n      └─ From side refinement failure\n         └─ Expected number, actual "x"',
+          'Expected number\n  at ["id"]',
       })
     }
   })
@@ -447,34 +447,34 @@ describe('split-nested runtime', () => {
 describe('split-refs runtime', () => {
   it('valid w/o address', () => {
     const result = decode(SplitRefsUser, { name: 'a' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('valid w/ address', () => {
     const result = decode(SplitRefsUser, {
       name: 'a',
       address: { street: 's', city: 'c' },
     })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
   it('FAIL missing name', () => {
     const result = decode(SplitRefsUser, {})
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly address?: { readonly street: string; readonly city: string; readonly zip?: string | undefined } | undefined }\n└─ ["name"]\n   └─ is missing',
+          'Missing key\n  at ["name"]',
       })
     }
   })
   it('FAIL bad address', () => {
     const result = decode(SplitRefsUser, { name: 'a', address: { street: 's' } })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly name: string; readonly address?: { readonly street: string; readonly city: string; readonly zip?: string | undefined } | undefined }\n└─ ["address"]\n   └─ { readonly street: string; readonly city: string; readonly zip?: string | undefined } | undefined\n      ├─ { readonly street: string; readonly city: string; readonly zip?: string | undefined }\n      │  └─ ["city"]\n      │     └─ is missing\n      └─ Expected undefined, actual {"street":"s"}',
+          'Missing key\n  at ["address"]["city"]',
       })
     }
   })
@@ -483,22 +483,22 @@ describe('split-refs runtime', () => {
 describe('discriminated-union runtime', () => {
   it('PASS click event', () => {
     const result = decode(DiscriminatedEvent, { type: 'click', x: 1, y: 2 })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
 
   it('PASS keypress event', () => {
     const result = decode(DiscriminatedEvent, { type: 'keypress', key: 'Enter' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
 
   it('FAIL unknown discriminator', () => {
     const result = decode(DiscriminatedEvent, { type: 'unknown' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly type: "click"; readonly x: int; readonly y: int } | { readonly type: "keypress"; readonly key: string }\n└─ { readonly type: "click" | "keypress" }\n   └─ ["type"]\n      └─ Expected "click" | "keypress", actual "unknown"',
+          'Expected { readonly "type": "click", ... } | { readonly "type": "keypress", ... }',
       })
     }
   })
@@ -507,17 +507,17 @@ describe('discriminated-union runtime', () => {
 describe('length-message runtime', () => {
   it('PASS exactly 6 chars', () => {
     const result = decode(LengthMessageCode, { code: 'abcdef' })
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
   })
 
   it('FAIL empty code returns x-length-message', () => {
     const result = decode(LengthMessageCode, { code: '' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect({ _tag: result.left._tag, message: result.left.message }).toStrictEqual({
-        _tag: 'ParseError',
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect({ _tag: result.failure._tag, message: result.failure.message }).toStrictEqual({
+        _tag: 'SchemaError',
         message:
-          '{ readonly code: length(6) }\n└─ ["code"]\n   └─ Code must be exactly 6 characters',
+          'Code must be exactly 6 characters\n  at ["code"]',
       })
     }
   })

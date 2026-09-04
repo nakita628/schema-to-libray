@@ -1,25 +1,27 @@
-import { Either, ParseResult, Schema } from 'effect'
+import { Schema } from 'effect'
 
-export const Merged = Schema.transformOrFail(
-  Schema.Unknown,
-  Schema.extend(
-    Schema.Struct({ name: Schema.String.pipe(Schema.minLength(3)) }),
-    Schema.Struct({ age: Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(0)) }),
+export const Merged = Schema.Unknown.check(
+  Schema.makeFilter(
+    (v) =>
+      Schema.is(
+        Schema.Struct({
+          ...Schema.Struct({ name: Schema.String.check(Schema.isMinLength(3)) }).fields,
+          ...Schema.Struct({
+            age: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+          }).fields,
+        }),
+      )(v),
+    { message: 'merged validation failed' },
   ),
-  {
-    decode: (input, _opts, ast) => {
-      const result = Schema.decodeUnknownEither(
-        Schema.extend(
-          Schema.Struct({ name: Schema.String.pipe(Schema.minLength(3)) }),
-          Schema.Struct({ age: Schema.Number.pipe(Schema.int(), Schema.greaterThanOrEqualTo(0)) }),
-        ),
-      )(input)
-      return Either.isLeft(result)
-        ? ParseResult.fail(new ParseResult.Type(ast, input, 'merged validation failed'))
-        : ParseResult.succeed(result.right)
-    },
-    encode: ParseResult.succeed,
-  },
+).pipe(
+  Schema.decodeTo(
+    Schema.Struct({
+      ...Schema.Struct({ name: Schema.String.check(Schema.isMinLength(3)) }).fields,
+      ...Schema.Struct({
+        age: Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+      }).fields,
+    }),
+  ),
 )
 
 export type Merged = typeof Merged.Type

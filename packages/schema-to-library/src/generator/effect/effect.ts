@@ -18,6 +18,57 @@ import { object } from './object.js'
 import { string } from './string.js'
 
 /**
+ * The `"true" | "false"` wire form of a boolean, for query and path
+ * parameters. v3 shipped this as `Schema.BooleanFromString`; v4 has no such
+ * schema, so the transformation is spelled out.
+ */
+const BOOLEAN_FROM_STRING =
+  `Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,` +
+  `SchemaTransformation.transform({decode:(s)=>s==="true",` +
+  `encode:(b)=>b?"true":"false"})))`
+
+/**
+ * True when a generated expression is a `Schema.Struct({...})`, optionally
+ * followed by `.check(...)` / `.annotate(...)` chains — the shapes whose
+ * `.fields` property survives (v4 rebuilds a struct as a struct).
+ */
+function isStructExpr(code: string): boolean {
+  return /^Schema\.Struct\(\{/.test(code)
+}
+
+/**
+ * The Effect Schema v4 spelling of an `allOf` intersection.
+ *
+ * v4 has no general `Schema.extend`. Structs intersect by spreading `.fields`,
+ * which is the documented replacement and keeps the full combined type. For
+ * anything else — a refined string, a union, a record — the first member
+ * becomes the base and each remaining member is enforced as a filter, which
+ * validates correctly but types the result as the base member alone.
+ */
+function intersect(schemas: readonly string[]): string {
+  const [first, ...rest] = schemas
+  if (first === undefined) return 'Schema.Unknown'
+  if (schemas.every(isStructExpr)) {
+    return `Schema.Struct({${schemas.map((s) => `...(${s}).fields`).join(',')}})`
+  }
+  return `${first}.check(${rest.map((s) => `Schema.makeFilter((v)=>Schema.is(${s})(v))`).join(',')})`
+}
+
+/**
+ * Replace every decoding failure of `inner` with a single message.
+ *
+ * v4 annotates a node with a plain `message` string, but that only covers
+ * issues the node itself reports — a missing or mistyped key is reported
+ * deeper and keeps its own message. Validating the whole value through one
+ * filter and then decoding restores the v3 `transformOrFail` behaviour of
+ * collapsing any failure into the given message, and `decodeTo` carries the
+ * inner schema's type through.
+ */
+export function wholeValueMessage(inner: string, message: string): string {
+  return `Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(${inner})(v),${effectError(message)})).pipe(Schema.decodeTo(${inner}))`
+}
+
+/**
  * Generate Effect Schema code from a JSON Schema.
  *
  * The `options.readonly` flag is accepted for API symmetry with the other
@@ -101,22 +152,16 @@ export function effect(
     if (!schema.oneOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.oneOf.map((s) => effect(s, rootName, isEffect, options))
     const oneOfMessage = schema['x-oneOf-message']
-    const expr = `Schema.Union(${schemas.join(',')})`
-    return effectWrap(
-      oneOfMessage ? `${expr}.annotations(${effectError(oneOfMessage)})` : expr,
-      schema,
-    )
+    const expr = `Schema.Union([${schemas.join(',')}])`
+    return effectWrap(oneOfMessage ? `${expr}.annotate(${effectError(oneOfMessage)})` : expr, schema)
   }
 
   if (schema.anyOf) {
     if (!schema.anyOf.length) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
-    const expr = `Schema.Union(${schemas.join(',')})`
-    return effectWrap(
-      anyOfMessage ? `${expr}.annotations(${effectError(anyOfMessage)})` : expr,
-      schema,
-    )
+    const expr = `Schema.Union([${schemas.join(',')}])`
+    return effectWrap(anyOfMessage ? `${expr}.annotate(${effectError(anyOfMessage)})` : expr, schema)
   }
 
   if (schema.allOf) {
@@ -134,31 +179,18 @@ export function effect(
       .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
       .map((s) => effect(s, rootName, isEffect, options))
     if (!schemas.length) return effectWrap('Schema.Unknown', { ...schema, nullable })
-    const intersected =
-      schemas.length === 1 ? schemas[0] : schemas.reduce((acc, s) => `Schema.extend(${acc},${s})`)
+    const intersected = schemas.length === 1 ? schemas[0] : intersect(schemas)
     const allOfMessage = schema['x-allOf-message']
-    const baseResult = allOfMessage
-      ? (() => {
-          const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
-          const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-          return `Schema.transformOrFail(Schema.Unknown,${intersected},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${intersected})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
-        })()
-      : intersected
+    const baseResult = allOfMessage ? wholeValueMessage(intersected, allOfMessage) : intersected
     if (defaultValue !== undefined) {
       const formatLiteral = (value: unknown): string => {
         if (typeof value === 'boolean') return `${value}`
         if (typeof value === 'number') return `${value}`
         return JSON.stringify(value)
       }
-      // NullOr must wrap a Schema; optionalWith returns PropertySignature, so it
-      // must be the outermost wrap. Use Schema.optionalWith (Schema.optional with
-      // options is deprecated in Effect Schema 3.x).
+      // `Schema.NullOr` wraps a schema, so it stays inside the decoding default.
       const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
-      // An object default `{...}` after `() =>` parses as a block; wrap it in
-      // parens so it is an object-literal expression.
-      const literal = formatLiteral(defaultValue)
-      const thunkBody = literal.startsWith('{') ? `(${literal})` : literal
-      return `Schema.optionalWith(${withNullable},{default:() => ${thunkBody}})`
+      return `${withNullable}.pipe(Schema.withDecodingDefault(Effect.succeed(${formatLiteral(defaultValue)})))`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
@@ -167,9 +199,9 @@ export function effect(
     const inner = schema.not
     if (typeof inner !== 'object' || inner === null) return effectWrap('Schema.Unknown', schema)
     const notMessage = schema['x-not-message']
-    const filterOpts = notMessage ? `,{message:()=>${JSON.stringify(notMessage)}}` : ''
+    const filterOpts = notMessage ? `,${effectError(notMessage)}` : ''
     const filtered = (predicate: string) =>
-      effectWrap(`Schema.Unknown.pipe(Schema.filter(${predicate}${filterOpts}))`, schema)
+      effectWrap(`Schema.Unknown.check(Schema.makeFilter(${predicate}${filterOpts}))`, schema)
     const typePredicates: { readonly [k: string]: string } = {
       string: `(val) => typeof val !== 'string'`,
       number: `(val) => typeof val !== 'number'`,
@@ -204,7 +236,7 @@ export function effect(
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const literalCode = `Schema.Literal(${JSON.stringify(schema.const)})`
     const withMessage = constMessage
-      ? `${literalCode}.annotations(${effectError(constMessage)})`
+      ? `${literalCode}.annotate(${effectError(constMessage)})`
       : literalCode
     return effectWrap(withMessage, schema)
   }
@@ -228,27 +260,24 @@ export function effect(
     return effectWrap(base, schema)
   }
   if (types.includes('boolean')) {
-    if (isStringWireParam) return effectWrap('Schema.BooleanFromString', schema)
+    // v4 has no `Schema.BooleanFromString`; spell the string wire form out.
+    if (isStringWireParam) return effectWrap(BOOLEAN_FROM_STRING, schema)
     return effectWrap('Schema.Boolean', schema)
   }
 
   if (types.includes('array')) {
-    const elementMessageWrap = (inner: string, msg: string) => {
-      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
-      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
-      return `Schema.transformOrFail(Schema.Unknown,${inner},{decode:(input,_opts,ast)=>{const result=Schema.decodeUnknownEither(${inner})(input);return Either.isLeft(result)?ParseResult.fail(new ParseResult.Type(ast,input,${msgExpr})):ParseResult.succeed(result.right)},encode:ParseResult.succeed})`
-    }
+    const elementMessageWrap = wholeValueMessage
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => effect(s, rootName, isEffect, options))
       // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
-      // prefixItems. `false` → fixed tuple (default rejects extras);
-      // schema → `Schema.Tuple(prefix, Schema.Element(rest))` form via
-      // `Schema.NonEmptyTupleType` not supported in v3; use `Schema.Array` rest.
+      // prefixItems. `false` → fixed tuple (the default already rejects
+      // extras); a schema → `Schema.TupleWithRest(tuple, [rest])`.
       const u = schema.unevaluatedItems
+      const tuple = `Schema.Tuple([${items.join(',')}])`
       const tupleExpr =
         u !== undefined && u !== true && typeof u === 'object'
-          ? `Schema.Tuple({elements:[${items.join(',')}],rest:[${effect(u, rootName, isEffect, options)}]})`
-          : `Schema.Tuple(${items.join(',')})`
+          ? `Schema.TupleWithRest(${tuple},[${effect(u, rootName, isEffect, options)}])`
+          : tuple
       const prefixItemsMessage = schema['x-prefixItems-message']
       const wrapped = prefixItemsMessage
         ? elementMessageWrap(tupleExpr, prefixItemsMessage)
@@ -276,7 +305,7 @@ export function effect(
     const uniqueItemsMessage = schema['x-uniqueItems-message']
     const uniqueArg = uniqueItemsMessage ? `,${effectError(uniqueItemsMessage)}` : ''
     // v3.0: contains / minContains / maxContains as separate filters
-    const containsActions = (() => {
+    const containsChecks = (() => {
       const c = schema.contains
       if (!c) return [] as readonly string[]
       const containsSchema = effect(c, rootName, isEffect, options)
@@ -288,7 +317,7 @@ export function effect(
       if (minC === undefined && maxC === undefined) {
         const containsArg = fallback ? `,${effectError(fallback)}` : ''
         out.push(
-          `Schema.filter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${containsArg})`,
+          `Schema.makeFilter((arr)=>arr.some((i)=>Schema.is(${containsSchema})(i))${containsArg})`,
         )
       } else {
         const effectiveMin = minC ?? 1
@@ -296,14 +325,14 @@ export function effect(
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
           const minContainsArg = minContainsMessage ? `,${effectError(minContainsMessage)}` : ''
           out.push(
-            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minContainsArg})`,
+            `Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
           const maxContainsArg = maxContainsMessage ? `,${effectError(maxContainsMessage)}` : ''
           out.push(
-            `Schema.filter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxContainsArg})`,
+            `Schema.makeFilter((arr)=>arr.filter((i)=>Schema.is(${containsSchema})(i)).length<=${maxC}${maxContainsArg})`,
           )
         }
       }
@@ -311,20 +340,20 @@ export function effect(
     })()
     // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
     // JSON Schema 2020-12 §11.3 makes the keyword redundant.
-    const actions = [
-      isFixedLength ? `Schema.itemsCount(${schema.minItems}${sizeArg})` : undefined,
+    const checks = [
+      isFixedLength
+        ? `Schema.isLengthBetween(${schema.minItems},${schema.minItems}${sizeArg})`
+        : undefined,
       !isFixedLength && typeof schema.minItems === 'number'
-        ? `Schema.minItems(${schema.minItems}${minArg})`
+        ? `Schema.isMinLength(${schema.minItems}${minArg})`
         : undefined,
       !isFixedLength && typeof schema.maxItems === 'number'
-        ? `Schema.maxItems(${schema.maxItems}${maxArg})`
+        ? `Schema.isMaxLength(${schema.maxItems}${maxArg})`
         : undefined,
-      schema.uniqueItems === true
-        ? `Schema.filter((items) => new Set(items).size === items.length${uniqueArg})`
-        : undefined,
-      ...containsActions,
+      schema.uniqueItems === true ? `Schema.isUnique(${uniqueArg.slice(1)})` : undefined,
+      ...containsChecks,
     ].filter((v) => v !== undefined)
-    const arrayExpr = actions.length > 0 ? `${base}.pipe(${actions.join(',')})` : base
+    const arrayExpr = checks.length > 0 ? `${base}.check(${checks.join(',')})` : base
     return effectWrap(arrayExpr, schema)
   }
 

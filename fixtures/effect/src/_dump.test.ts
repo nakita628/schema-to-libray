@@ -1,4 +1,4 @@
-import { Either, Schema } from 'effect'
+import { Result, Schema } from 'effect'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { Bag } from '../contains-min-max/output.ts'
@@ -15,44 +15,44 @@ import { Pair } from '../prefix-items-unevaluated/output.ts'
 import { Login } from '../write-only-password/output.ts'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const decode = (schema: Schema.Schema<any, any, never>, value: unknown) =>
-  Schema.decodeUnknownEither(schema)(value)
+const decode = (schema: Schema.Codec<any, any>, value: unknown) =>
+  Schema.decodeUnknownResult(schema)(value)
 
-const dump = (schema: Schema.Schema<unknown>, label: string, value: unknown) => {
+const dump = (schema: Schema.Codec<unknown>, label: string, value: unknown) => {
   const v = decode(schema, value)
-  if (Either.isLeft(v)) {
+  if (Result.isFailure(v)) {
     // eslint-disable-next-line no-console
-    console.log(`>>> ${label} <<<\n${v.left.message}\n>>> END ${label} <<<`)
+    console.log(`>>> ${label} <<<\n${v.failure.message}\n>>> END ${label} <<<`)
   }
 }
 
 describe('_dump', () => {
   it('dump all', () => {
-    dump(Event as Schema.Schema<unknown>, 'discriminated-union/unknown type', { type: 'scroll' })
-    dump(Pair as Schema.Schema<unknown>, 'prefix-items-unevaluated/extra item', ['a', 1, 'extra'])
-    dump(Pair as Schema.Schema<unknown>, 'prefix-items-unevaluated/wrong type', [1, 1])
-    dump(Bag as Schema.Schema<unknown>, 'contains-min-max/no element >=10', [1, 2, 3])
-    dump(Bag as Schema.Schema<unknown>, 'contains-min-max/too many', [10, 20, 30, 40])
-    dump(Mixed as Schema.Schema<unknown>, 'pattern-properties/wrong S type', { 'S:a': 1 })
-    dump(Mixed as Schema.Schema<unknown>, 'pattern-properties/wrong I type', { 'I:a': 'x' })
-    dump(Image as Schema.Schema<unknown>, 'content-encoding-base64/non-string', 1)
-    dump(Payload as Schema.Schema<unknown>, 'content-schema-json/non-string', 1)
-    dump(Card as Schema.Schema<unknown>, 'dependent-schemas/missing billing', {
+    dump(Event as Schema.Codec<unknown>, 'discriminated-union/unknown type', { type: 'scroll' })
+    dump(Pair as Schema.Codec<unknown>, 'prefix-items-unevaluated/extra item', ['a', 1, 'extra'])
+    dump(Pair as Schema.Codec<unknown>, 'prefix-items-unevaluated/wrong type', [1, 1])
+    dump(Bag as Schema.Codec<unknown>, 'contains-min-max/no element >=10', [1, 2, 3])
+    dump(Bag as Schema.Codec<unknown>, 'contains-min-max/too many', [10, 20, 30, 40])
+    dump(Mixed as Schema.Codec<unknown>, 'pattern-properties/wrong S type', { 'S:a': 1 })
+    dump(Mixed as Schema.Codec<unknown>, 'pattern-properties/wrong I type', { 'I:a': 'x' })
+    dump(Image as Schema.Codec<unknown>, 'content-encoding-base64/non-string', 1)
+    dump(Payload as Schema.Codec<unknown>, 'content-schema-json/non-string', 1)
+    dump(Card as Schema.Codec<unknown>, 'dependent-schemas/missing billing', {
       name: 'a',
       creditCard: 1234,
     })
-    dump(Address as Schema.Schema<unknown>, 'if-then-else/missing postalCode', { country: 'JP' })
-    dump(Profile as Schema.Schema<unknown>, 'nullable-default/wrong type', { nickname: 1 })
-    dump(Season as Schema.Schema<unknown>, 'enum-japanese/wrong', 'spring')
-    dump(DeepUser as Schema.Schema<unknown>, 'deep-nested-validation/missing geo', {
+    dump(Address as Schema.Codec<unknown>, 'if-then-else/missing postalCode', { country: 'JP' })
+    dump(Profile as Schema.Codec<unknown>, 'nullable-default/wrong type', { nickname: 1 })
+    dump(Season as Schema.Codec<unknown>, 'enum-japanese/wrong', 'spring')
+    dump(DeepUser as Schema.Codec<unknown>, 'deep-nested-validation/missing geo', {
       name: 'a',
       address: { street: 's', city: 'c' },
     })
-    dump(DeepUser as Schema.Schema<unknown>, 'deep-nested-validation/bad lat', {
+    dump(DeepUser as Schema.Codec<unknown>, 'deep-nested-validation/bad lat', {
       name: 'a',
       address: { street: 's', city: 'c', geo: { lat: 100, lng: 0 } },
     })
-    dump(Login as Schema.Schema<unknown>, 'write-only-password/short pw', {
+    dump(Login as Schema.Codec<unknown>, 'write-only-password/short pw', {
       email: 'a@b.com',
       password: 'short',
     })

@@ -1,14 +1,15 @@
 import { Schema } from 'effect'
 
-export const Mixed = Schema.Record({ key: Schema.String, value: Schema.Unknown }).pipe(
-  Schema.filter((o) =>
+export const Mixed = Schema.Record(Schema.String, Schema.Unknown).check(
+  Schema.makeFilter((o) =>
     Object.entries(o).every(
       ([k, val]) => !new RegExp('^S:').test(k) || Schema.is(Schema.String)(val),
     ),
   ),
-  Schema.filter((o) =>
+  Schema.makeFilter((o) =>
     Object.entries(o).every(
-      ([k, val]) => !new RegExp('^I:').test(k) || Schema.is(Schema.Number.pipe(Schema.int()))(val),
+      ([k, val]) =>
+        !new RegExp('^I:').test(k) || Schema.is(Schema.Number.check(Schema.isInt()))(val),
     ),
   ),
 )
