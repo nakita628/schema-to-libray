@@ -1,0 +1,54 @@
+---
+alwaysApply: true
+---
+
+# schema-to-library
+
+A code generator: a JSON Schema / OpenAPI document in, **TypeScript source text** for a
+validation library out. Five targets — Zod, Valibot, Effect Schema, TypeBox, ArkType —
+each written in that library's own idiom. Generators build strings; nothing is evaluated
+at generation time, so a mistake is only caught by the fixtures and by type-checking the
+generated files against the real library.
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `packages/schema-to-library` | the published npm package: parser, generators, five CLIs |
+| `packages/schema-to-library/src/generator/<lib>` | one directory per target library |
+| `fixtures/<lib>/<case>/{input.json,output.ts}` | golden files — `output.ts` is generated and committed |
+| `fixtures/validation`, `fixtures/elysia` | runtime tests: the emitted schemas must actually accept/reject data |
+| `apps/generated` | end-to-end smoke: runs the built CLIs over `apps/generated/schema/*` and type-checks the result |
+
+`README.md` at the repo root is a symlink to `@packages/schema-to-library/README.md`;
+there is one README, and it is the user-facing documentation.
+
+## Commands
+
+The toolchain is [Vite+](https://vite.plus/) (`vp`), not npm scripts. `-r` is recursive
+over the workspace, `pkg#task` targets one workspace.
+
+```bash
+vp run -r check                    # format + lint + typecheck, every workspace
+vp fmt                             # format only (vp fmt --check in CI)
+vp run schema-to-library#build     # build dist/ — fixtures and apps/ import the built package
+vp run @fixtures/zod#generate      # regenerate one library's fixtures (needs a fresh build)
+vp test                            # fixture assertions, from the repo root config
+vp run schema-to-library#test      # the library's own unit suite
+vp run schema-to-library#coverage  # 80% statements/branches/functions/lines, enforced
+vp run -r typecheck                # generated fixtures vs. the real target libraries
+```
+
+## Non-negotiables
+
+- **Never hand-edit generated files** — `fixtures/*/*/output.ts` and
+  `apps/generated/generated/**`. Change the generator, rebuild, regenerate. A generated
+  file edited by hand is a lie that survives until the next `generate` run.
+- **The fixture diff is the review artifact.** After touching a generator, rebuild,
+  regenerate, and read the `output.ts` diff before claiming the change works.
+- **New emitted API must type-check against the real library** (`vp run -r typecheck`).
+  Guessing at an API that the pinned version does not have is the most common failure
+  here — see `@.cursor/rules/target-libraries.mdc`.
+- **User-visible behaviour is documented in the README** — a new `x-*` extension, a newly
+  supported keyword, a new option, or a change in emitted shape.
+- **No new runtime dependencies** in `packages/schema-to-library` without being asked.
