@@ -26,6 +26,13 @@ function elementMessageWrap(inner: string, msg: string) {
   return `(()=>{const Schema=${inner};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
 }
 
+/** Draft-04's tuple form of `items`: a list of schemas rather than a single one. */
+function isSchemaList(
+  items: JSONSchema | readonly JSONSchema[] | undefined,
+): items is readonly JSONSchema[] {
+  return Array.isArray(items)
+}
+
 /**
  * Generate Zod schema code from JSON Schema.
  *
@@ -203,8 +210,11 @@ export function zod(
       const predicate = typePredicates[inner.type]
       if (predicate) return refine(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
@@ -291,7 +301,10 @@ export function zod(
         : tupleExpr
       return readonly(zodWrap(wrapped, schema))
     }
-    const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
+    // Draft-04 spelled a tuple as `items: [schema, ...]`. `Array.isArray` widens such a
+    // union to `any[]`, so the tuple form is recognised by a typed guard instead.
+    const items: JSONSchema | readonly JSONSchema[] | undefined = schema.items
+    const itemSchema = isSchemaList(items) ? items[0] : items
     const item = itemSchema ? zod(itemSchema, rootName, isZod, options) : 'z.any()'
     const itemsMessage = schema['x-items-message']
     const arrayBase = `z.array(${item}${baseError})`

@@ -2,24 +2,29 @@ import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
-const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
+function isQuoted(s: string): boolean {
+  return s.startsWith('"') && s.endsWith('"')
+}
 
 function composeNarrows(base: string, narrows: readonly string[]): string {
   return narrows.length === 0 ? base : narrows.reduce((acc, n) => `${acc}.narrow(${n})`, base)
 }
 
 /** Wrap a raw arktype expression with `type(...)` if it's a bare quoted string. */
-const ensureRuntime = (s: string) => (isQuoted(s) ? `type(${s})` : s)
+function ensureRuntime(s: string): string {
+  return isQuoted(s) ? `type(${s})` : s
+}
 
 /**
  * Compose a `.narrow(...)` argument with an optional error message.
  * - With message: `(o, ctx) => predicate || ctx.mustBe("msg")`
  * - Without message: `(o) => predicate`
  */
-const narrowPredicate = (predicate: string, message?: string): string =>
-  message
+function narrowPredicate(predicate: string, message?: string): string {
+  return message
     ? `(o, ctx) => ${predicate} || ctx.mustBe(${JSON.stringify(message)})`
     : `(o) => ${predicate}`
+}
 
 /**
  * Generate an Arktype object schema for a JSON Schema object node.

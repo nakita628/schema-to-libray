@@ -19,7 +19,9 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
-const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
+function isQuoted(s: string): boolean {
+  return s.startsWith('"') && s.endsWith('"')
+}
 
 /**
  * Combine two ArkType expressions.
@@ -28,20 +30,24 @@ const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
  * global `type(...)` cannot resolve, so scope mode composes with ArkType's
  * tuple expressions — which stay in definition syntax — instead of methods.
  */
-const combine = (op: '&' | '|', inScope: boolean) => (acc: string, s: string) =>
-  inScope && isArktypeDefinition(acc)
-    ? `[${acc},"${op}",${s}]`
-    : `type(${acc}).${op === '&' ? 'and' : 'or'}(${s})`
+function combine(op: '&' | '|', inScope: boolean) {
+  return (acc: string, s: string) =>
+    inScope && isArktypeDefinition(acc)
+      ? `[${acc},"${op}",${s}]`
+      : `type(${acc}).${op === '&' ? 'and' : 'or'}(${s})`
+}
 
-const unionStr = (schemas: string[], inScope = false) =>
-  schemas.every(isQuoted)
+function unionStr(schemas: string[], inScope = false): string {
+  return schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' | ')}"`
     : schemas.reduce(combine('|', inScope))
+}
 
-const intersectionStr = (schemas: string[], inScope = false) =>
-  schemas.every(isQuoted)
+function intersectionStr(schemas: string[], inScope = false): string {
+  return schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' & ')}"`
     : schemas.reduce(combine('&', inScope))
+}
 
 function formatConst(value: unknown): string {
   if (typeof value === 'string') return `"'${value}'"`
@@ -159,8 +165,11 @@ export function arktype(
       const predicate = typePredicates[inner.type]
       if (predicate) return narrow(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val: unknown\) => /, '')})`)

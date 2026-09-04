@@ -221,8 +221,11 @@ export function effect(
       const predicate = typePredicates[inner.type]
       if (predicate) return filtered(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val\) => /, '')})`)

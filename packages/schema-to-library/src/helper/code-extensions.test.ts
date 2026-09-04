@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { JSONSchema } from '../parser/index.js'
 import {
   ALL_CODE_EXTENSION_KEYS,
   ARKTYPE_CODE_EXTENSION_KEYS,
@@ -101,7 +102,7 @@ describe('code-extensions', () => {
     const schema = {
       type: 'string',
       'x-refine': '.refine((v) => v.length > 0)',
-    } as unknown as import('../parser/index.js').JSONSchema
+    } as unknown as JSONSchema
 
     it('returns undefined when flag is not set', () => {
       expect(readCodeExtension(schema, 'x-refine', undefined)).toBeUndefined()
@@ -118,7 +119,7 @@ describe('code-extensions', () => {
     it('returns undefined when value contains a denied identifier', () => {
       const unsafe = {
         'x-refine': '.refine(() => eval("x"))',
-      } as unknown as import('../parser/index.js').JSONSchema
+      } as unknown as JSONSchema
       expect(readCodeExtension(unsafe, 'x-refine', { unsafeCodeExtensions: true })).toBeUndefined()
     })
 
@@ -132,11 +133,9 @@ describe('code-extensions', () => {
 
     it('returns undefined for non-string value', () => {
       expect(
-        readCodeExtension(
-          { 'x-refine': 42 } as unknown as import('../parser/index.js').JSONSchema,
-          'x-refine',
-          { unsafeCodeExtensions: true },
-        ),
+        readCodeExtension({ 'x-refine': 42 } as unknown as JSONSchema, 'x-refine', {
+          unsafeCodeExtensions: true,
+        }),
       ).toBeUndefined()
     })
   })
@@ -150,8 +149,7 @@ describe('code-extensions', () => {
   })
 
   describe('hasIfThenElse', () => {
-    const parse = (json: string) =>
-      JSON.parse(json) as unknown as import('../parser/index.js').JSONSchema
+    const parse = (json: string) => JSON.parse(json) as unknown as JSONSchema
 
     it('returns true when top-level if/then/else is present', () => {
       const schema = parse(
@@ -179,7 +177,7 @@ describe('code-extensions', () => {
         findCodeExtensionKeysInSchema({
           type: 'string',
           'x-refine': '.refine(() => true)',
-        } as unknown as import('../parser/index.js').JSONSchema),
+        } as unknown as JSONSchema),
       ).toStrictEqual(['x-refine'])
     })
 
@@ -193,7 +191,7 @@ describe('code-extensions', () => {
             items: { type: 'number', 'x-transform': '.transform((v) => v * 2)' },
           },
         },
-      } as unknown as import('../parser/index.js').JSONSchema
+      } as unknown as JSONSchema
       const found = [...findCodeExtensionKeysInSchema(schema)].sort()
       expect(found).toStrictEqual(['x-check', 'x-transform'])
     })

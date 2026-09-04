@@ -47,6 +47,9 @@ export function toPascalCase(name: string) {
  * ```
  */
 export function encodeNonAscii(name: string) {
+  // Iterating by code point is the point here: splitting a surrogate pair would encode
+  // one character as two escapes.
+  // oxlint-disable-next-line typescript/no-misused-spread -- code-point iteration is intended
   return [...name]
     .map((ch) => {
       const cp = ch.codePointAt(0) ?? 0

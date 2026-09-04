@@ -100,11 +100,17 @@ function format(source: string) {
  * whenever there is one.
  */
 function describeFailure(error: { readonly message: string }): string {
-  const reason = isRecord(error) ? error.reason : undefined
-  const cause = isRecord(reason) ? reason.cause : undefined
+  const cause = platformCause(error)
   return cause instanceof Error && cause.message !== ''
     ? `${error.message}: ${cause.message}`
     : error.message
+}
+
+/** The host error a `PlatformError` wrapped, when it is one and it kept one. */
+function platformCause(error: unknown): unknown {
+  if (!isRecord(error)) return undefined
+  const reason = error.reason
+  return isRecord(reason) ? reason.cause : undefined
 }
 
 /**

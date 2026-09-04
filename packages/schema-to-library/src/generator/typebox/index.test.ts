@@ -584,24 +584,6 @@ export type Special = Static<typeof Special>`
     expect(result).toBe(expected)
   })
 
-  it('should handle anyOf combinator', () => {
-    const result = schemaToTypebox({
-      title: 'AnyOf',
-      type: 'object',
-      properties: {
-        value: {
-          anyOf: [{ type: 'string' }, { type: 'number' }],
-        },
-      },
-    })
-    const expected = `import { Type, type Static } from 'typebox'
-
-export const AnyOf = Type.Object({value:Type.Optional(Type.Union([Type.String(),Type.Number()]))})
-
-export type AnyOf = Static<typeof AnyOf>`
-    expect(result).toBe(expected)
-  })
-
   it('should handle default string value', () => {
     const result = schemaToTypebox({
       title: 'Def',

@@ -822,19 +822,27 @@ describe('syntax validation', () => {
     { name: 'oneOf', schema: oneOfSchema },
   ] as const
 
-  for (const s of schemas) {
-    for (const [key, bin] of Object.entries(GENERATORS)) {
-      it(`${s.name} \u00D7 ${key} generates balanced TypeScript`, async () => {
-        const result = await generate(bin, s.schema)
+  const cases = schemas.flatMap((s) =>
+    Object.entries(GENERATORS).map(([library, bin]) => ({
+      shape: s.name,
+      library,
+      bin,
+      schema: s.schema,
+    })),
+  )
 
-        expect(result.ok).toBe(true)
-        const code = result.code ?? ''
-        expect(code.length).toBeGreaterThan(0)
-        expect(code.startsWith('import')).toBe(true)
-        expect(code.includes('export const')).toBe(true)
-        // No unclosed brackets or parens.
-        expect((code.match(/[({[]/g) ?? []).length).toBe((code.match(/[)}\]]/g) ?? []).length)
-      })
-    }
-  }
+  it.each(cases)(
+    '$shape \u00D7 $library generates balanced TypeScript',
+    async ({ bin, schema: input }) => {
+      const result = await generate(bin, input)
+
+      expect(result.ok).toBe(true)
+      const code = result.code ?? ''
+      expect(code.length).toBeGreaterThan(0)
+      expect(code.startsWith('import')).toBe(true)
+      expect(code.includes('export const')).toBe(true)
+      // No unclosed brackets or parens.
+      expect((code.match(/[({[]/g) ?? []).length).toBe((code.match(/[)}\]]/g) ?? []).length)
+    },
+  )
 })

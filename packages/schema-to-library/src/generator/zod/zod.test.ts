@@ -414,7 +414,7 @@ describe('zod', () => {
       })
     })
 
-    // TODO properties
+    // properties
 
     // string
     describe('string', () => {

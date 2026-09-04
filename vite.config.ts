@@ -30,6 +30,9 @@ export default defineConfig({
     // Setting `plugins` replaces oxlint's default list — restate the defaults, then add
     // import / promise / node / jsdoc.
     plugins: ['typescript', 'unicorn', 'oxc', 'import', 'promise', 'node', 'jsdoc'],
+    // The repository conventions a glob cannot express (declaration shape, predicate
+    // naming, where an Effect may be run); see lint/custom.js.
+    jsPlugins: ['./lint/custom.js'],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -54,6 +57,13 @@ export default defineConfig({
     // `categories` above and are not restated; this list only adds rules from the
     // pedantic / style / restriction / nursery categories, which no category enables.
     rules: {
+      'custom/function-declaration': 'error',
+      'custom/type-pascal-case': 'error',
+      'custom/predicate-is-name': 'error',
+      'custom/no-effect-run': 'error',
+      'custom/effect-promise-import': 'error',
+      'custom/no-effect-fn': 'error',
+      'custom/no-effect-flatmap': 'error',
       // `_enum` is the one sanctioned dangling underscore: `enum` is a reserved word, so
       // the generator that emits an enum cannot be named after what it does without it.
       'no-underscore-dangle': ['error', { allow: ['_enum'] }],
@@ -193,7 +203,8 @@ export default defineConfig({
       'prefer-const': 'error',
       'no-param-reassign': ['error', { props: true }],
       'no-console': 'error',
-      'no-plusplus': 'error',
+      // The counter in a `for(...)` head is the one place `++` reads as the idiom.
+      'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
       'no-useless-return': 'error',
       'no-else-return': 'error',
       'no-lonely-if': 'error',
@@ -345,6 +356,33 @@ export default defineConfig({
         // `NodeRuntime.runMain` is the top-level statement that does it.
         files: ['packages/*/src/{zod,valibot,effect,typebox,arktype}.ts'],
         rules: { 'import/no-unassigned-import': 'off' },
+      },
+      {
+        // The convention plugin is an oxlint JS plugin: it walks an untyped ESTree and
+        // its contract with oxlint is a default export.
+        files: ['lint/**'],
+        rules: {
+          'import/no-default-export': 'off',
+          'import/no-anonymous-default-export': 'off',
+          'unicorn/no-anonymous-default-export': 'off',
+          'typescript/no-unsafe-argument': 'off',
+          'typescript/no-unsafe-assignment': 'off',
+          'typescript/no-unsafe-call': 'off',
+          'typescript/no-unsafe-member-access': 'off',
+          'typescript/no-unsafe-return': 'off',
+        },
+      },
+      {
+        // The one intentional cycle: a JSON Schema object holds schemas, and a schema
+        // may be an object, so each generator's `object.ts` and its entry module call
+        // each other. Untangling it would mean passing the entry point in as a
+        // parameter through every emitter — the rule stays on everywhere else, which is
+        // where an accidental cycle would appear.
+        files: [
+          'packages/*/src/generator/*/object.ts',
+          'packages/*/src/generator/{zod,valibot,effect,typebox,arktype}/{zod,valibot,effect,typebox,arktype}.ts',
+        ],
+        rules: { 'import/no-cycle': 'off' },
       },
       {
         // Test files may cast and reach for `any` when spelling out a fixture; the

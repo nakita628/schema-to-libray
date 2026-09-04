@@ -79,7 +79,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown"
+    "build": "tsdown",
+    "prepack": "cp ../../README.md ."
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^16.0.1",
