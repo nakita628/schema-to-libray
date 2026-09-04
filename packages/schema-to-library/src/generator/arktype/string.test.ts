@@ -63,31 +63,31 @@ describe('arktype string', () => {
   describe('declarative behavior extensions', () => {
     it('emits .pipe morph for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe(
-        'type("string").pipe((val: string) => val.trim())',
+        'type("string").pipe((data: string) => data.trim())',
       )
     })
 
     it('emits .pipe morph for x-toLowerCase', () => {
       expect(string({ type: 'string', 'x-toLowerCase': true })).toBe(
-        'type("string").pipe((val: string) => val.toLowerCase())',
+        'type("string").pipe((data: string) => data.toLowerCase())',
       )
     })
 
     it('emits .pipe morph for x-normalize', () => {
       expect(string({ type: 'string', 'x-normalize': 'NFC' })).toBe(
-        'type("string").pipe((val: string) => val.normalize("NFC"))',
+        'type("string").pipe((data: string) => data.normalize("NFC"))',
       )
     })
 
     it('emits .narrow with ctx.mustBe for x-startsWith', () => {
       expect(string({ type: 'string', 'x-startsWith': 'https://' })).toBe(
-        'type("string").narrow((val: string, ctx) => val.startsWith("https://") || ctx.mustBe("must start with \\"https://\\""))',
+        'type("string").narrow((data: string, ctx) => data.startsWith("https://") || ctx.mustBe("must start with \\"https://\\""))',
       )
     })
 
     it('chains pipe morph and narrow filter', () => {
       expect(string({ type: 'string', 'x-trim': true, 'x-startsWith': 'http' })).toBe(
-        'type("string").pipe((val: string) => val.trim()).narrow((val: string, ctx) => val.startsWith("http") || ctx.mustBe("must start with \\"http\\""))',
+        'type("string").pipe((data: string) => data.trim()).narrow((data: string, ctx) => data.startsWith("http") || ctx.mustBe("must start with \\"http\\""))',
       )
     })
   })

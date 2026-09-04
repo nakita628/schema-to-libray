@@ -70,7 +70,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=2)')
+      ).toBe('z.object({a:z.string()}).refine((val)=>Object.keys(val).length>=2)')
     })
 
     it('emits .refine for maxProperties', () => {
@@ -85,7 +85,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('z.object({a:z.string()}).refine((o)=>Object.keys(o).length<=5)')
+      ).toBe('z.object({a:z.string()}).refine((val)=>Object.keys(val).length<=5)')
     })
 
     it('emits both with x-minProperties-message / x-maxProperties-message', () => {
@@ -104,7 +104,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).length>=1,{error:"too few"}).refine((o)=>Object.keys(o).length<=3,{error:"too many"})',
+        'z.object({a:z.string()}).refine((val)=>Object.keys(val).length>=1,{error:"too few"}).refine((val)=>Object.keys(val).length<=3,{error:"too many"})',
       )
     })
   })
@@ -123,7 +123,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)))',
+        'z.object({a:z.string()}).refine((val)=>Object.keys(val).every((key)=>new RegExp("^[a-z]+$").test(key)))',
       )
     })
 
@@ -140,7 +140,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k)))',
+        'z.object({a:z.string()}).refine((val)=>Object.keys(val).every((key)=>["a","b","c"].includes(key)))',
       )
     })
 
@@ -158,7 +158,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{error:"lowercase only"})',
+        'z.object({a:z.string()}).refine((val)=>Object.keys(val).every((key)=>new RegExp("^[a-z]+$").test(key)),{error:"lowercase only"})',
       )
     })
   })
@@ -177,7 +177,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.object({a:z.string()}).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^x-").test(k)||z.string().safeParse(v).success))',
+        'z.object({a:z.string()}).refine((val)=>Object.entries(val).every(([key,value])=>!new RegExp("^x-").test(key)||z.string().safeParse(value).success))',
       )
     })
 
@@ -193,7 +193,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'z.record(z.string(),z.string()).refine((o)=>Object.entries(o).every(([k,v])=>!new RegExp("^id_").test(k)||z.number().safeParse(v).success))',
+        'z.record(z.string(),z.string()).refine((val)=>Object.entries(val).every(([key,value])=>!new RegExp("^id_").test(key)||z.number().safeParse(value).success))',
       )
     })
   })
@@ -215,7 +215,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({card:z.string(),billing:z.string().exactOptional()}).refine((o)=>!('card' in o)||('billing' in o))",
+        "z.object({card:z.string(),billing:z.string().exactOptional()}).refine((val)=>!('card' in val)||('billing' in val))",
       )
     })
 
@@ -236,7 +236,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "z.object({a:z.string().exactOptional(),b:z.string().exactOptional(),c:z.string().exactOptional()}).refine((o)=>!('a' in o)||('b' in o&&'c' in o),{error:\"a needs b and c\"})",
+        "z.object({a:z.string().exactOptional(),b:z.string().exactOptional(),c:z.string().exactOptional()}).refine((val)=>!('a' in val)||('b' in val&&'c' in val),{error:\"a needs b and c\"})",
       )
     })
   })
@@ -290,7 +290,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})().refine((o)=>Object.keys(o).length>=1)',
+        '(()=>{const Schema=z.object({a:z.string()});return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:"bad props"})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})().refine((val)=>Object.keys(val).length>=1)',
       )
     })
   })

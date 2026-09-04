@@ -416,15 +416,15 @@ describe('typebox', () => {
     it.concurrent.each<[JSONSchema, string]>([
       [
         { type: 'date' },
-        'Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
+        'Codec(Type.String()).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString())',
       ],
       [
         { type: 'date', nullable: true },
-        'Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])',
+        'Type.Union([Codec(Type.String()).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString()),Type.Null()])',
       ],
       [
         { type: ['date', 'null'] },
-        'Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])',
+        'Type.Union([Codec(Type.String()).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString()),Type.Null()])',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -644,19 +644,19 @@ describe('typebox', () => {
   describe('paramIn coercion', () => {
     it('query: number → Type.Transform decode Number', () => {
       expect(typebox({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'Codec(Type.String()).Decode((v)=>Number(v)).Encode((v)=>String(v))',
+        'Codec(Type.String()).Decode((value)=>Number(value)).Encode((value)=>String(value))',
       )
     })
 
     it("path: boolean → Type.Transform decode 'true'|'false'", () => {
       expect(typebox({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        "Codec(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')",
+        "Codec(Type.Union([Type.Literal('true'),Type.Literal('false')])).Decode((value)=>value==='true').Encode((value)=>value?'true':'false')",
       )
     })
 
     it('query: date → Type.Transform decode new Date', () => {
       expect(typebox({ type: 'date' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())',
+        'Codec(Type.String()).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString())',
       )
     })
 

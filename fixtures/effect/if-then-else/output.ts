@@ -5,9 +5,9 @@ export const Address = Schema.StructWithRest(
   [Schema.Record(Schema.String, Schema.Unknown)],
 ).check(
   Schema.makeFilter(
-    (o) =>
-      !Schema.is(Schema.Struct({ country: Schema.Literal('JP') }))(o) ||
-      Schema.is(Schema.Struct({ postalCode: Schema.String }))(o),
+    (input) =>
+      !Schema.is(Schema.Struct({ country: Schema.Literal('JP') }))(input) ||
+      Schema.is(Schema.Struct({ postalCode: Schema.String }))(input),
   ),
 )
 

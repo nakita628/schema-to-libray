@@ -25,28 +25,30 @@ export function string(schema: JSONSchema) {
 
   const behaviorChain = (() => {
     const chains: string[] = []
-    if (schema['x-trim'] === true) chains.push('.pipe((val: string) => val.trim())')
-    if (schema['x-toLowerCase'] === true) chains.push('.pipe((val: string) => val.toLowerCase())')
-    if (schema['x-toUpperCase'] === true) chains.push('.pipe((val: string) => val.toUpperCase())')
+    if (schema['x-trim'] === true) chains.push('.pipe((data: string) => data.trim())')
+    if (schema['x-toLowerCase'] === true) chains.push('.pipe((data: string) => data.toLowerCase())')
+    if (schema['x-toUpperCase'] === true) chains.push('.pipe((data: string) => data.toUpperCase())')
     if (typeof schema['x-normalize'] === 'string') {
-      chains.push(`.pipe((val: string) => val.normalize(${JSON.stringify(schema['x-normalize'])}))`)
+      chains.push(
+        `.pipe((data: string) => data.normalize(${JSON.stringify(schema['x-normalize'])}))`,
+      )
     }
     if (typeof schema['x-startsWith'] === 'string') {
       const prefix = schema['x-startsWith']
       chains.push(
-        `.narrow((val: string, ctx) => val.startsWith(${JSON.stringify(prefix)}) || ctx.mustBe(${JSON.stringify(`must start with ${JSON.stringify(prefix)}`)}))`,
+        `.narrow((data: string, ctx) => data.startsWith(${JSON.stringify(prefix)}) || ctx.mustBe(${JSON.stringify(`must start with ${JSON.stringify(prefix)}`)}))`,
       )
     }
     if (typeof schema['x-endsWith'] === 'string') {
       const suffix = schema['x-endsWith']
       chains.push(
-        `.narrow((val: string, ctx) => val.endsWith(${JSON.stringify(suffix)}) || ctx.mustBe(${JSON.stringify(`must end with ${JSON.stringify(suffix)}`)}))`,
+        `.narrow((data: string, ctx) => data.endsWith(${JSON.stringify(suffix)}) || ctx.mustBe(${JSON.stringify(`must end with ${JSON.stringify(suffix)}`)}))`,
       )
     }
     if (typeof schema['x-includes'] === 'string') {
       const sub = schema['x-includes']
       chains.push(
-        `.narrow((val: string, ctx) => val.includes(${JSON.stringify(sub)}) || ctx.mustBe(${JSON.stringify(`must include ${JSON.stringify(sub)}`)}))`,
+        `.narrow((data: string, ctx) => data.includes(${JSON.stringify(sub)}) || ctx.mustBe(${JSON.stringify(`must include ${JSON.stringify(sub)}`)}))`,
       )
     }
     return chains.join('')
@@ -62,7 +64,7 @@ export function string(schema: JSONSchema) {
   if (schema.pattern) {
     if (patternMessage) {
       return finalize(
-        `type(${base}).narrow((s, ctx) => new RegExp(${JSON.stringify(schema.pattern)}).test(s) || ctx.mustBe(${JSON.stringify(patternMessage)}))`,
+        `type(${base}).narrow((data, ctx) => new RegExp(${JSON.stringify(schema.pattern)}).test(data) || ctx.mustBe(${JSON.stringify(patternMessage)}))`,
       )
     }
     return finalize(`type(${base}).and(${regexLiteral(schema.pattern)})`)
@@ -76,7 +78,7 @@ export function string(schema: JSONSchema) {
   if (isFixedLength) {
     if (lengthMessage) {
       return finalize(
-        `type(${base}).narrow((s, ctx) => s.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(lengthMessage)}))`,
+        `type(${base}).narrow((data, ctx) => data.length === ${schema.minLength} || ctx.mustBe(${JSON.stringify(lengthMessage)}))`,
       )
     }
     return finalize(`type("string == ${schema.minLength}")`)
@@ -92,14 +94,14 @@ export function string(schema: JSONSchema) {
         const minLengthMessageResolved =
           minLengthMessage ?? errorMessage ?? `must be at least ${schema.minLength} chars`
         narrows.push(
-          `.narrow((s, ctx) => s.length >= ${schema.minLength} || ctx.mustBe(${JSON.stringify(minLengthMessageResolved)}))`,
+          `.narrow((data, ctx) => data.length >= ${schema.minLength} || ctx.mustBe(${JSON.stringify(minLengthMessageResolved)}))`,
         )
       }
       if (hasMax) {
         const maxLengthMessageResolved =
           maxLengthMessage ?? errorMessage ?? `must be at most ${schema.maxLength} chars`
         narrows.push(
-          `.narrow((s, ctx) => s.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxLengthMessageResolved)}))`,
+          `.narrow((data, ctx) => data.length <= ${schema.maxLength} || ctx.mustBe(${JSON.stringify(maxLengthMessageResolved)}))`,
         )
       }
       return finalize(`type(${base})${narrows.join('')}`)

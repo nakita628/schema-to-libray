@@ -15,7 +15,7 @@ const E: z.ZodType<_E> = z.object({
   reference: z.lazy(() => E).exactOptional(),
   flags: z
     .array(z.string())
-    .refine((items) => new Set(items).size === items.length)
+    .refine((val) => new Set(val).size === val.length)
     .exactOptional(),
   meta: z.record(z.string(), z.string()).exactOptional(),
 })

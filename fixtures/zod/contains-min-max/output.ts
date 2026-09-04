@@ -2,13 +2,13 @@ import * as z from 'zod'
 
 export const IntList = z
   .array(z.any())
-  .refine((arr) => {
+  .refine((val) => {
     const Schema = z.int()
-    return arr.filter((i) => Schema.safeParse(i).success).length >= 2
+    return val.filter((item) => Schema.safeParse(item).success).length >= 2
   })
-  .refine((arr) => {
+  .refine((val) => {
     const Schema = z.int()
-    return arr.filter((i) => Schema.safeParse(i).success).length <= 3
+    return val.filter((item) => Schema.safeParse(item).success).length <= 3
   })
 
 export type IntList = z.infer<typeof IntList>

@@ -50,10 +50,10 @@ export function object(
 
   const propertyNamesCheck = (): string => {
     if (schema.propertyNames?.pattern) {
-      return `v.check((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
+      return `v.check((input)=>Object.keys(input).every((key)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(key))${propNamesErrorArg})`
     }
     if (schema.propertyNames?.enum) {
-      return `v.check((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
+      return `v.check((input)=>Object.keys(input).every((key)=>${JSON.stringify(schema.propertyNames.enum)}.includes(key))${propNamesErrorArg})`
     }
     return ''
   }
@@ -62,7 +62,7 @@ export function object(
     schema.patternProperties
       ? Object.entries(schema.patternProperties).map(([pattern, propSchema]) => {
           const s = valibot(propSchema, rootName, isValibot, options)
-          return `v.check((o)=>Object.entries(o).every(([k,val])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||v.safeParse(${s},val).success)${patternErrorArg})`
+          return `v.check((input)=>Object.entries(input).every(([key,value])=>!new RegExp(${JSON.stringify(pattern)}).test(key)||v.safeParse(${s},value).success)${patternErrorArg})`
         })
       : []
 
@@ -126,23 +126,23 @@ export function object(
 
   const minPropertiesCheck =
     typeof schema.minProperties === 'number'
-      ? `v.check((o)=>Object.keys(o).length>=${schema.minProperties}${minErrorArg})`
+      ? `v.check((input)=>Object.keys(input).length>=${schema.minProperties}${minErrorArg})`
       : ''
   const maxPropertiesCheck =
     typeof schema.maxProperties === 'number'
-      ? `v.check((o)=>Object.keys(o).length<=${schema.maxProperties}${maxErrorArg})`
+      ? `v.check((input)=>Object.keys(input).length<=${schema.maxProperties}${maxErrorArg})`
       : ''
   const dependentRequiredChecks: readonly string[] = schema.dependentRequired
     ? Object.entries(schema.dependentRequired).map(([key, deps]) => {
-        const depsCheck = deps.map((d) => `'${d}' in o`).join('&&')
-        return `v.check((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
+        const depsCheck = deps.map((d) => `'${d}' in input`).join('&&')
+        return `v.check((input)=>!('${key}' in input)||(${depsCheck})${depReqErrorArg})`
       })
     : []
   // v3.0: dependentSchemas
   const dependentSchemasChecks: readonly string[] = schema.dependentSchemas
     ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
         const s = valibot(subSchema, rootName, isValibot, options)
-        return `v.check((o)=>!('${key}' in o)||v.safeParse(${s},o).success${depSchErrorArg})`
+        return `v.check((input)=>!('${key}' in input)||v.safeParse(${s},input).success${depSchErrorArg})`
       })
     : []
   // Extras rejection is wired into `v.strictObject` directly via its second
@@ -162,13 +162,13 @@ export function object(
     if (thenSchema) {
       const arg = thenMessage ? `,${valibotError(thenMessage)}` : ''
       parts.push(
-        `v.check((o)=>!v.safeParse(${ifSchema},o).success||v.safeParse(${thenSchema},o).success${arg})`,
+        `v.check((input)=>!v.safeParse(${ifSchema},input).success||v.safeParse(${thenSchema},input).success${arg})`,
       )
     }
     if (elseSchema) {
       const arg = elseMessage ? `,${valibotError(elseMessage)}` : ''
       parts.push(
-        `v.check((o)=>v.safeParse(${ifSchema},o).success||v.safeParse(${elseSchema},o).success${arg})`,
+        `v.check((input)=>v.safeParse(${ifSchema},input).success||v.safeParse(${elseSchema},input).success${arg})`,
       )
     }
     return parts

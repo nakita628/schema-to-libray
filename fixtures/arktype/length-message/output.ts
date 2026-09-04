@@ -2,7 +2,7 @@ import { type } from 'arktype'
 
 export const Code = type({
   code: type('string').narrow(
-    (s, ctx) => s.length === 6 || ctx.mustBe('Code must be exactly 6 characters'),
+    (data, ctx) => data.length === 6 || ctx.mustBe('Code must be exactly 6 characters'),
   ),
 })
 

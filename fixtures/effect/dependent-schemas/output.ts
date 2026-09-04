@@ -2,7 +2,9 @@ import { Schema } from 'effect'
 
 export const Card = Schema.Struct({ name: Schema.String }).check(
   Schema.makeFilter(
-    (o) => !('creditCard' in o) || Schema.is(Schema.Struct({ billingAddress: Schema.String }))(o),
+    (input) =>
+      !('creditCard' in input) ||
+      Schema.is(Schema.Struct({ billingAddress: Schema.String }))(input),
   ),
 )
 

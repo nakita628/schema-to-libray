@@ -226,7 +226,10 @@ export function typebox(
     const base = number(schema)
     if (isStringWireParam) {
       const wire = wireString(schema)
-      return typeboxWrap(`Codec(${wire}).Decode((v)=>Number(v)).Encode((v)=>String(v))`, schema)
+      return typeboxWrap(
+        `Codec(${wire}).Decode((value)=>Number(value)).Encode((value)=>String(value))`,
+        schema,
+      )
     }
     return typeboxWrap(base, schema)
   }
@@ -235,7 +238,7 @@ export function typebox(
     if (isStringWireParam) {
       const wire = wireString(schema)
       return typeboxWrap(
-        `Codec(${wire}).Decode((v)=>Number.parseInt(v,10)).Encode((v)=>String(v))`,
+        `Codec(${wire}).Decode((value)=>Number.parseInt(value,10)).Encode((value)=>String(value))`,
         schema,
       )
     }
@@ -249,7 +252,7 @@ export function typebox(
           ? `Type.Union([Type.Literal('true'),Type.Literal('false')],{${defaultOpt.join(',')}})`
           : `Type.Union([Type.Literal('true'),Type.Literal('false')])`
       return typeboxWrap(
-        `Codec(${union}).Decode((v)=>v==='true').Encode((v)=>v?'true':'false')`,
+        `Codec(${union}).Decode((value)=>value==='true').Encode((value)=>value?'true':'false')`,
         schema,
       )
     }
@@ -335,7 +338,7 @@ export function typebox(
     // over an ISO string, which is also what the query/path wire form uses.
     const wire = wireString(schema)
     return typeboxWrap(
-      `Codec(${wire}).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
+      `Codec(${wire}).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString())`,
       schema,
     )
   }

@@ -53,7 +53,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).length>=2))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.keys(input).length>=2))',
       )
     })
 
@@ -73,7 +73,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).length>=1,{message:"too few"}),Schema.makeFilter((o)=>Object.keys(o).length<=3,{message:"too many"}))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.keys(input).length>=1,{message:"too few"}),Schema.makeFilter((input)=>Object.keys(input).length<=3,{message:"too many"}))',
       )
     })
   })
@@ -92,7 +92,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.keys(input).every((key)=>new RegExp("^[a-z]+$").test(key))))',
       )
     })
 
@@ -109,7 +109,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.keys(input).every((key)=>["a","b","c"].includes(key))))',
       )
     })
 
@@ -127,7 +127,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),{message:"lowercase only"}))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.keys(input).every((key)=>new RegExp("^[a-z]+$").test(key)),{message:"lowercase only"}))',
       )
     })
   })
@@ -146,7 +146,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||Schema.is(Schema.String)(val))))',
+        'Schema.Struct({a:Schema.String}).check(Schema.makeFilter((input)=>Object.entries(input).every(([key,value])=>!new RegExp("^x-").test(key)||Schema.is(Schema.String)(value))))',
       )
     })
 
@@ -162,7 +162,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Record(Schema.String,Schema.String).check(Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||Schema.is(Schema.Number)(val))))',
+        'Schema.Record(Schema.String,Schema.String).check(Schema.makeFilter((input)=>Object.entries(input).every(([key,value])=>!new RegExp("^id_").test(key)||Schema.is(Schema.Number)(value))))',
       )
     })
   })
@@ -184,7 +184,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "Schema.Struct({card:Schema.String,billing:Schema.optional(Schema.String)}).check(Schema.makeFilter((o)=>!('card' in o)||('billing' in o)))",
+        "Schema.Struct({card:Schema.String,billing:Schema.optional(Schema.String)}).check(Schema.makeFilter((input)=>!('card' in input)||('billing' in input)))",
       )
     })
 
@@ -205,7 +205,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "Schema.Struct({a:Schema.optional(Schema.String),b:Schema.optional(Schema.String),c:Schema.optional(Schema.String)}).check(Schema.makeFilter((o)=>!('a' in o)||('b' in o&&'c' in o),{message:\"a needs b and c\"}))",
+        "Schema.Struct({a:Schema.optional(Schema.String),b:Schema.optional(Schema.String),c:Schema.optional(Schema.String)}).check(Schema.makeFilter((input)=>!('a' in input)||('b' in input&&'c' in input),{message:\"a needs b and c\"}))",
       )
     })
   })
@@ -224,7 +224,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'Schema.Unknown.check(Schema.makeFilter((v)=>Schema.is(Schema.Struct({a:Schema.String}))(v),{message:"bad props"})).pipe(Schema.decodeTo(Schema.Struct({a:Schema.String})))',
+        'Schema.Unknown.check(Schema.makeFilter((input)=>Schema.is(Schema.Struct({a:Schema.String}))(input),{message:"bad props"})).pipe(Schema.decodeTo(Schema.Struct({a:Schema.String})))',
       )
     })
   })

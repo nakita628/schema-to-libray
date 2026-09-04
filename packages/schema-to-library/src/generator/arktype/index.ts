@@ -94,7 +94,7 @@ export function schemaToArktype(
     const innerName = `${rootName}Inner`
     const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
     const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
-    const wrapped = `type('unknown').narrow((val, ctx) => {const result = ${innerName}(val); if (result instanceof type.errors) {for (const issue of result) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
+    const wrapped = `type('unknown').narrow((data, ctx) => {const result = ${innerName}(data); if (result instanceof type.errors) {for (const issue of result) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
     return [
       ...prefix,
       `import { type } from "arktype"`,

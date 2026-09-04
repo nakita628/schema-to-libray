@@ -70,7 +70,7 @@ describe('object', () => {
           'Schema',
           false,
         ),
-      ).toBe('v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).length>=2))')
+      ).toBe('v.pipe(v.object({a:v.string()}),v.check((input)=>Object.keys(input).length>=2))')
     })
 
     it('emits both with x-minimum-message / x-maximum-message', () => {
@@ -89,7 +89,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).length>=1,"too few"),v.check((o)=>Object.keys(o).length<=3,"too many"))',
+        'v.pipe(v.object({a:v.string()}),v.check((input)=>Object.keys(input).length>=1,"too few"),v.check((input)=>Object.keys(input).length<=3,"too many"))',
       )
     })
   })
@@ -108,7 +108,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k))))',
+        'v.pipe(v.object({a:v.string()}),v.check((input)=>Object.keys(input).every((key)=>new RegExp("^[a-z]+$").test(key))))',
       )
     })
 
@@ -125,7 +125,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>["a","b","c"].includes(k))))',
+        'v.pipe(v.object({a:v.string()}),v.check((input)=>Object.keys(input).every((key)=>["a","b","c"].includes(key))))',
       )
     })
 
@@ -143,7 +143,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.keys(o).every((k)=>new RegExp("^[a-z]+$").test(k)),"lowercase only"))',
+        'v.pipe(v.object({a:v.string()}),v.check((input)=>Object.keys(input).every((key)=>new RegExp("^[a-z]+$").test(key)),"lowercase only"))',
       )
     })
   })
@@ -162,7 +162,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.object({a:v.string()}),v.check((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^x-").test(k)||v.safeParse(v.string(),val).success)))',
+        'v.pipe(v.object({a:v.string()}),v.check((input)=>Object.entries(input).every(([key,value])=>!new RegExp("^x-").test(key)||v.safeParse(v.string(),value).success)))',
       )
     })
 
@@ -178,7 +178,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        'v.pipe(v.record(v.string(),v.string()),v.check((o)=>Object.entries(o).every(([k,val])=>!new RegExp("^id_").test(k)||v.safeParse(v.number(),val).success)))',
+        'v.pipe(v.record(v.string(),v.string()),v.check((input)=>Object.entries(input).every(([key,value])=>!new RegExp("^id_").test(key)||v.safeParse(v.number(),value).success)))',
       )
     })
   })
@@ -200,7 +200,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "v.pipe(v.object({card:v.string(),billing:v.optional(v.string())}),v.check((o)=>!('card' in o)||('billing' in o)))",
+        "v.pipe(v.object({card:v.string(),billing:v.optional(v.string())}),v.check((input)=>!('card' in input)||('billing' in input)))",
       )
     })
 
@@ -221,7 +221,7 @@ describe('object', () => {
           false,
         ),
       ).toBe(
-        "v.pipe(v.partial(v.object({a:v.string(),b:v.string(),c:v.string()})),v.check((o)=>!('a' in o)||('b' in o&&'c' in o),\"a needs b and c\"))",
+        "v.pipe(v.partial(v.object({a:v.string(),b:v.string(),c:v.string()})),v.check((input)=>!('a' in input)||('b' in input&&'c' in input),\"a needs b and c\"))",
       )
     })
   })

@@ -1,7 +1,7 @@
 import { type } from 'arktype'
 
 export const NotString = type('unknown')
-  .narrow((val: unknown) => typeof val !== 'string')
+  .narrow((data: unknown) => typeof data !== 'string')
   .describe('Must not be a string')
 
 export type NotString = typeof NotString.infer

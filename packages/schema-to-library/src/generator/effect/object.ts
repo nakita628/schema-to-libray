@@ -45,10 +45,10 @@ export function object(
 
   const propertyNamesFilter = (): string => {
     if (schema.propertyNames?.pattern) {
-      return `Schema.makeFilter((o)=>Object.keys(o).every((k)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(k))${propNamesErrorArg})`
+      return `Schema.makeFilter((input)=>Object.keys(input).every((key)=>new RegExp(${JSON.stringify(schema.propertyNames.pattern)}).test(key))${propNamesErrorArg})`
     }
     if (schema.propertyNames?.enum) {
-      return `Schema.makeFilter((o)=>Object.keys(o).every((k)=>${JSON.stringify(schema.propertyNames.enum)}.includes(k))${propNamesErrorArg})`
+      return `Schema.makeFilter((input)=>Object.keys(input).every((key)=>${JSON.stringify(schema.propertyNames.enum)}.includes(key))${propNamesErrorArg})`
     }
     return ''
   }
@@ -57,7 +57,7 @@ export function object(
     schema.patternProperties
       ? Object.entries(schema.patternProperties).map(([pattern, propSchema]) => {
           const s = effect(propSchema, rootName, isEffect, options)
-          return `Schema.makeFilter((o)=>Object.entries(o).every(([k,val])=>!new RegExp(${JSON.stringify(pattern)}).test(k)||Schema.is(${s})(val))${patternErrorArg})`
+          return `Schema.makeFilter((input)=>Object.entries(input).every(([key,value])=>!new RegExp(${JSON.stringify(pattern)}).test(key)||Schema.is(${s})(value))${patternErrorArg})`
         })
       : []
 
@@ -109,16 +109,16 @@ export function object(
 
   const minPropertiesFilter =
     typeof schema.minProperties === 'number'
-      ? `Schema.makeFilter((o)=>Object.keys(o).length>=${schema.minProperties}${minErrorArg})`
+      ? `Schema.makeFilter((input)=>Object.keys(input).length>=${schema.minProperties}${minErrorArg})`
       : ''
   const maxPropertiesFilter =
     typeof schema.maxProperties === 'number'
-      ? `Schema.makeFilter((o)=>Object.keys(o).length<=${schema.maxProperties}${maxErrorArg})`
+      ? `Schema.makeFilter((input)=>Object.keys(input).length<=${schema.maxProperties}${maxErrorArg})`
       : ''
   const dependentRequiredFilters: readonly string[] = schema.dependentRequired
     ? Object.entries(schema.dependentRequired).map(([key, deps]) => {
-        const depsCheck = deps.map((d) => `'${d}' in o`).join('&&')
-        return `Schema.makeFilter((o)=>!('${key}' in o)||(${depsCheck})${depReqErrorArg})`
+        const depsCheck = deps.map((d) => `'${d}' in input`).join('&&')
+        return `Schema.makeFilter((input)=>!('${key}' in input)||(${depsCheck})${depReqErrorArg})`
       })
     : []
   // v3.0: dependentSchemas — when key present, the whole object must
@@ -126,7 +126,7 @@ export function object(
   const dependentSchemasFilters: readonly string[] = schema.dependentSchemas
     ? Object.entries(schema.dependentSchemas).map(([key, subSchema]) => {
         const s = effect(subSchema, rootName, isEffect, options)
-        return `Schema.makeFilter((o)=>!('${key}' in o)||Schema.is(${s})(o)${depSchErrorArg})`
+        return `Schema.makeFilter((input)=>!('${key}' in input)||Schema.is(${s})(input)${depSchErrorArg})`
       })
     : []
   // Effect Schema enforces strict decoding via the `parseOptions` annotation,
@@ -156,13 +156,13 @@ export function object(
     if (thenSchema) {
       const arg = thenMessage ? `,${effectError(thenMessage)}` : errorArg
       parts.push(
-        `Schema.makeFilter((o)=>!Schema.is(${ifSchema})(o)||Schema.is(${thenSchema})(o)${arg})`,
+        `Schema.makeFilter((input)=>!Schema.is(${ifSchema})(input)||Schema.is(${thenSchema})(input)${arg})`,
       )
     }
     if (elseSchema) {
       const arg = elseMessage ? `,${effectError(elseMessage)}` : errorArg
       parts.push(
-        `Schema.makeFilter((o)=>Schema.is(${ifSchema})(o)||Schema.is(${elseSchema})(o)${arg})`,
+        `Schema.makeFilter((input)=>Schema.is(${ifSchema})(input)||Schema.is(${elseSchema})(input)${arg})`,
       )
     }
     return parts

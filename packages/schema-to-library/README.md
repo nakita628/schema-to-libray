@@ -161,6 +161,32 @@ export type User = Static<typeof User> // TypeBox
 export type User = typeof User.infer // ArkType
 ```
 
+### Callback naming
+
+Some JSON Schema keywords have no declarative equivalent in the target library and are
+emitted as a predicate instead — `uniqueItems`, `contains`, `propertyNames`,
+`patternProperties`, `dependentRequired` / `dependentSchemas`, `if` / `then` / `else`,
+`not`. The parameter of each such callback is named the way that library's own
+documentation names it, so generated code reads like hand-written code:
+
+| Library                                                        | Callback                                            | Parameter |
+| -------------------------------------------------------------- | --------------------------------------------------- | --------- |
+| [Zod](https://zod.dev/api)                                     | `.refine(...)` / `.transform(...)`                  | `val`     |
+| [Valibot](https://valibot.dev/api/check/)                      | `v.check(...)` / `v.custom(...)` / `v.transform(…)` | `input`   |
+| [Effect Schema](https://effect.website/docs/v4/schema/filters) | `Schema.makeFilter(...)`                            | `input`   |
+| [TypeBox](https://github.com/sinclairzx81/typebox)             | `Codec(...).Decode(...)` / `.Encode(...)`           | `value`   |
+| [ArkType](https://arktype.io/docs/expressions)                 | `.narrow(...)` / `.pipe(...)`                       | `data`    |
+
+Zod's `{ error: (issue) => … }` and `.check((ctx) => …)` keep `issue` and `ctx`, and
+Valibot's `v.rawCheck(({ dataset, addIssue }) => …)` keeps its destructured form, again
+following each library's docs. Nested callbacks inside a predicate are named for what
+they hold — `key`, `value`, `item`:
+
+```ts
+// Zod — patternProperties
+.refine((val) => Object.entries(val).every(([key, value]) => …))
+```
+
 ## Programmatic API
 
 Every generator is also a plain function: a JSON Schema in, the TypeScript source of a
@@ -467,7 +493,9 @@ document you do not control** — the value ends up in your source.
 
 Each library reads its own set, and the value is written in that library's own shape.
 For Zod, Effect Schema and ArkType the value is a **method chain fragment** appended to
-the schema; for Valibot it is a **pipe action** added to `v.pipe(...)`.
+the schema; for Valibot it is a **pipe action** added to `v.pipe(...)`. The value is
+emitted verbatim, so name its callback parameter the way that library does — see
+[Callback naming](#callback-naming).
 
 | Library                                                           | Extensions                          | The value is                                |
 | ----------------------------------------------------------------- | ----------------------------------- | ------------------------------------------- |
@@ -484,7 +512,7 @@ schemaToZod(schema, { unsafeCodeExtensions: true })
 ```yaml
 password:
   type: string
-  x-refine: '.refine((v) => v.length >= 8, { error: "Too short" })'
+  x-refine: '.refine((val) => val.length >= 8, { error: "Too short" })'
 ```
 
 ```ts
@@ -493,7 +521,7 @@ password:
 import * as z from 'zod'
 
 export const Password = z.object({
-  password: z.string().refine((v) => v.length >= 8, { error: 'Too short' }),
+  password: z.string().refine((val) => val.length >= 8, { error: 'Too short' }),
 })
 ```
 
