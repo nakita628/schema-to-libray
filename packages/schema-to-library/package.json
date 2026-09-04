@@ -83,8 +83,6 @@
     "check": "vp check",
     "coverage": "vp test --coverage",
     "fix": "vp check --fix",
-    "postpack": "rm -f README.md && ln -s ../../README.md README.md",
-    "prepack": "rm -f README.md && cp ../../README.md .",
     "test": "vp test"
   },
   "dependencies": {
