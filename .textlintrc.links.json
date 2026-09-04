@@ -11,7 +11,8 @@
     "no-dead-link": {
       "checkRelative": false,
       "retry": 2,
-      "concurrency": 4
+      "concurrency": 4,
+      "ignore": ["https://www.npmjs.com/**"]
     }
   }
 }

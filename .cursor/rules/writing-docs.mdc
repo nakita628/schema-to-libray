@@ -15,7 +15,10 @@ vp run fix    # vp fmt, oxlint --fix, and the autofixable half of markdownlint /
 ```
 
 The link check is last in the chain and needs the network, so a failure there is reported
-after everything else has already had its say.
+after everything else has already had its say. `https://www.npmjs.com/**` is on its
+ignore list: the registry answers `403` to anything that is not a browser, so from CI
+every npm link looks dead. Add a host there only for that reason — a blanket refusal to
+serve automated requests — never to silence a link that is genuinely broken.
 
 | Tool | Owns | Config |
 | --- | --- | --- |

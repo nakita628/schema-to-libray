@@ -2,5 +2,7 @@ node_modules
 **/node_modules/**
 **/dist/**
 **/coverage/**
-# A symlink to packages/schema-to-library/README.md, which is linted directly.
-/README.md
+# A symlink to packages/schema-to-library/README.md, which is linted directly. The
+# pattern has no leading slash: textlint matches it against the relative path, and a
+# pattern without `**` does not cross directories, so the real README stays linted.
+README.md
