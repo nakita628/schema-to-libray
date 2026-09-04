@@ -1,5 +1,6 @@
 import {
   findCodeExtensionKeysInSchema,
+  isRecord,
   resolveSchemaDependenciesFromSchema,
   UNSAFE_GENERATED_MARKER,
 } from '../../helper/index.js'
@@ -8,13 +9,14 @@ import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
 import { valibot } from './valibot.js'
 
+function annotation(name: string) {
+  return `v.GenericSchema<unknown, _${name}>`
+}
+
 /**
  * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
  */
 function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
-
   const stack = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
     .map(([, value]) => value)
@@ -106,7 +108,6 @@ export function schemaToValibot(
   // any schema whose input differs — a field with a `default`, say — so only
   // the output is constrained here. `_X` describes the output, which is what
   // `v.InferOutput` reads.
-  const annotation = (name: string) => `v.GenericSchema<unknown, _${name}>`
 
   // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs

@@ -20,10 +20,12 @@ export function integer(schema: JSONSchema) {
   if (requiredMessage) perKeywordEntries.push(`required:${JSON.stringify(requiredMessage)}`)
   if (minMessage) perKeywordEntries.push(`minimum:${JSON.stringify(minMessage)}`)
   if (maxMessage) perKeywordEntries.push(`maximum:${JSON.stringify(maxMessage)}`)
-  if (exclusiveMinimumMessage)
+  if (exclusiveMinimumMessage) {
     perKeywordEntries.push(`exclusiveMinimum:${JSON.stringify(exclusiveMinimumMessage)}`)
-  if (exclusiveMaximumMessage)
+  }
+  if (exclusiveMaximumMessage) {
     perKeywordEntries.push(`exclusiveMaximum:${JSON.stringify(exclusiveMaximumMessage)}`)
+  }
   if (multipleOfMessage) perKeywordEntries.push(`multipleOf:${JSON.stringify(multipleOfMessage)}`)
   const errorMessageField =
     perKeywordEntries.length === 0

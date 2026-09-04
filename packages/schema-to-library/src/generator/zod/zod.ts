@@ -1,8 +1,11 @@
 import {
-  type CodeExtensionOptions,
   isDeepLocalPointer,
+  isDefaultOnlyMember,
+  isNullTypeMember,
+  isShapelessMember,
   zodWrap as _zodWrap,
 } from '../../helper/index.js'
+import type { CodeExtensionOptions } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -17,6 +20,19 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
+function elementMessageWrap(inner: string, msg: string) {
+  const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
+  const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
+  return `(()=>{const Schema=${inner};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
+}
+
+/** Draft-04's tuple form of `items`: a list of schemas rather than a single one. */
+function isSchemaList(
+  items: JSONSchema | readonly JSONSchema[] | undefined,
+): items is readonly JSONSchema[] {
+  return Array.isArray(items)
+}
+
 /**
  * Generate Zod schema code from JSON Schema.
  *
@@ -27,8 +43,8 @@ import { string } from './string.js'
  */
 export function zod(
   schema: JSONSchema,
-  rootName: string = 'Schema',
-  isZod: boolean = false,
+  rootName = 'Schema',
+  isZod = false,
   options?: {
     openapi?: boolean
     readonly?: boolean
@@ -97,7 +113,7 @@ export function zod(
   }
 
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return zodWrap('z.any()', schema)
+    if (schema.oneOf.length === 0) return zodWrap('z.any()', schema)
     const schemas = schema.oneOf.map((s) => zod(s, rootName, isZod, options))
     const oneOfMessage = schema['x-oneOf-message']
     const errorPart = oneOfMessage ? `,${zodError(oneOfMessage)}` : ''
@@ -113,7 +129,7 @@ export function zod(
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return zodWrap('z.any()', schema)
+    if (schema.anyOf.length === 0) return zodWrap('z.any()', schema)
     const schemas = schema.anyOf.map((s) => zod(s, rootName, isZod, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const errorPart = anyOfMessage ? `,${zodError(anyOfMessage)}` : ''
@@ -121,20 +137,16 @@ export function zod(
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return zodWrap('z.any()', schema)
-    const isNullType = (s: JSONSchema) =>
-      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    if (schema.allOf.length === 0) return zodWrap('z.any()', schema)
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullType)
-    const defaultValue = schema.allOf.find(isDefaultOnly)?.default
+      schema.allOf.some(isNullTypeMember)
+    const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
-      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .filter((s) => !isShapelessMember(s))
       .map((s) => zod(s, rootName, isZod, options))
-    if (!schemas.length) return zodWrap('z.any()', { ...schema, nullable })
+    if (schemas.length === 0) return zodWrap('z.any()', { ...schema, nullable })
     const intersected =
       schemas.length === 1 ? schemas[0] : schemas.reduce((acc, s) => `z.intersection(${acc},${s})`)
     const allOfMessage = schema['x-allOf-message']
@@ -198,8 +210,11 @@ export function zod(
       const predicate = typePredicates[inner.type]
       if (predicate) return refine(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
@@ -243,7 +258,7 @@ export function zod(
     const errorArg = errorMessage ? zodError(errorMessage) : ''
     if (isStringWireParam) {
       return zodWrap(
-        `z.stringbool(${errorArg ? `{error:${errorArg.replace(/^{error:|}$/g, '')}}` : ''})`,
+        `z.stringbool(${errorArg ? `{error:${errorArg.replaceAll(/^{error:|}$/g, '')}}` : ''})`,
         schema,
       )
     }
@@ -263,11 +278,6 @@ export function zod(
     const fixedItemsError = fixedItemsMessage ? `,${zodError(fixedItemsMessage)}` : ''
     const uniqueMessage = schema['x-uniqueItems-message']
     const uniqueError = uniqueMessage ? `,${zodError(uniqueMessage)}` : ''
-    const elementMessageWrap = (inner: string, msg: string) => {
-      const isArrow = /^\s*\(.*?\)\s*=>/.test(msg)
-      const msgExpr = isArrow ? `(${msg})(issue)` : JSON.stringify(msg)
-      return `(()=>{const Schema=${inner};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
-    }
     if (schema.prefixItems?.length) {
       const items = schema.prefixItems.map((s) => zod(s, rootName, isZod, options))
       // JSON Schema 2020-12 §11.3: unevaluatedItems applies to elements beyond
@@ -291,7 +301,10 @@ export function zod(
         : tupleExpr
       return readonly(zodWrap(wrapped, schema))
     }
-    const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
+    // Draft-04 spelled a tuple as `items: [schema, ...]`. `Array.isArray` widens such a
+    // union to `any[]`, so the tuple form is recognised by a typed guard instead.
+    const items: JSONSchema | readonly JSONSchema[] | undefined = schema.items
+    const itemSchema = isSchemaList(items) ? items[0] : items
     const item = itemSchema ? zod(itemSchema, rootName, isZod, options) : 'z.any()'
     const itemsMessage = schema['x-items-message']
     const arrayBase = `z.array(${item}${baseError})`
@@ -351,8 +364,9 @@ export function zod(
     return readonly(zodWrap(arrayExpr, schema))
   }
 
-  if (types.includes('object'))
+  if (types.includes('object')) {
     return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
+  }
   if (types.includes('date')) {
     const errorMessage = schema['x-error-message']
     const errorArg = errorMessage ? zodError(errorMessage) : ''

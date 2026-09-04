@@ -30,10 +30,12 @@ const FORMAT_PATTERN: { readonly [k: string]: string } = {
  */
 function stringBase(schema: JSONSchema): string {
   if (schema['x-trim'] === true) return 'Schema.Trim'
-  if (schema['x-toLowerCase'] === true)
+  if (schema['x-toLowerCase'] === true) {
     return 'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toLowerCase()))'
-  if (schema['x-toUpperCase'] === true)
+  }
+  if (schema['x-toUpperCase'] === true) {
     return 'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toUpperCase()))'
+  }
   return 'Schema.String'
 }
 

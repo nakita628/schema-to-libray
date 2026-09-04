@@ -15,7 +15,7 @@
  * ```
  */
 export function regexLiteral(pattern: string): string {
-  const body = pattern.replace(/(?<!\\)\//g, '\\/')
+  const body = pattern.replaceAll(/(?<!\\)\//g, '\\/')
   const unicodeFlag = /\\[pP]\{|\\u\{/.test(pattern) ? 'u' : ''
   return `/${body}/${unicodeFlag}`
 }

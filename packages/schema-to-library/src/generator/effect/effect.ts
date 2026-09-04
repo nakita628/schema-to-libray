@@ -1,8 +1,12 @@
 import {
-  type CodeExtensionOptions,
   effectWrap as _effectWrap,
   isDeepLocalPointer,
+  isDefaultOnlyMember,
+  isNullTypeMember,
+  isShapelessMember,
+  jsLiteral,
 } from '../../helper/index.js'
+import type { CodeExtensionOptions } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   effectError,
@@ -16,6 +20,10 @@ import { integer } from './integer.js'
 import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
+
+function replaceBase(inner: string, from: string, to: string): string {
+  return inner.replace(from, to)
+}
 
 /**
  * The `"true" | "false"` wire form of a boolean, for query and path
@@ -79,8 +87,8 @@ export function wholeValueMessage(inner: string, message: string): string {
  */
 export function effect(
   schema: JSONSchema,
-  rootName: string = 'Schema',
-  isEffect: boolean = false,
+  rootName = 'Schema',
+  isEffect = false,
   options?: {
     openapi?: boolean
     readonly?: boolean
@@ -90,7 +98,6 @@ export function effect(
 ): string {
   const isStringWireParam =
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
-  const replaceBase = (inner: string, from: string, to: string): string => inner.replace(from, to)
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const effectWrap = (effectStr: string, s: JSONSchema): string =>
@@ -115,8 +122,9 @@ export function effect(
       for (const prefix of REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) {
           const pascalCaseName = toName(s.$ref.slice(prefix.length))
-          if (pascalCaseName === rootName)
+          if (pascalCaseName === rootName) {
             return effectWrap(`Schema.suspend(() => ${pascalCaseName})`, s)
+          }
           const refExpr = isEffect
             ? `Schema.suspend(() => ${pascalCaseName})`
             : rootName === 'Schema'
@@ -149,7 +157,7 @@ export function effect(
   }
 
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return effectWrap('Schema.Unknown', schema)
+    if (schema.oneOf.length === 0) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.oneOf.map((s) => effect(s, rootName, isEffect, options))
     const oneOfMessage = schema['x-oneOf-message']
     const expr = `Schema.Union([${schemas.join(',')}])`
@@ -160,7 +168,7 @@ export function effect(
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return effectWrap('Schema.Unknown', schema)
+    if (schema.anyOf.length === 0) return effectWrap('Schema.Unknown', schema)
     const schemas = schema.anyOf.map((s) => effect(s, rootName, isEffect, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     const expr = `Schema.Union([${schemas.join(',')}])`
@@ -171,32 +179,23 @@ export function effect(
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return effectWrap('Schema.Unknown', schema)
-    const isNullType = (s: JSONSchema) =>
-      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    if (schema.allOf.length === 0) return effectWrap('Schema.Unknown', schema)
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullType)
-    const defaultValue = schema.allOf.find(isDefaultOnly)?.default
+      schema.allOf.some(isNullTypeMember)
+    const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
-      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .filter((s) => !isShapelessMember(s))
       .map((s) => effect(s, rootName, isEffect, options))
-    if (!schemas.length) return effectWrap('Schema.Unknown', { ...schema, nullable })
+    if (schemas.length === 0) return effectWrap('Schema.Unknown', { ...schema, nullable })
     const intersected = schemas.length === 1 ? schemas[0] : intersect(schemas)
     const allOfMessage = schema['x-allOf-message']
     const baseResult = allOfMessage ? wholeValueMessage(intersected, allOfMessage) : intersected
     if (defaultValue !== undefined) {
-      const formatLiteral = (value: unknown): string => {
-        if (typeof value === 'boolean') return `${value}`
-        if (typeof value === 'number') return `${value}`
-        return JSON.stringify(value)
-      }
       // `Schema.NullOr` wraps a schema, so it stays inside the decoding default.
       const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
-      return `${withNullable}.pipe(Schema.withDecodingDefault(Effect.succeed(${formatLiteral(defaultValue)})))`
+      return `${withNullable}.pipe(Schema.withDecodingDefault(Effect.succeed(${jsLiteral(defaultValue)})))`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
@@ -222,8 +221,11 @@ export function effect(
       const predicate = typePredicates[inner.type]
       if (predicate) return filtered(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val\) => /, '')})`)
@@ -313,7 +315,7 @@ export function effect(
     // v3.0: contains / minContains / maxContains as separate filters
     const containsChecks = (() => {
       const c = schema.contains
-      if (!c) return [] as readonly string[]
+      if (!c) return []
       const containsSchema = effect(c, rootName, isEffect, options)
       const minC = schema.minContains
       const maxC = schema.maxContains
@@ -363,8 +365,9 @@ export function effect(
     return effectWrap(arrayExpr, schema)
   }
 
-  if (types.includes('object'))
+  if (types.includes('object')) {
     return effectWrap(object(schema, rootName, isEffect, options), schema)
+  }
   if (types.includes('date')) {
     if (isStringWireParam) return effectWrap('Schema.DateFromString', schema)
     return effectWrap('Schema.Date', schema)

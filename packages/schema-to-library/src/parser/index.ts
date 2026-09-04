@@ -1,4 +1,4 @@
-import $RefParser from '@apidevtools/json-schema-ref-parser'
+import { bundle } from '@apidevtools/json-schema-ref-parser'
 
 import type { XExtCode } from './x-ext/code.js'
 import type { XExtMessages } from './x-ext/messages.js'
@@ -30,7 +30,7 @@ function isJSONSchema(value: unknown): value is JSONSchema {
 
 export async function parseSchemaFile(input: string) {
   try {
-    const schema = await $RefParser.bundle(input)
+    const schema = await bundle(input)
     if (!isJSONSchema(schema)) {
       return {
         ok: false,
@@ -38,10 +38,10 @@ export async function parseSchemaFile(input: string) {
       } as const
     }
     return { ok: true, value: schema } as const
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: `Failed to parse schema: ${e instanceof Error ? e.message : String(e)}`,
+      error: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
     } as const
   }
 }

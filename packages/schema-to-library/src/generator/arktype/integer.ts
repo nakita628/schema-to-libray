@@ -8,12 +8,15 @@ export function integer(schema: JSONSchema) {
   const exclusiveMinimumMessage = schema['x-exclusiveMinimum-message']
   const exclusiveMaximumMessage = schema['x-exclusiveMaximum-message']
   const multipleOfMessage = schema['x-multipleOf-message']
-  const hasPerKeywordMessage =
-    minMessage ||
-    maxMessage ||
-    exclusiveMinimumMessage ||
-    exclusiveMaximumMessage ||
-    multipleOfMessage
+  // `.some(Boolean)`, not `??`: an empty message is no message, and the branch it
+  // guards would emit `ctx.mustBe('')`.
+  const hasPerKeywordMessage = [
+    minMessage,
+    maxMessage,
+    exclusiveMinimumMessage,
+    exclusiveMaximumMessage,
+    multipleOfMessage,
+  ].some(Boolean)
 
   if (schema.format === 'bigint') {
     if (errorMessage) return `type("bigint")${describe}`

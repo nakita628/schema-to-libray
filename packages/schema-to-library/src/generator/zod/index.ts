@@ -1,5 +1,6 @@
 import {
   findCodeExtensionKeysInSchema,
+  isRecord,
   resolveSchemaDependenciesFromSchema,
   UNSAFE_GENERATED_MARKER,
 } from '../../helper/index.js'
@@ -12,9 +13,6 @@ import { zod } from './zod.js'
  * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
  */
 function hasSelfReference(schema: JSONSchema): boolean {
-  const isRecord = (v: unknown): v is { [k: string]: unknown } =>
-    typeof v === 'object' && v !== null
-
   const stack: unknown[] = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
     .map(([, value]) => value)

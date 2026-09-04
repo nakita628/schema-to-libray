@@ -162,7 +162,7 @@ describe('patternProperties: keys starting with id_ must be number', () => {
       .record(z.string(), z.string())
       .refine((o) =>
         Object.entries(o).every(
-          ([k, val]) => !/^id_/.test(k) || ItemSchema.safeParse(val).success,
+          ([k, val]) => !k.startsWith('id_') || ItemSchema.safeParse(val).success,
         ),
       )
     it.each(cases)('%s', (_, input, expected) => {
@@ -171,20 +171,20 @@ describe('patternProperties: keys starting with id_ must be number', () => {
       // allows number for id_ keys — the parent record check will fail. Real generated
       // code uses additionalProperties: schema, so we mimic that with a permissive parent.
       // To isolate, we pre-filter cases where parent type would block:
-      if (Object.entries(input).some(([k, val]) => !/^id_/.test(k) && typeof val !== 'string')) {
+      if (Object.entries(input).some(([k, val]) => !k.startsWith('id_') && typeof val !== 'string')) {
         return
       }
       const allValuesValid = Object.entries(input).every(
         ([k, val]) =>
-          (/^id_/.test(k) && typeof val === 'number') ||
-          (!/^id_/.test(k) && typeof val === 'string'),
+          (k.startsWith('id_') && typeof val === 'number') ||
+          (!k.startsWith('id_') && typeof val === 'string'),
       )
       // Reformulate: build a record(string, union) instead for cross-type values.
       const Z2 = z
         .record(z.string(), z.union([z.string(), z.number()]))
         .refine((o) =>
           Object.entries(o).every(
-            ([k, val]) => !/^id_/.test(k) || ItemSchema.safeParse(val).success,
+            ([k, val]) => !k.startsWith('id_') || ItemSchema.safeParse(val).success,
           ),
         )
       expect(Z2.safeParse(input).success).toBe(allValuesValid && expected)

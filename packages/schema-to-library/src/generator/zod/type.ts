@@ -12,7 +12,7 @@ import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
  * type(schema, 'Animal') // 'string' | '{ name: string; species: string; offspring?: AnimalType[] }'
  * ```
  */
-export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'): string {
+export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
   if (schema === undefined) return ''
 
   if (schema.$ref) {
@@ -43,8 +43,9 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
       .filter((s) => {
         if (s.type === 'null') return false
         if (s.nullable === true && Object.keys(s).length === 1) return false
-        if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined))
+        if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined)) {
           return false
+        }
         return true
       })
       .map((s) => type(s, rootName))
@@ -57,8 +58,9 @@ export function type(schema: JSONSchema | undefined, rootName: string = 'Schema'
 
   if (schema.const !== undefined) {
     if (typeof schema.const === 'string') return `"${schema.const}"`
-    if (typeof schema.const === 'number' || typeof schema.const === 'boolean')
+    if (typeof schema.const === 'number' || typeof schema.const === 'boolean') {
       return String(schema.const)
+    }
     return JSON.stringify(schema.const) ?? 'null'
   }
 

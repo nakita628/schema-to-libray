@@ -320,7 +320,7 @@ describe('zod', () => {
           "z.any().refine((val) => typeof val !== 'string').nullable()",
         ],
         [
-          { not: { type: 'string' }, type: ['null'] } as JSONSchema,
+          { not: { type: 'string' }, type: ['null'] },
           "z.any().refine((val) => typeof val !== 'string').nullable()",
         ],
         [{ not: { const: 42 } }, 'z.any().refine((val) => val !== 42)'],
@@ -414,7 +414,7 @@ describe('zod', () => {
       })
     })
 
-    // TODO properties
+    // properties
 
     // string
     describe('string', () => {
@@ -928,7 +928,7 @@ describe('zod', () => {
           ],
           [
             {
-              type: ['any' as any, 'null'],
+              type: ['any', 'null'],
             },
             'z.any().nullable()',
           ],
@@ -949,7 +949,7 @@ describe('zod', () => {
           ],
           [
             {
-              type: ['any' as any, 'null'],
+              type: ['any', 'null'],
               default: 'test',
             },
             'z.any().nullable().default("test")',
@@ -1636,7 +1636,7 @@ describe('zod', () => {
           anyOf: [{ type: 'string' }, { type: 'number' }],
           'x-anyOf-message': 'any',
           'x-implication-message': 'if A then B',
-        } as JSONSchema),
+        }),
       ).toBe('z.union([z.string(),z.number()],{error:"if A then B"})')
     })
 
@@ -1645,7 +1645,7 @@ describe('zod', () => {
         zod({
           anyOf: [{ type: 'string' }, { type: 'number' }],
           'x-anyOf-message': 'any failed',
-        } as JSONSchema),
+        }),
       ).toBe('z.union([z.string(),z.number()],{error:"any failed"})')
     })
 
@@ -1691,15 +1691,14 @@ describe('zod', () => {
   })
 
   describe('x-if/then/else-message', () => {
-    const buildSchema = (overrides: Partial<JSONSchema>): JSONSchema =>
-      ({
-        type: 'object',
-        properties: { a: { type: 'string' }, b: { type: 'string' } },
-        if: { properties: { a: { const: 'x' } } },
-        // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
-        then: { required: ['b'] },
-        ...overrides,
-      }) as JSONSchema
+    const buildSchema = (overrides: Partial<JSONSchema>): JSONSchema => ({
+      type: 'object',
+      properties: { a: { type: 'string' }, b: { type: 'string' } },
+      if: { properties: { a: { const: 'x' } } },
+      // eslint-disable-next-line unicorn/no-thenable -- JSON Schema `then` keyword, not a Promise thenable
+      then: { required: ['b'] },
+      ...overrides,
+    })
 
     it('emits then refine with x-then-message', () => {
       expect(zod(buildSchema({ 'x-then-message': 'then failed' }))).toBe(

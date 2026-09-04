@@ -18,16 +18,31 @@ import { makeSafeKey, zodError } from '../../utils/index.js'
  * come from `x-error-message`; finer-grained business rules belong in
  * handler code, not the schema.
  */
+/**
+ * A non-array object. Distinct from {@link isRecord}: an enum member that is an array
+ * needs `z.tuple`, and one that is a plain object needs `z.strictObject`, so the two are
+ * told apart here rather than lumped together.
+ */
+function isPlainObject(value: unknown): value is { readonly [k: string]: unknown } {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** An enum member that needs a structural matcher rather than `z.literal`. */
+function isComposite(value: unknown): boolean {
+  return Array.isArray(value) || isPlainObject(value)
+}
+
+function lit(v: unknown): string {
+  if (v === null) return 'null'
+  if (typeof v === 'string') return `'${v.replaceAll("'", "\\'")}'`
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  return JSON.stringify(v) ?? 'null'
+}
+
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'z.any()'
   const ht = (t: string): boolean =>
     schema.type === t || (Array.isArray(schema.type) && schema.type.some((x) => x === t))
-  const lit = (v: unknown): string => {
-    if (v === null) return 'null'
-    if (typeof v === 'string') return `'${v.replace(/'/g, "\\'")}'`
-    if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-    return JSON.stringify(v) ?? 'null'
-  }
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   // Zod v4 `z.enum` emits a single issue code (`invalid_value`) for both
   // type and value mismatches, so the override is a clearer name for the
@@ -35,15 +50,12 @@ export function _enum(schema: JSONSchema) {
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
   const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
-  const isRecord = (v: unknown): v is { readonly [k: string]: unknown } =>
-    v !== null && typeof v === 'object' && !Array.isArray(v)
-  const isComposite = (v: unknown): boolean => Array.isArray(v) || isRecord(v)
   // Zod v4 `z.literal` is primitive-only; array/object enum members need a
   // structural matcher (`z.tuple` / `z.strictObject`). Primitives and `null`
   // keep their `z.literal(...)` output byte-for-byte.
   const valueSchema = (v: unknown): string => {
     if (Array.isArray(v)) return `z.tuple([${v.map(valueSchema).join(',')}])`
-    if (isRecord(v)) {
+    if (isPlainObject(v)) {
       const entries = Object.entries(v)
       return `z.strictObject({${entries.map(([k, val]) => `${makeSafeKey(k)}:${valueSchema(val)}`).join(',')}})`
     }

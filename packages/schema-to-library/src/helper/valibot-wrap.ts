@@ -1,7 +1,9 @@
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
-import { type CodeExtensionOptions, readCodeExtension } from './code-extensions.js'
+import { readCodeExtension } from './code-extensions.js'
+import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
+import { jsLiteral } from './value.js'
 
 /**
  * `v.optional(schema, default)` types the default as the inner schema's
@@ -39,11 +41,6 @@ export function valibotWrap(
   schema: JSONSchema,
   options?: CodeExtensionOptions & { readonly stringWire?: boolean },
 ): string {
-  const formatLiteral = (value: unknown): string => {
-    if (typeof value === 'boolean') return `${value}`
-    if (typeof value === 'number') return `${value}`
-    return JSON.stringify(value)
-  }
   const isNullable =
     schema.nullable === true ||
     (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
@@ -56,9 +53,7 @@ export function valibotWrap(
   // `'true'`) — the pipe coerces it back. Emitting the raw `1` is a type error.
   const defaultLiteral =
     defaultResult?.keep === true
-      ? formatLiteral(
-          options?.stringWire === true ? String(defaultResult.value) : defaultResult.value,
-        )
+      ? jsLiteral(options?.stringWire === true ? String(defaultResult.value) : defaultResult.value)
       : undefined
   const withNullable = wrapDefaultNullable(valibotStr, isNullable, defaultLiteral)
 
@@ -95,7 +90,7 @@ export function valibotWrap(
 
   const piped = actions.length === 0 ? withNullable : `v.pipe(${withNullable},${actions.join(',')})`
   if (schema['x-fallback'] !== undefined) {
-    return `v.fallback(${piped},${formatLiteral(schema['x-fallback'])})`
+    return `v.fallback(${piped},${jsLiteral(schema['x-fallback'])})`
   }
   return piped
 }

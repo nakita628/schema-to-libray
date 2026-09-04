@@ -1,17 +1,94 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
+import { NodeServices } from '@effect/platform-node'
+import { Console, Effect, Exit } from 'effect'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { schemaToArktype } from '../generator/arktype/index.js'
 import { schemaToEffect } from '../generator/effect/index.js'
 import { schemaToTypebox } from '../generator/typebox/index.js'
 import { schemaToValibot } from '../generator/valibot/index.js'
 import { schemaToZod } from '../generator/zod/index.js'
-import { cli } from './index.js'
+import { runCli } from './index.js'
+import type { Generator } from './index.js'
 
 // Test run
 // pnpm vitest run ./src/cli/index.test.ts
+
+/** Colour codes the CLI writes; stripped so assertions compare the words. */
+// eslint-disable-next-line no-control-regex
+const ANSI = /\u001B\[[0-9;]*m/g
+
+const GENERATORS = {
+  zod: { name: 'schema-to-zod', generator: schemaToZod },
+  valibot: { name: 'schema-to-valibot', generator: schemaToValibot },
+  effect: { name: 'schema-to-effect', generator: schemaToEffect },
+  typebox: { name: 'schema-to-typebox', generator: schemaToTypebox },
+  arktype: { name: 'schema-to-arktype', generator: schemaToArktype },
+} as const
+
+/**
+ * Runs one `schema-to-*` command the way its binary does, capturing what a user
+ * would see.
+ *
+ * Help, the version banner, the rendered `ERROR` block and the "Generated" line all
+ * go through `Console`, so the recorder catches every one of them.
+ */
+async function runBin(
+  bin: { readonly name: string; readonly generator: Generator },
+  argv: readonly string[],
+) {
+  const stdout: string[] = []
+  const stderr: string[] = []
+  const recorder: Console.Console = Object.assign(Object.create(console), {
+    log: (...args: readonly unknown[]) => stdout.push(args.map(String).join(' ')),
+    error: (...args: readonly unknown[]) => stderr.push(args.map(String).join(' ')),
+  })
+  const exit = await Effect.runPromiseExit(
+    runCli({ ...bin, description: 'test', version: '0.0.0-test' }, argv).pipe(
+      Effect.provideService(Console.Console, recorder),
+      Effect.provide(NodeServices.layer),
+    ),
+  )
+  return {
+    ok: Exit.isSuccess(exit),
+    stdout: stdout.join('\n').replaceAll(ANSI, ''),
+    stderr: stderr.join('\n').replaceAll(ANSI, ''),
+  }
+}
+
+let tmpDir = ''
+
+/** Fresh temp directory, removed after the test that made it. */
+function useTmpDir(prefix: string) {
+  tmpDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)))
+  return tmpDir
+}
+
+afterEach(() => {
+  if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true })
+  tmpDir = ''
+})
+
+/** Writes `schema` to a temp file, runs the command, and answers with what it wrote. */
+async function generate(
+  bin: { readonly name: string; readonly generator: Generator },
+  schema: unknown,
+  flags: readonly string[] = [],
+) {
+  const dir = useTmpDir('schema-to-library-cli-')
+  const input = path.join(dir, 'schema.json')
+  const output = path.join(dir, 'out.ts')
+  fs.writeFileSync(input, JSON.stringify(schema))
+  const result = await runBin(bin, [input, '-o', output, ...flags])
+  return {
+    ...result,
+    output,
+    code: fs.existsSync(output) ? fs.readFileSync(output, 'utf-8') : undefined,
+  }
+}
 
 const schema = {
   title: 'User',
@@ -91,211 +168,85 @@ const oneOfSchema = {
   required: ['kind', 'value'],
 }
 
-// --- help ---
-
-describe('cli --help', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', '--help']
-  })
-
-  it('should return help text when --help is passed', async () => {
-    const result = await cli(schemaToZod, 'This is help text.')
-    expect(result).toStrictEqual({ ok: true, value: 'This is help text.' })
-  })
-})
-
-describe('cli -h', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', '-h']
-  })
-
-  it('should return help text when -h is passed', async () => {
-    const result = await cli(schemaToZod, 'Help text here.')
-    expect(result).toStrictEqual({ ok: true, value: 'Help text here.' })
-  })
-})
-
-// --- validation ---
-
-describe('cli validation', () => {
-  it('should fail on invalid input file extension', async () => {
-    process.argv = ['node', 'cli.js', 'invalid.txt', '-o', 'output.ts']
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: false, error: 'Input must be a .json, or .yaml file' })
-  })
-
-  it('should fail on missing output flag', async () => {
-    process.argv = ['node', 'cli.js', 'input.json']
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: false, error: 'Output must be a .ts file' })
-  })
-})
-
-// --- schema-to-zod ---
-
 describe('schema-to-zod', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-schema.json', '-o', 'test-output-zod.ts']
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-zod.ts', { force: true })
-  })
-
   it('should generate zod schema', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-zod.ts' })
+    const result = await generate(GENERATORS.zod, schema)
 
-    const generatedCode = fs.readFileSync('test-output-zod.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('schema-to-zod --export-type', () => {
-  beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      '--export-type',
-      'test-schema.json',
-      '-o',
-      'test-output-zod-et.ts',
-    ]
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-zod-et.ts', { force: true })
-  })
-
   it('should generate zod schema with type export', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-zod-et.ts' })
+    const result = await generate(GENERATORS.zod, schema, ['--export-type'])
 
-    const generatedCode = fs.readFileSync('test-output-zod-et.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const User = z.object({ name: z.string(), age: z.int().exactOptional() })
 
 export type User = z.infer<typeof User>
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- schema-to-valibot ---
-
 describe('schema-to-valibot', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-schema.json', '-o', 'test-output-valibot.ts']
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-valibot.ts', { force: true })
-  })
-
   it('should generate valibot schema', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-valibot.ts' })
+    const result = await generate(GENERATORS.valibot, schema)
 
-    const generatedCode = fs.readFileSync('test-output-valibot.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const User = v.object({ name: v.string(), age: v.optional(v.pipe(v.number(), v.integer())) })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('schema-to-valibot --export-type', () => {
-  beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      '--export-type',
-      'test-schema.json',
-      '-o',
-      'test-output-valibot-et.ts',
-    ]
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-valibot-et.ts', { force: true })
-  })
-
   it('should generate valibot schema with type export', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-valibot-et.ts' })
+    const result = await generate(GENERATORS.valibot, schema, ['--export-type'])
 
-    const generatedCode = fs.readFileSync('test-output-valibot-et.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const User = v.object({ name: v.string(), age: v.optional(v.pipe(v.number(), v.integer())) })
 
 export type UserOutput = v.InferOutput<typeof User>
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- schema-to-effect ---
-
 describe('schema-to-effect', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-schema.json', '-o', 'test-output-effect.ts']
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-effect.ts', { force: true })
-  })
-
   it('should generate effect schema', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-effect.ts' })
+    const result = await generate(GENERATORS.effect, schema)
 
-    const generatedCode = fs.readFileSync('test-output-effect.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const User = Schema.Struct({
   name: Schema.String,
   age: Schema.optional(Schema.Number.check(Schema.isInt())),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('schema-to-effect --export-type', () => {
-  beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      '--export-type',
-      'test-schema.json',
-      '-o',
-      'test-output-effect-et.ts',
-    ]
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-effect-et.ts', { force: true })
-  })
-
   it('should generate effect schema with type export', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-effect-et.ts' })
+    const result = await generate(GENERATORS.effect, schema, ['--export-type'])
 
-    const generatedCode = fs.readFileSync('test-output-effect-et.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const User = Schema.Struct({
   name: Schema.String,
@@ -303,143 +254,73 @@ export const User = Schema.Struct({
 })
 
 export type User = typeof User.Type
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- schema-to-typebox ---
-
 describe('schema-to-typebox', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-schema.json', '-o', 'test-output-typebox.ts']
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-typebox.ts', { force: true })
-  })
-
   it('should generate typebox schema', async () => {
-    const result = await cli(schemaToTypebox, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-typebox.ts' })
+    const result = await generate(GENERATORS.typebox, schema)
 
-    const generatedCode = fs.readFileSync('test-output-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from 'typebox'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({ name: Type.String(), age: Type.Optional(Type.Integer()) })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('schema-to-typebox --export-type', () => {
-  beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      '--export-type',
-      'test-schema.json',
-      '-o',
-      'test-output-typebox-et.ts',
-    ]
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-typebox-et.ts', { force: true })
-  })
-
   it('should generate typebox schema with type export', async () => {
-    const result = await cli(schemaToTypebox, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-typebox-et.ts' })
+    const result = await generate(GENERATORS.typebox, schema, ['--export-type'])
 
-    const generatedCode = fs.readFileSync('test-output-typebox-et.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from 'typebox'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Type, type Static } from 'typebox'
 
 export const User = Type.Object({ name: Type.String(), age: Type.Optional(Type.Integer()) })
 
 export type User = Static<typeof User>
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- schema-to-arktype ---
-
 describe('schema-to-arktype', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-schema.json', '-o', 'test-output-arktype.ts']
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-arktype.ts', { force: true })
-  })
-
   it('should generate arktype schema', async () => {
-    const result = await cli(schemaToArktype, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-arktype.ts' })
+    const result = await generate(GENERATORS.arktype, schema)
 
-    const generatedCode = fs.readFileSync('test-output-arktype.ts', 'utf-8')
-    const expectedCode = `import { type } from 'arktype'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { type } from 'arktype'
 
 export const User = type({ name: 'string', 'age?': 'number.integer' })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('schema-to-arktype --export-type', () => {
-  beforeAll(() => {
-    process.argv = [
-      'node',
-      'cli.js',
-      '--export-type',
-      'test-schema.json',
-      '-o',
-      'test-output-arktype-et.ts',
-    ]
-    fs.writeFileSync('test-schema.json', JSON.stringify(schema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-schema.json', { force: true })
-    fs.rmSync('test-output-arktype-et.ts', { force: true })
-  })
-
   it('should generate arktype schema with type export', async () => {
-    const result = await cli(schemaToArktype, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-output-arktype-et.ts' })
+    const result = await generate(GENERATORS.arktype, schema, ['--export-type'])
 
-    const generatedCode = fs.readFileSync('test-output-arktype-et.ts', 'utf-8')
-    const expectedCode = `import { type } from 'arktype'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { type } from 'arktype'
 
 export const User = type({ name: 'string', 'age?': 'number.integer' })
 
 export type User = typeof User.infer
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- x-error-message fixtures ---
-
 describe('x-error-message: schema-to-zod', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-msg-schema.json', '-o', 'test-msg-zod.ts']
-    fs.writeFileSync('test-msg-schema.json', JSON.stringify(schemaWithMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-msg-schema.json', { force: true })
-    fs.rmSync('test-msg-zod.ts', { force: true })
-  })
-
   it('should generate zod schema with x-error-message', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-zod.ts' })
+    const result = await generate(GENERATORS.zod, schemaWithMessages)
 
-    const generatedCode = fs.readFileSync('test-msg-zod.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const UserForm = z.object({
   name: z.string({ error: 'Name is required' }).min(1),
@@ -451,27 +332,17 @@ export const UserForm = z.object({
     .exactOptional(),
   role: z.enum(['admin', 'user'], { error: 'Invalid role' }).exactOptional(),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('x-error-message: schema-to-valibot', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-msg-schema.json', '-o', 'test-msg-valibot.ts']
-    fs.writeFileSync('test-msg-schema.json', JSON.stringify(schemaWithMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-msg-schema.json', { force: true })
-    fs.rmSync('test-msg-valibot.ts', { force: true })
-  })
-
   it('should generate valibot schema with x-error-message', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-valibot.ts' })
+    const result = await generate(GENERATORS.valibot, schemaWithMessages)
 
-    const generatedCode = fs.readFileSync('test-msg-valibot.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const UserForm = v.object({
   name: v.pipe(v.string('Name is required'), v.minLength(1)),
@@ -481,27 +352,17 @@ export const UserForm = v.object({
   ),
   role: v.optional(v.picklist(['admin', 'user'], 'Invalid role')),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('x-error-message: schema-to-effect', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-msg-schema.json', '-o', 'test-msg-effect.ts']
-    fs.writeFileSync('test-msg-schema.json', JSON.stringify(schemaWithMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-msg-schema.json', { force: true })
-    fs.rmSync('test-msg-effect.ts', { force: true })
-  })
-
   it('should generate effect schema with x-error-message', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-effect.ts' })
+    const result = await generate(GENERATORS.effect, schemaWithMessages)
 
-    const generatedCode = fs.readFileSync('test-msg-effect.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const UserForm = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1)).annotate({ message: 'Name is required' }),
@@ -517,27 +378,17 @@ export const UserForm = Schema.Struct({
   ),
   role: Schema.optional(Schema.Literals(['admin', 'user']).annotate({ message: 'Invalid role' })),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('x-error-message: schema-to-typebox', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-msg-schema.json', '-o', 'test-msg-typebox.ts']
-    fs.writeFileSync('test-msg-schema.json', JSON.stringify(schemaWithMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-msg-schema.json', { force: true })
-    fs.rmSync('test-msg-typebox.ts', { force: true })
-  })
-
   it('should generate typebox schema with x-error-message', async () => {
-    const result = await cli(schemaToTypebox, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-typebox.ts' })
+    const result = await generate(GENERATORS.typebox, schemaWithMessages)
 
-    const generatedCode = fs.readFileSync('test-msg-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from 'typebox'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Type, type Static } from 'typebox'
 
 export const UserForm = Type.Object({
   name: Type.String({ minLength: 1, errorMessage: 'Name is required' }),
@@ -547,27 +398,17 @@ export const UserForm = Type.Object({
     Type.Union([Type.Literal('admin'), Type.Literal('user')], { errorMessage: 'Invalid role' }),
   ),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('x-error-message: schema-to-arktype', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-msg-schema.json', '-o', 'test-msg-arktype.ts']
-    fs.writeFileSync('test-msg-schema.json', JSON.stringify(schemaWithMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-msg-schema.json', { force: true })
-    fs.rmSync('test-msg-arktype.ts', { force: true })
-  })
-
   it('should generate arktype schema with x-error-message', async () => {
-    const result = await cli(schemaToArktype, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-msg-arktype.ts' })
+    const result = await generate(GENERATORS.arktype, schemaWithMessages)
 
-    const generatedCode = fs.readFileSync('test-msg-arktype.ts', 'utf-8')
-    const expectedCode = `import { type } from 'arktype'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { type } from 'arktype'
 
 export const UserForm = type({
   name: type('string >= 1').describe('Name is required'),
@@ -575,29 +416,17 @@ export const UserForm = type({
   'age?': type('number.integer >= 0').and(type('number.integer <= 150')).describe('Invalid age'),
   'role?': type("'admin' | 'user'").describe('Invalid role'),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- granular x-*-message fixtures ---
-
 describe('granular messages: schema-to-zod', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-granular-schema.json', '-o', 'test-granular-zod.ts']
-    fs.writeFileSync('test-granular-schema.json', JSON.stringify(schemaWithGranularMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-granular-schema.json', { force: true })
-    fs.rmSync('test-granular-zod.ts', { force: true })
-  })
-
   it('should generate zod schema with granular messages', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-granular-zod.ts' })
+    const result = await generate(GENERATORS.zod, schemaWithGranularMessages)
 
-    const generatedCode = fs.readFileSync('test-granular-zod.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const Product = z.object({
   name: z.string().min(1, { error: 'Name cannot be empty' }).max(100, { error: 'Name too long' }),
@@ -609,27 +438,17 @@ export const Product = z.object({
     .multipleOf(1, { error: 'Quantity must be whole number' })
     .exactOptional(),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('granular messages: schema-to-valibot', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-granular-schema.json', '-o', 'test-granular-valibot.ts']
-    fs.writeFileSync('test-granular-schema.json', JSON.stringify(schemaWithGranularMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-granular-schema.json', { force: true })
-    fs.rmSync('test-granular-valibot.ts', { force: true })
-  })
-
   it('should generate valibot schema with granular messages', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-granular-valibot.ts' })
+    const result = await generate(GENERATORS.valibot, schemaWithGranularMessages)
 
-    const generatedCode = fs.readFileSync('test-granular-valibot.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const Product = v.object({
   name: v.pipe(
@@ -648,27 +467,17 @@ export const Product = v.object({
     ),
   ),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('granular messages: schema-to-effect', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-granular-schema.json', '-o', 'test-granular-effect.ts']
-    fs.writeFileSync('test-granular-schema.json', JSON.stringify(schemaWithGranularMessages))
-  })
-  afterAll(() => {
-    fs.rmSync('test-granular-schema.json', { force: true })
-    fs.rmSync('test-granular-effect.ts', { force: true })
-  })
-
   it('should generate effect schema with granular messages', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-granular-effect.ts' })
+    const result = await generate(GENERATORS.effect, schemaWithGranularMessages)
 
-    const generatedCode = fs.readFileSync('test-granular-effect.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const Product = Schema.Struct({
   name: Schema.String.check(
@@ -689,29 +498,17 @@ export const Product = Schema.Struct({
     ),
   ),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- array / nullable / default fixtures ---
-
 describe('array/nullable/default: schema-to-zod', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-array-schema.json', '-o', 'test-array-zod.ts']
-    fs.writeFileSync('test-array-schema.json', JSON.stringify(arraySchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-array-schema.json', { force: true })
-    fs.rmSync('test-array-zod.ts', { force: true })
-  })
-
   it('should generate zod schema with array/nullable/default', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-zod.ts' })
+    const result = await generate(GENERATORS.zod, arraySchema)
 
-    const generatedCode = fs.readFileSync('test-array-zod.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const Config = z.object({
   tags: z.array(z.string()).min(1),
@@ -719,27 +516,17 @@ export const Config = z.object({
   count: z.int().nullable().exactOptional(),
   label: z.string().default('untitled').exactOptional(),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('array/nullable/default: schema-to-valibot', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-array-schema.json', '-o', 'test-array-valibot.ts']
-    fs.writeFileSync('test-array-schema.json', JSON.stringify(arraySchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-array-schema.json', { force: true })
-    fs.rmSync('test-array-valibot.ts', { force: true })
-  })
-
   it('should generate valibot schema with array/nullable/default', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-valibot.ts' })
+    const result = await generate(GENERATORS.valibot, arraySchema)
 
-    const generatedCode = fs.readFileSync('test-array-valibot.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const Config = v.object({
   tags: v.pipe(v.array(v.string()), v.minLength(1)),
@@ -747,27 +534,17 @@ export const Config = v.object({
   count: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
   label: v.optional(v.optional(v.string(), 'untitled')),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('array/nullable/default: schema-to-effect', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-array-schema.json', '-o', 'test-array-effect.ts']
-    fs.writeFileSync('test-array-schema.json', JSON.stringify(arraySchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-array-schema.json', { force: true })
-    fs.rmSync('test-array-effect.ts', { force: true })
-  })
-
   it('should generate effect schema with array/nullable/default', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-effect.ts' })
+    const result = await generate(GENERATORS.effect, arraySchema)
 
-    const generatedCode = fs.readFileSync('test-array-effect.ts', 'utf-8')
-    const expectedCode = `import { Effect, Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Effect, Schema } from 'effect'
 
 export const Config = Schema.Struct({
   tags: Schema.Array(Schema.String).check(Schema.isMinLength(1)),
@@ -775,27 +552,17 @@ export const Config = Schema.Struct({
   count: Schema.optional(Schema.NullOr(Schema.Number.check(Schema.isInt()))),
   label: Schema.String.pipe(Schema.withDecodingDefault(Effect.succeed('untitled'))),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('array/nullable/default: schema-to-typebox', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-array-schema.json', '-o', 'test-array-typebox.ts']
-    fs.writeFileSync('test-array-schema.json', JSON.stringify(arraySchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-array-schema.json', { force: true })
-    fs.rmSync('test-array-typebox.ts', { force: true })
-  })
-
   it('should generate typebox schema with array/nullable/default', async () => {
-    const result = await cli(schemaToTypebox, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-typebox.ts' })
+    const result = await generate(GENERATORS.typebox, arraySchema)
 
-    const generatedCode = fs.readFileSync('test-array-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from 'typebox'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Type, type Static } from 'typebox'
 
 export const Config = Type.Object({
   tags: Type.Array(Type.String(), { minItems: 1 }),
@@ -803,27 +570,17 @@ export const Config = Type.Object({
   count: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   label: Type.Optional(Type.Optional(Type.String({ default: 'untitled' }))),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('array/nullable/default: schema-to-arktype', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-array-schema.json', '-o', 'test-array-arktype.ts']
-    fs.writeFileSync('test-array-schema.json', JSON.stringify(arraySchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-array-schema.json', { force: true })
-    fs.rmSync('test-array-arktype.ts', { force: true })
-  })
-
   it('should generate arktype schema with array/nullable/default', async () => {
-    const result = await cli(schemaToArktype, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-array-arktype.ts' })
+    const result = await generate(GENERATORS.arktype, arraySchema)
 
-    const generatedCode = fs.readFileSync('test-array-arktype.ts', 'utf-8')
-    const expectedCode = `import { type } from 'arktype'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { type } from 'arktype'
 
 export const Config = type({
   tags: type('string[]').and(type('unknown[] >= 1')),
@@ -831,141 +588,230 @@ export const Config = type({
   'count?': 'number.integer | null',
   'label?': 'string',
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- oneOf fixtures ---
-
 describe('oneOf: schema-to-zod', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-oneof-schema.json', '-o', 'test-oneof-zod.ts']
-    fs.writeFileSync('test-oneof-schema.json', JSON.stringify(oneOfSchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-oneof-schema.json', { force: true })
-    fs.rmSync('test-oneof-zod.ts', { force: true })
-  })
-
   it('should generate zod schema with oneOf', async () => {
-    const result = await cli(schemaToZod, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-zod.ts' })
+    const result = await generate(GENERATORS.zod, oneOfSchema)
 
-    const generatedCode = fs.readFileSync('test-oneof-zod.ts', 'utf-8')
-    const expectedCode = `import * as z from 'zod'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as z from 'zod'
 
 export const Shape = z.object({
   kind: z.string(),
   value: z.xor([z.string(), z.number(), z.boolean()]),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('oneOf: schema-to-valibot', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-oneof-schema.json', '-o', 'test-oneof-valibot.ts']
-    fs.writeFileSync('test-oneof-schema.json', JSON.stringify(oneOfSchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-oneof-schema.json', { force: true })
-    fs.rmSync('test-oneof-valibot.ts', { force: true })
-  })
-
   it('should generate valibot schema with oneOf', async () => {
-    const result = await cli(schemaToValibot, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-valibot.ts' })
+    const result = await generate(GENERATORS.valibot, oneOfSchema)
 
-    const generatedCode = fs.readFileSync('test-oneof-valibot.ts', 'utf-8')
-    const expectedCode = `import * as v from 'valibot'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as v from 'valibot'
 
 export const Shape = v.object({
   kind: v.string(),
   value: v.union([v.string(), v.number(), v.boolean()]),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('oneOf: schema-to-effect', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-oneof-schema.json', '-o', 'test-oneof-effect.ts']
-    fs.writeFileSync('test-oneof-schema.json', JSON.stringify(oneOfSchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-oneof-schema.json', { force: true })
-    fs.rmSync('test-oneof-effect.ts', { force: true })
-  })
-
   it('should generate effect schema with oneOf', async () => {
-    const result = await cli(schemaToEffect, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-effect.ts' })
+    const result = await generate(GENERATORS.effect, oneOfSchema)
 
-    const generatedCode = fs.readFileSync('test-oneof-effect.ts', 'utf-8')
-    const expectedCode = `import { Schema } from 'effect'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const Shape = Schema.Struct({
   kind: Schema.String,
   value: Schema.Union([Schema.String, Schema.Number, Schema.Boolean]),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('oneOf: schema-to-typebox', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-oneof-schema.json', '-o', 'test-oneof-typebox.ts']
-    fs.writeFileSync('test-oneof-schema.json', JSON.stringify(oneOfSchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-oneof-schema.json', { force: true })
-    fs.rmSync('test-oneof-typebox.ts', { force: true })
-  })
-
   it('should generate typebox schema with oneOf', async () => {
-    const result = await cli(schemaToTypebox, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-typebox.ts' })
+    const result = await generate(GENERATORS.typebox, oneOfSchema)
 
-    const generatedCode = fs.readFileSync('test-oneof-typebox.ts', 'utf-8')
-    const expectedCode = `import { Type, type Static } from 'typebox'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { Type, type Static } from 'typebox'
 
 export const Shape = Type.Object({
   kind: Type.String(),
   value: Type.Union([Type.String(), Type.Number(), Type.Boolean()]),
 })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
 describe('oneOf: schema-to-arktype', () => {
-  beforeAll(() => {
-    process.argv = ['node', 'cli.js', 'test-oneof-schema.json', '-o', 'test-oneof-arktype.ts']
-    fs.writeFileSync('test-oneof-schema.json', JSON.stringify(oneOfSchema))
-  })
-  afterAll(() => {
-    fs.rmSync('test-oneof-schema.json', { force: true })
-    fs.rmSync('test-oneof-arktype.ts', { force: true })
-  })
-
   it('should generate arktype schema with oneOf', async () => {
-    const result = await cli(schemaToArktype, 'help')
-    expect(result).toStrictEqual({ ok: true, value: 'Generated: test-oneof-arktype.ts' })
+    const result = await generate(GENERATORS.arktype, oneOfSchema)
 
-    const generatedCode = fs.readFileSync('test-oneof-arktype.ts', 'utf-8')
-    const expectedCode = `import { type } from 'arktype'
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import { type } from 'arktype'
 
 export const Shape = type({ kind: 'string', value: 'string | number | boolean' })
-`
-    expect(generatedCode).toBe(expectedCode)
+`)
   })
 })
 
-// --- syntax validation ---
+// --- help, version and argument validation ---
+
+describe('--help', () => {
+  it.each(Object.values(GENERATORS))('renders the usage block for $name', async (bin) => {
+    const result = await runBin(bin, ['--help'])
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toContain(`${bin.name} [flags] <input>`)
+    expect(result.stdout).toContain('--export-type')
+    expect(result.stdout).toContain('--readonly')
+  })
+
+  it('is also spelled -h', async () => {
+    const result = await runBin(GENERATORS.zod, ['-h'])
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toContain('schema-to-zod [flags] <input>')
+  })
+})
+
+describe('--version', () => {
+  it('reports the package version', async () => {
+    const result = await runBin(GENERATORS.zod, ['--version'])
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toContain('0.0.0-test')
+  })
+})
+
+describe('argument validation', () => {
+  it('rejects an input that is not .json or .yaml', async () => {
+    const dir = useTmpDir('schema-to-library-cli-ext-')
+    const input = path.join(dir, 'schema.txt')
+    fs.writeFileSync(input, JSON.stringify(schema))
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', path.join(dir, 'out.ts')])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('a JSON Schema document ending in .json or .yaml')
+  })
+
+  it('rejects an output that is not .ts', async () => {
+    const dir = useTmpDir('schema-to-library-cli-out-')
+    const input = path.join(dir, 'schema.json')
+    fs.writeFileSync(input, JSON.stringify(schema))
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', path.join(dir, 'out.js')])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('a TypeScript file path ending in .ts')
+  })
+
+  it('rejects a missing --output', async () => {
+    const dir = useTmpDir('schema-to-library-cli-no-out-')
+    const input = path.join(dir, 'schema.json')
+    fs.writeFileSync(input, JSON.stringify(schema))
+
+    const result = await runBin(GENERATORS.zod, [input])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('Missing required flag: --output')
+  })
+
+  it('rejects a missing <input>', async () => {
+    const dir = useTmpDir('schema-to-library-cli-no-in-')
+
+    const result = await runBin(GENERATORS.zod, ['-o', path.join(dir, 'out.ts')])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('input')
+  })
+
+  it('rejects an input file that does not exist', async () => {
+    const dir = useTmpDir('schema-to-library-cli-missing-')
+
+    const result = await runBin(GENERATORS.zod, [
+      path.join(dir, 'nope.json'),
+      '-o',
+      path.join(dir, 'out.ts'),
+    ])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('Path does not exist')
+  })
+})
+
+// --- failure paths ---
+
+describe('failure paths', () => {
+  it('reports a schema it cannot parse', async () => {
+    const dir = useTmpDir('schema-to-library-cli-parse-')
+    const input = path.join(dir, 'schema.json')
+    fs.writeFileSync(input, 'not json{{{')
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', path.join(dir, 'out.ts')])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('Failed to parse schema')
+  })
+
+  it('reports code it cannot format', async () => {
+    const dir = useTmpDir('schema-to-library-cli-fmt-')
+    const input = path.join(dir, 'schema.json')
+    fs.writeFileSync(input, JSON.stringify(schema))
+
+    const result = await runBin({ name: 'schema-to-zod', generator: () => 'const x = {' }, [
+      input,
+      '-o',
+      path.join(dir, 'out.ts'),
+    ])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('Expected `}` but found `EOF`')
+  })
+
+  it('reports an output directory it cannot create', async () => {
+    const dir = useTmpDir('schema-to-library-cli-mkdir-')
+    const input = path.join(dir, 'schema.json')
+    const blocker = path.join(dir, 'blocker')
+    fs.writeFileSync(input, JSON.stringify(schema))
+    fs.writeFileSync(blocker, '')
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', path.join(blocker, 'sub', 'out.ts')])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('ENOTDIR')
+  })
+
+  it('reports an output path it cannot write', async () => {
+    const dir = useTmpDir('schema-to-library-cli-write-')
+    const input = path.join(dir, 'schema.json')
+    const output = path.join(dir, 'out.ts')
+    fs.writeFileSync(input, JSON.stringify(schema))
+    fs.mkdirSync(output, { recursive: true })
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', output])
+
+    expect(result.ok).toBe(false)
+    expect(result.stderr).toContain('EISDIR')
+  })
+})
+
+// --- every generator against every schema shape ---
 
 describe('syntax validation', () => {
   const schemas = [
@@ -974,93 +820,29 @@ describe('syntax validation', () => {
     { name: 'granular', schema: schemaWithGranularMessages },
     { name: 'array', schema: arraySchema },
     { name: 'oneOf', schema: oneOfSchema },
-  ]
+  ] as const
 
-  const generators = [
-    { name: 'zod', fn: schemaToZod },
-    { name: 'valibot', fn: schemaToValibot },
-    { name: 'effect', fn: schemaToEffect },
-    { name: 'typebox', fn: schemaToTypebox },
-    { name: 'arktype', fn: schemaToArktype },
-  ]
+  const cases = schemas.flatMap((s) =>
+    Object.entries(GENERATORS).map(([library, bin]) => ({
+      shape: s.name,
+      library,
+      bin,
+      schema: s.schema,
+    })),
+  )
 
-  for (const s of schemas) {
-    for (const g of generators) {
-      const outFile = `test-syntax-${s.name}-${g.name}.ts`
-      describe(`${s.name} × ${g.name}`, () => {
-        beforeAll(() => {
-          process.argv = ['node', 'cli.js', `test-syntax-${s.name}.json`, '-o', outFile]
-          fs.writeFileSync(`test-syntax-${s.name}.json`, JSON.stringify(s.schema))
-        })
-        afterAll(() => {
-          fs.rmSync(`test-syntax-${s.name}.json`, { force: true })
-          fs.rmSync(outFile, { force: true })
-        })
+  it.each(cases)(
+    '$shape \u00D7 $library generates balanced TypeScript',
+    async ({ bin, schema: input }) => {
+      const result = await generate(bin, input)
 
-        it('should generate valid TypeScript', async () => {
-          const result = await cli(g.fn, 'help')
-          expect(result).toStrictEqual({ ok: true, value: `Generated: ${outFile}` })
-
-          const code = fs.readFileSync(outFile, 'utf-8')
-          expect(code.length).toBeGreaterThan(0)
-          expect(code.includes('export const')).toBe(true)
-          expect(code.startsWith('import')).toBe(true)
-
-          // Verify no unclosed brackets/parens
-          const opens = (code.match(/[({[]/g) || []).length
-          const closes = (code.match(/[)}\]]/g) || []).length
-          expect(opens).toBe(closes)
-        })
-      })
-    }
-  }
-})
-
-// --- failure paths ---
-
-describe('cli failure paths', () => {
-  it('should fail when schema file is not parseable', async () => {
-    fs.writeFileSync('test-fail-parse.json', 'not json{{{')
-    process.argv = ['node', 'cli.js', 'test-fail-parse.json', '-o', 'test-fail-parse-out.ts']
-    const result = await cli(schemaToZod, 'help')
-    fs.rmSync('test-fail-parse.json', { force: true })
-    expect(result).toStrictEqual({
-      ok: false,
-      error: `Failed to parse schema: "${path.resolve('test-fail-parse.json')}" is not a valid JSON Schema`,
-    })
-  })
-
-  it('should fail when generated code cannot be formatted', async () => {
-    fs.writeFileSync('test-fail-fmt.json', JSON.stringify(schema))
-    process.argv = ['node', 'cli.js', 'test-fail-fmt.json', '-o', 'test-fail-fmt-out.ts']
-    const result = await cli(() => 'const x = {', 'help')
-    fs.rmSync('test-fail-fmt.json', { force: true })
-    expect(result).toStrictEqual({ ok: false, error: 'Expected `}` but found `EOF`' })
-  })
-
-  it('should fail when output directory cannot be created', async () => {
-    fs.writeFileSync('test-fail-mkdir.json', JSON.stringify(schema))
-    fs.writeFileSync('test-fail-blocker', '')
-    process.argv = ['node', 'cli.js', 'test-fail-mkdir.json', '-o', 'test-fail-blocker/sub/out.ts']
-    const result = await cli(schemaToZod, 'help')
-    fs.rmSync('test-fail-mkdir.json', { force: true })
-    fs.rmSync('test-fail-blocker', { force: true })
-    expect(result).toStrictEqual({
-      ok: false,
-      error: "ENOTDIR: not a directory, mkdir 'test-fail-blocker/sub'",
-    })
-  })
-
-  it('should fail when output file cannot be written', async () => {
-    fs.writeFileSync('test-fail-write.json', JSON.stringify(schema))
-    fs.mkdirSync('test-fail-dir.ts', { recursive: true })
-    process.argv = ['node', 'cli.js', 'test-fail-write.json', '-o', 'test-fail-dir.ts']
-    const result = await cli(schemaToZod, 'help')
-    fs.rmSync('test-fail-write.json', { force: true })
-    fs.rmSync('test-fail-dir.ts', { recursive: true, force: true })
-    expect(result).toStrictEqual({
-      ok: false,
-      error: "EISDIR: illegal operation on a directory, open 'test-fail-dir.ts'",
-    })
-  })
+      expect(result.ok).toBe(true)
+      const code = result.code ?? ''
+      expect(code.length).toBeGreaterThan(0)
+      expect(code.startsWith('import')).toBe(true)
+      expect(code.includes('export const')).toBe(true)
+      // No unclosed brackets or parens.
+      expect((code.match(/[({[]/g) ?? []).length).toBe((code.match(/[)}\]]/g) ?? []).length)
+    },
+  )
 })

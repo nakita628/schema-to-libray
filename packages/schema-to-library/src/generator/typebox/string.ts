@@ -12,6 +12,10 @@ const FORMAT_MAP: { readonly [k: string]: string } = {
   time: 'time',
 }
 
+function escapeRegex(s: string) {
+  return s.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export function string(schema: JSONSchema) {
   // ajv-errors `errorMessage` accepts two shapes:
   //   - string  → used as a single message for any validation failure
@@ -50,7 +54,6 @@ export function string(schema: JSONSchema) {
   // override.
   const contentPattern = (() => {
     if (schema.pattern) return undefined
-    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const parts: string[] = []
     if (typeof schema['x-startsWith'] === 'string') {
       parts.push(`^${escapeRegex(schema['x-startsWith'])}`)

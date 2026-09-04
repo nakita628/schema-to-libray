@@ -4,11 +4,12 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "check": "vp fmt --check && vp run -r check",
+    "coverage": "vp run schema-to-library#coverage",
     "deps": "mkdir -p /tmp/pnpm-store && pnpm config set store-dir /tmp/pnpm-store && rm -rf node_modules && rm -rf pnpm-lock.yaml && rm -rf ~/.pnpm-store && pnpm store prune && pnpm install --no-prefer-frozen-lockfile",
-    "check": "vp check --fix",
-    "test": "vp test",
-    "coverage": "vp test --coverage",
-    "release": "pnpm -F schema-to-library release"
+    "fix": "vp fmt && vp run -r check --fix",
+    "release": "pnpm -F schema-to-library release",
+    "test": "vp test && vp run schema-to-library#test"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.11",

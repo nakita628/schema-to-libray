@@ -1,9 +1,11 @@
 import {
-  type ArktypeWrapOptions,
   arktypeWrap as _arktypeWrap,
   isArktypeDefinition,
   isDeepLocalPointer,
+  isNullTypeMember,
+  isShapelessMember,
 } from '../../helper/index.js'
+import type { ArktypeWrapOptions } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -17,7 +19,9 @@ import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
-const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
+function isQuoted(s: string): boolean {
+  return s.startsWith('"') && s.endsWith('"')
+}
 
 /**
  * Combine two ArkType expressions.
@@ -26,25 +30,36 @@ const isQuoted = (s: string) => s.startsWith('"') && s.endsWith('"')
  * global `type(...)` cannot resolve, so scope mode composes with ArkType's
  * tuple expressions — which stay in definition syntax — instead of methods.
  */
-const combine = (op: '&' | '|', inScope: boolean) => (acc: string, s: string) =>
-  inScope && isArktypeDefinition(acc)
-    ? `[${acc},"${op}",${s}]`
-    : `type(${acc}).${op === '&' ? 'and' : 'or'}(${s})`
+function combine(op: '&' | '|', inScope: boolean) {
+  return (acc: string, s: string) =>
+    inScope && isArktypeDefinition(acc)
+      ? `[${acc},"${op}",${s}]`
+      : `type(${acc}).${op === '&' ? 'and' : 'or'}(${s})`
+}
 
-const unionStr = (schemas: string[], inScope = false) =>
-  schemas.every(isQuoted)
+function unionStr(schemas: string[], inScope = false): string {
+  return schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' | ')}"`
     : schemas.reduce(combine('|', inScope))
+}
 
-const intersectionStr = (schemas: string[], inScope = false) =>
-  schemas.every(isQuoted)
+function intersectionStr(schemas: string[], inScope = false): string {
+  return schemas.every(isQuoted)
     ? `"${schemas.map((s) => s.slice(1, -1)).join(' & ')}"`
     : schemas.reduce(combine('&', inScope))
+}
+
+function formatConst(value: unknown): string {
+  if (typeof value === 'string') return `"'${value}'"`
+  if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
+  if (value !== null && typeof value === 'object') return '"unknown"'
+  return `"${JSON.stringify(value) ?? 'null'}"`
+}
 
 export function arktype(
   schema: JSONSchema,
-  rootName: string = 'Schema',
-  isArktype: boolean = false,
+  rootName = 'Schema',
+  isArktype = false,
   options?: {
     openapi?: boolean
     readonly?: boolean
@@ -98,7 +113,7 @@ export function arktype(
   }
 
   if (schema.oneOf) {
-    if (!schema.oneOf.length) return arktypeWrap('"unknown"', schema)
+    if (schema.oneOf.length === 0) return arktypeWrap('"unknown"', schema)
     const schemas = schema.oneOf.map((s) => arktype(s, rootName, isArktype, options))
     return arktypeWrap(
       describeWithMessage(unionStr(schemas, isArktype), schema['x-oneOf-message']),
@@ -107,26 +122,22 @@ export function arktype(
   }
 
   if (schema.anyOf) {
-    if (!schema.anyOf.length) return arktypeWrap('"unknown"', schema)
+    if (schema.anyOf.length === 0) return arktypeWrap('"unknown"', schema)
     const schemas = schema.anyOf.map((s) => arktype(s, rootName, isArktype, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     return arktypeWrap(describeWithMessage(unionStr(schemas, isArktype), anyOfMessage), schema)
   }
 
   if (schema.allOf) {
-    if (!schema.allOf.length) return arktypeWrap('"unknown"', schema)
-    const isNullType = (s: JSONSchema) =>
-      s.type === 'null' || (s.nullable === true && Object.keys(s).length === 1)
-    const isDefaultOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.default !== undefined
-    const isConstOnly = (s: JSONSchema) => Object.keys(s).length === 1 && s.const !== undefined
+    if (schema.allOf.length === 0) return arktypeWrap('"unknown"', schema)
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullType)
+      schema.allOf.some(isNullTypeMember)
     const schemas = schema.allOf
-      .filter((s) => !(isNullType(s) || isDefaultOnly(s) || isConstOnly(s)))
+      .filter((s) => !isShapelessMember(s))
       .map((s) => arktype(s, rootName, isArktype, options))
-    if (!schemas.length) return arktypeWrap('"unknown"', { ...schema, nullable })
+    if (schemas.length === 0) return arktypeWrap('"unknown"', { ...schema, nullable })
     const baseResult = schemas.length === 1 ? schemas[0] : intersectionStr(schemas, isArktype)
     return arktypeWrap(baseResult, { ...schema, nullable })
   }
@@ -154,8 +165,11 @@ export function arktype(
       const predicate = typePredicates[inner.type]
       if (predicate) return narrow(predicate)
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = inner.type
+    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
+    // recovered here rather than indexing the table with `any`.
+    const innerTypes = inner.type
+    if (Array.isArray(innerTypes)) {
+      const bodies = normalizeTypes(innerTypes)
         .map((t) => typePredicates[t])
         .filter((p) => p !== undefined)
         .map((p) => `(${p.replace(/^\(val: unknown\) => /, '')})`)
@@ -179,12 +193,6 @@ export function arktype(
         schema,
       )
     }
-    const formatConst = (value: unknown): string => {
-      if (typeof value === 'string') return `"'${value}'"`
-      if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
-      if (value !== null && typeof value === 'object') return '"unknown"'
-      return `"${JSON.stringify(value) ?? 'null'}"`
-    }
     const constExpr = formatConst(schema.const)
     if (constMessage) {
       return arktypeWrap(`type(${constExpr}).describe(${JSON.stringify(constMessage)})`, schema)
@@ -192,8 +200,9 @@ export function arktype(
     return arktypeWrap(constExpr, schema)
   }
   if (schema.enum) return arktypeWrap(_enum(schema), schema)
-  if (schema.properties)
+  if (schema.properties) {
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
+  }
 
   const types = normalizeTypes(schema.type)
   const isStringWireParam =
@@ -265,13 +274,16 @@ export function arktype(
     const minContainsMessage = schema['x-minContains-message']
     const maxContainsMessage = schema['x-maxContains-message']
     const fixedItemsMessage = minItemsMessage ?? maxItemsMessage
-    const hasArrayMessage =
-      minItemsMessage ||
-      maxItemsMessage ||
-      uniqueItemsMessage ||
-      containsMessage ||
-      minContainsMessage ||
-      maxContainsMessage
+    // `.some(Boolean)`, not `??`: an empty message is no message, and the branch it
+    // guards would emit `ctx.mustBe('')`.
+    const hasArrayMessage = [
+      minItemsMessage,
+      maxItemsMessage,
+      uniqueItemsMessage,
+      containsMessage,
+      minContainsMessage,
+      maxContainsMessage,
+    ].some(Boolean)
     // `and` / `narrow` on a definition that may name a scope-local alias must
     // stay in definition syntax; the global `type(...)` cannot resolve it.
     const andWith = (a: string, b: string) =>
@@ -350,8 +362,9 @@ export function arktype(
     return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }
 
-  if (types.includes('object'))
+  if (types.includes('object')) {
     return readonly(arktypeWrap(object(schema, rootName, isArktype, options), schema))
+  }
   if (types.includes('date')) {
     if (isStringWireParam) return arktypeWrap('"string.date.parse"', schema)
     return arktypeWrap('"Date"', schema)

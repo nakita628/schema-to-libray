@@ -20,8 +20,9 @@ export function number(schema: JSONSchema) {
         ? `Schema.isGreaterThan(${schema.minimum}${exMinErrorPart})`
         : `Schema.isGreaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
     }
-    if (typeof schema.exclusiveMinimum === 'number')
+    if (typeof schema.exclusiveMinimum === 'number') {
       return `Schema.isGreaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
+    }
     return undefined
   })()
   const maximum = (() => {
@@ -30,8 +31,9 @@ export function number(schema: JSONSchema) {
         ? `Schema.isLessThan(${schema.maximum}${exMaxErrorPart})`
         : `Schema.isLessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
     }
-    if (typeof schema.exclusiveMaximum === 'number')
+    if (typeof schema.exclusiveMaximum === 'number') {
       return `Schema.isLessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
+    }
     return undefined
   })()
   const multipleOf =
