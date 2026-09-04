@@ -1,7 +1,7 @@
 import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
-import { typebox } from './typebox.js'
+import { typebox, type TypeboxOptions } from './typebox.js'
 
 /**
  * Generate a TypeBox object schema for a JSON Schema object node.
@@ -21,7 +21,7 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: TypeboxOptions,
 ) {
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return typebox(schema, rootName, isTypebox, options)
@@ -135,7 +135,7 @@ function buildAdvancedOpts(
   schema: JSONSchema,
   rootName: string,
   isTypebox: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: TypeboxOptions,
 ): readonly (string | undefined)[] {
   const propertyNamesOpt = schema.propertyNames
     ? `propertyNames:${typebox(schema.propertyNames, rootName, isTypebox, options)}`

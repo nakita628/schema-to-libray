@@ -2,10 +2,10 @@ import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
 
 /**
- * Generates an Effect Schema enum. String enums map to a multi-arg
- * `Schema.Literal(...)`, number/integer/boolean enums to
- * `Schema.Union(Schema.Literal(...), ...)`, array enums to `Schema.Tuple`
- * or `Schema.Union`, single values to a one-arg `Schema.Literal`.
+ * Generates an Effect Schema enum. Multi-value scalar enums map to
+ * `Schema.Literals([...])` (v4 dropped the variadic `Schema.Literal(a, b)`
+ * overload), array enums to `Schema.Tuple` or `Schema.Union`, single values to
+ * `Schema.Literal`.
  *
  * `x-error-message` (whole-enum) is applied **only to the outermost
  * expression** via `.annotations(...)`. Inner Schema.Literal entries
@@ -32,15 +32,15 @@ export function _enum(schema: JSONSchema) {
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
   const annotate = (code: string): string =>
-    errorMessage ? `${code}.annotations(${effectError(errorMessage)})` : code
+    errorMessage ? `${code}.annotate(${effectError(errorMessage)})` : code
   const tuple = (arr: readonly unknown[]): string =>
-    `Schema.Tuple(${arr.map((i: unknown) => `Schema.Literal(${lit(i)})`).join(',')})`
+    `Schema.Tuple([${arr.map((i: unknown) => `Schema.Literal(${lit(i)})`).join(',')}])`
+  const literals = (values: readonly unknown[]): string =>
+    values.length > 1
+      ? `Schema.Literals([${values.map(lit).join(',')}])`
+      : `Schema.Literal(${lit(values[0])})`
   if (ht('number') || ht('integer') || ht('boolean')) {
-    return annotate(
-      schema.enum.length > 1
-        ? `Schema.Union(${schema.enum.map((v: unknown) => `Schema.Literal(${lit(v)})`).join(',')})`
-        : `Schema.Literal(${lit(schema.enum[0])})`,
-    )
+    return annotate(literals(schema.enum))
   }
   if (ht('array')) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
@@ -49,19 +49,7 @@ export function _enum(schema: JSONSchema) {
     const parts = schema.enum.map((v: unknown) =>
       Array.isArray(v) ? tuple(v) : `Schema.Literal(${lit(v)})`,
     )
-    return annotate(`Schema.Union(${parts.join(',')})`)
+    return annotate(`Schema.Union([${parts.join(',')}])`)
   }
-  if (schema.enum.every((v: unknown) => typeof v === 'string')) {
-    if (schema.enum.length > 1) {
-      return annotate(
-        `Schema.Literal(${schema.enum.map((v: unknown) => `"${String(v)}"`).join(',')})`,
-      )
-    }
-    return annotate(`Schema.Literal("${String(schema.enum[0])}")`)
-  }
-  if (schema.enum.length > 1) {
-    const parts = schema.enum.map((v: unknown) => `Schema.Literal(${lit(v)})`)
-    return annotate(`Schema.Union(${parts.join(',')})`)
-  }
-  return annotate(`Schema.Literal(${lit(schema.enum[0])})`)
+  return annotate(literals(schema.enum))
 }

@@ -135,7 +135,7 @@ describe('propertyNames: keys must match ^[a-z]+$', () => {
   describe('valibot', () => {
     const V = v.pipe(
       v.record(v.string(), v.number()),
-      v.check((o: Record<string, unknown>) => Object.keys(o).every((k) => /^[a-z]+$/.test(k))),
+      v.check((o: Record<string, number>) => Object.keys(o).every((k) => /^[a-z]+$/.test(k))),
     )
     it.each(cases)('%s', (_, input, expected) => {
       expect(v.safeParse(V, input).success).toBe(expected)

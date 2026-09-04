@@ -3,11 +3,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@sinclair/typebox": "^0.34.33",
-    "arktype": "^2.1.20",
-    "effect": "^3.14.8",
-    "valibot": "^1.1.0",
-    "zod": "^4.3.6"
+    "@sinclair/typebox": "^0.34.52",
+    "arktype": "^2.2.3",
+    "effect": "^4.0.0-rc.112",
+    "valibot": "^1.4.2",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "tsx": "^4.21.0",

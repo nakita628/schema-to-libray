@@ -14,47 +14,46 @@ export function integer(schema: JSONSchema) {
   const multipleOfMessage = schema['x-multipleOf-message']
   const multipleOfErrorPart = multipleOfMessage ? `,${effectError(multipleOfMessage)}` : ''
   if (schema.format === 'bigint') {
-    const actions = [
+    const checks = [
       schema.minimum !== undefined
-        ? `Schema.greaterThanOrEqualToBigInt(BigInt(${schema.minimum})${minErrorPart})`
+        ? `Schema.isGreaterThanOrEqualToBigInt(BigInt(${schema.minimum})${minErrorPart})`
         : undefined,
       schema.maximum !== undefined
-        ? `Schema.lessThanOrEqualToBigInt(BigInt(${schema.maximum})${maxErrorPart})`
+        ? `Schema.isLessThanOrEqualToBigInt(BigInt(${schema.maximum})${maxErrorPart})`
         : undefined,
     ].filter((v) => v !== undefined)
-    if (actions.length > 0) {
-      const result = `Schema.BigIntFromSelf.pipe(${actions.join(',')})`
-      return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
-    }
-    return errorMessage
-      ? `Schema.BigIntFromSelf.annotations(${effectError(errorMessage)})`
-      : 'Schema.BigIntFromSelf'
+    // v4 renamed `Schema.BigIntFromSelf` (a bigint that decodes from a bigint)
+    // to `Schema.BigInt`; `Schema.BigIntFromString` is the string-encoded one.
+    const base = checks.length > 0 ? `Schema.BigInt.check(${checks.join(',')})` : 'Schema.BigInt'
+    return errorMessage ? `${base}.annotate(${effectError(errorMessage)})` : base
   }
   const minimum = (() => {
     if (schema.minimum !== undefined) {
       return schema.exclusiveMinimum === true
-        ? `Schema.greaterThan(${schema.minimum}${exMinErrorPart})`
-        : `Schema.greaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
+        ? `Schema.isGreaterThan(${schema.minimum}${exMinErrorPart})`
+        : `Schema.isGreaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
     }
     if (typeof schema.exclusiveMinimum === 'number')
-      return `Schema.greaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
+      return `Schema.isGreaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
     return undefined
   })()
   const maximum = (() => {
     if (schema.maximum !== undefined) {
       return schema.exclusiveMaximum === true
-        ? `Schema.lessThan(${schema.maximum}${exMaxErrorPart})`
-        : `Schema.lessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
+        ? `Schema.isLessThan(${schema.maximum}${exMaxErrorPart})`
+        : `Schema.isLessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
     }
     if (typeof schema.exclusiveMaximum === 'number')
-      return `Schema.lessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
+      return `Schema.isLessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
     return undefined
   })()
   const multipleOf =
     schema.multipleOf !== undefined
-      ? `Schema.multipleOf(${schema.multipleOf}${multipleOfErrorPart})`
+      ? `Schema.isMultipleOf(${schema.multipleOf}${multipleOfErrorPart})`
       : undefined
-  const intAction = errorMessage ? `Schema.int(${effectError(errorMessage)})` : 'Schema.int()'
-  const actions = [intAction, minimum, maximum, multipleOf].filter((v) => v !== undefined)
-  return `Schema.Number.pipe(${actions.join(',')})`
+  const intCheck = errorMessage
+    ? `Schema.isInt(${effectError(errorMessage)})`
+    : 'Schema.isInt()'
+  const checks = [intCheck, minimum, maximum, multipleOf].filter((v) => v !== undefined)
+  return `Schema.Number.check(${checks.join(',')})`
 }

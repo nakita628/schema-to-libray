@@ -460,9 +460,9 @@ export type Def = Static<typeof Def>`
       title: 'D',
       type: 'date',
     })
-    const expected = `import { Type, type Static } from 'typebox'
+    const expected = `import { Codec, Type, type Static } from 'typebox'
 
-export const D = Type.Date()
+export const D = Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())
 
 export type D = Static<typeof D>`
     expect(result).toBe(expected)

@@ -7,7 +7,7 @@ export function number(schema: JSONSchema) {
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maximum-message']
   const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
-  // v3.0: exclusive bounds get their own message (greaterThan / lessThan)
+  // v3.0: exclusive bounds get their own message (isGreaterThan / isLessThan)
   const exMinMessage = schema['x-exclusiveMinimum-message']
   const exMinErrorPart = exMinMessage ? `,${effectError(exMinMessage)}` : ''
   const exMaxMessage = schema['x-exclusiveMaximum-message']
@@ -17,31 +17,28 @@ export function number(schema: JSONSchema) {
   const minimum = (() => {
     if (schema.minimum !== undefined) {
       return schema.exclusiveMinimum === true
-        ? `Schema.greaterThan(${schema.minimum}${exMinErrorPart})`
-        : `Schema.greaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
+        ? `Schema.isGreaterThan(${schema.minimum}${exMinErrorPart})`
+        : `Schema.isGreaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
     }
     if (typeof schema.exclusiveMinimum === 'number')
-      return `Schema.greaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
+      return `Schema.isGreaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
     return undefined
   })()
   const maximum = (() => {
     if (schema.maximum !== undefined) {
       return schema.exclusiveMaximum === true
-        ? `Schema.lessThan(${schema.maximum}${exMaxErrorPart})`
-        : `Schema.lessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
+        ? `Schema.isLessThan(${schema.maximum}${exMaxErrorPart})`
+        : `Schema.isLessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
     }
     if (typeof schema.exclusiveMaximum === 'number')
-      return `Schema.lessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
+      return `Schema.isLessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
     return undefined
   })()
   const multipleOf =
     schema.multipleOf !== undefined
-      ? `Schema.multipleOf(${schema.multipleOf}${multipleOfErrorPart})`
+      ? `Schema.isMultipleOf(${schema.multipleOf}${multipleOfErrorPart})`
       : undefined
-  const actions = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
-  if (actions.length > 0) {
-    const result = `Schema.Number.pipe(${actions.join(',')})`
-    return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
-  }
-  return errorMessage ? `Schema.Number.annotations(${effectError(errorMessage)})` : 'Schema.Number'
+  const checks = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
+  const base = checks.length > 0 ? `Schema.Number.check(${checks.join(',')})` : 'Schema.Number'
+  return errorMessage ? `${base}.annotate(${effectError(errorMessage)})` : base
 }

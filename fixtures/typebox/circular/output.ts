@@ -1,7 +1,11 @@
 import { Type, type Static } from 'typebox'
 
-const B = Type.Object({ a: Type.Optional(A) })
-
-export const A = Type.Object({ b: Type.Optional(B) })
+export const A = Type.Cyclic(
+  {
+    B: Type.Object({ a: Type.Optional(Type.Ref('A')) }),
+    A: Type.Object({ b: Type.Optional(Type.Ref('B')) }),
+  },
+  'A',
+)
 
 export type A = Static<typeof A>

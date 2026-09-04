@@ -4,6 +4,7 @@ import { User as DefsUser } from '../$defs/output.ts'
 import { Config as AdditionalConfig } from '../additional-properties/output.ts'
 import { Combined as AllofCombined } from '../allof/output.ts'
 import { StringOrNumber as AnyofStringOrNumber } from '../anyof/output.ts'
+import { A as CircularA } from '../circular/output.ts'
 import { A as DefinitionsA } from '../definitions/output.ts'
 import { Pet as DiscriminatedPet } from '../discriminated-union/output.ts'
 import { User as ErrUser } from '../error-messages/output.ts'
@@ -16,6 +17,7 @@ import { Shape as OneofShape } from '../oneof/output.ts'
 import { Config as ReadonlyConfig } from '../readonly/output.ts'
 import { Schema as SimpleSchema } from '../simple/output.ts'
 import { Order as SplitNestedOrder } from '../split-nested/output.ts'
+import { Schema as SelfReferenceSchema } from '../self-reference/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
 import { User as TitleUser } from '../title/output.ts'
 
@@ -737,5 +739,43 @@ describe('if-then-else (sub-schemas without `type` collapse to Type.Any)', () =>
 
   it('rejects non-string kind', () => {
     expect(Value.Check(IfThenElseConditional, { kind: 42 })).toBe(false)
+  })
+})
+
+describe('self-reference (Type.Cyclic)', () => {
+  it('accepts an arbitrarily deep tree', () => {
+    expect(Value.Check(SelfReferenceSchema, { children: [{ children: [{ children: [] }] }] })).toBe(
+      true,
+    )
+  })
+
+  it('accepts the empty object', () => {
+    expect(Value.Check(SelfReferenceSchema, {})).toBe(true)
+  })
+
+  it('rejects a non-array children', () => {
+    expect(Value.Check(SelfReferenceSchema, { children: 'x' })).toBe(false)
+  })
+
+  it('rejects a malformed nested node', () => {
+    expect(Value.Check(SelfReferenceSchema, { children: [{ children: 1 }] })).toBe(false)
+  })
+})
+
+describe('circular (mutually recursive Type.Cyclic)', () => {
+  it('accepts an alternating A/B chain', () => {
+    expect(Value.Check(CircularA, { b: { a: { b: {} } } })).toBe(true)
+  })
+
+  it('accepts the empty object', () => {
+    expect(Value.Check(CircularA, {})).toBe(true)
+  })
+
+  it('rejects a non-object at the B position', () => {
+    expect(Value.Check(CircularA, { b: 1 })).toBe(false)
+  })
+
+  it('rejects a non-object deeper in the chain', () => {
+    expect(Value.Check(CircularA, { b: { a: 1 } })).toBe(false)
   })
 })

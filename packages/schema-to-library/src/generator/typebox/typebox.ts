@@ -14,6 +14,21 @@ import { object } from './object.js'
 import { string } from './string.js'
 
 /**
+ * Generation options threaded through every TypeBox emitter.
+ *
+ * `cyclicRefs` holds the PascalCase names that `schemaToTypebox` is emitting
+ * inside a single `Type.Cyclic($defs, root)` map. References to those names
+ * become `Type.Ref('Name')` instead of a bare identifier, because a `const`
+ * cannot reference a peer that is declared later in the cycle.
+ */
+export type TypeboxOptions = {
+  openapi?: boolean
+  readonly?: boolean
+  paramIn?: ParamIn
+  cyclicRefs?: ReadonlySet<string>
+}
+
+/**
  * Emits a single-argument TypeBox factory call (`Type.X({opts})`), embedding
  * any meta options from the schema. Returns `Type.X()` when no options.
  */
@@ -51,16 +66,26 @@ export function typebox(
   schema: JSONSchema,
   rootName: string = 'Schema',
   isTypebox: boolean = false,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: TypeboxOptions,
 ): string {
   const isStringWireParam =
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   const readonly = (v: string) => (options?.readonly ? `Type.Readonly(${v})` : v)
 
+  // A name emitted inside `Type.Cyclic($defs, root)` can only be reached by
+  // name — the peer `const` it would otherwise reference may be declared later
+  // in the same cycle.
+  const byName = (name: string, s: JSONSchema): string => tbComp('Type.Ref', `'${name}'`, s)
+  const named = (name: string, s: JSONSchema): string =>
+    options?.cyclicRefs?.has(name) ? byName(name, s) : name
+
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
+      // A reference back to the schema being emitted is always a cycle, so it
+      // always goes by name — `schemaToTypebox` puts such a schema inside a
+      // `Type.Cyclic` map.
       if (s.$ref === '#' || s.$ref === '') {
-        return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${rootName}`, s), s)
+        return typeboxWrap(byName(rootName, s), s)
       }
       if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
         return typeboxWrap('Type.Unknown()', s)
@@ -68,21 +93,20 @@ export function typebox(
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
         if (resolved) {
-          if (resolved === rootName)
-            return typeboxWrap(tbComp('Type.Recursive', `(_Self) => ${resolved}`, s), s)
-          return typeboxWrap(resolved, s)
+          if (resolved === rootName) return typeboxWrap(byName(resolved, s), s)
+          return typeboxWrap(named(resolved, s), s)
         }
       }
       const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
       const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
       for (const prefix of REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) {
-          return typeboxWrap(toName(s.$ref.slice(prefix.length)), s)
+          return typeboxWrap(named(toName(s.$ref.slice(prefix.length)), s), s)
         }
       }
       if (s.$ref?.startsWith('#')) {
         const refName = s.$ref.slice(1)
-        return refName === '' ? rootName : toName(refName)
+        return refName === '' ? named(rootName, s) : named(toName(refName), s)
       }
       if (s.$ref?.includes('#')) return 'Type.Unknown()'
       if (s.$ref?.startsWith('http')) {
@@ -290,14 +314,14 @@ export function typebox(
   if (types.includes('object'))
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
   if (types.includes('date')) {
-    if (isStringWireParam) {
-      const wire = wireString(schema)
-      return typeboxWrap(
-        `Codec(${wire}).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
-        schema,
-      )
-    }
-    return typeboxWrap(tbPrim('Type.Date', schema), schema)
+    // TypeBox v1 dropped `Type.Date()` — it models JSON Schema only, and
+    // `Date` has no JSON Schema type. The portable equivalent is a `Codec`
+    // over an ISO string, which is also what the query/path wire form uses.
+    const wire = wireString(schema)
+    return typeboxWrap(
+      `Codec(${wire}).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())`,
+      schema,
+    )
   }
   if (types.length === 1 && types[0] === 'null')
     return typeboxWrap(tbPrim('Type.Null', schema), schema)

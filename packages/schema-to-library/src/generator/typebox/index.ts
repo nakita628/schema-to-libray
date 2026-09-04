@@ -1,10 +1,12 @@
 import {
+  cyclicDefinitionNames,
   hasNotKeyword,
+  hasRootSelfReference,
   NOT_KEYWORD_UNSUPPORTED_MARKER,
   resolveSchemaDependenciesFromSchema,
 } from '../../helper/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import { resolveOpenAPIRef, toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { typebox } from './typebox.js'
 
 export function schemaToTypebox(
@@ -46,6 +48,46 @@ export function schemaToTypebox(
   const nonRootDefs = rootInDefs
     ? orderedSchemas.filter((name) => name !== rootName)
     : orderedSchemas
+
+  // A `$ref` cycle cannot be expressed with plain `const` declarations: the
+  // first one would reference a peer declared later. TypeBox v1 answers this
+  // with `Type.Cyclic($defs, root)`, where members refer to each other by name
+  // through `Type.Ref`. Once any cycle is present every definition moves into
+  // that one map, so a non-cyclic definition referencing a cyclic one still
+  // resolves.
+  const rootSelfReferential = hasRootSelfReference(
+    rootInDefs ? rootDefinition : schema,
+    (ref) =>
+      ref === '#' || ref === '' || (openapi && resolveOpenAPIRef(ref) === rootName),
+  )
+  const cyclicDefs = cyclicDefinitionNames(schema)
+  const isCyclic = rootSelfReferential || cyclicDefs.size > 0
+
+  if (isCyclic) {
+    const cyclicRefs = new Set([...orderedSchemas.map(toName), rootName])
+    const cyclicOptions = { ...genOptions, cyclicRefs }
+    const members = [
+      ...nonRootDefs.map((name) => {
+        const def = definitions[name]
+        const pc = toName(name)
+        return def
+          ? `${pc}: ${typebox(def, pc, true, cyclicOptions)}`
+          : `// ⚠️ missing definition for ${name}`
+      }),
+      `${rootName}: ${typebox(rootInDefs ? rootDefinition : schema, rootName, true, cyclicOptions)}`,
+    ].join(',\n')
+
+    const cyclicExport = `export const ${rootName} = Type.Cyclic({\n${members}\n},'${rootName}')`
+
+    return [
+      ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
+      `import { ${cyclicExport.includes('Codec(') ? 'Codec, ' : ''}Type, type Static } from 'typebox'`,
+      cyclicExport,
+      ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),
+    ]
+      .filter(Boolean)
+      .join('\n\n')
+  }
 
   // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs

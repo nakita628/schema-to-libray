@@ -13,7 +13,7 @@ describe('typebox', () => {
       [{ $ref: '#/components/schemas/UserProfile' }, 'UserProfile'],
       [{ $ref: '#/definitions/Item' }, 'Item'],
       [{ $ref: '#/$defs/Address' }, 'Address'],
-      [{ $ref: '#' } as JSONSchema, 'Type.Recursive((_Self) => Schema)'],
+      [{ $ref: '#' } as JSONSchema, "Type.Ref('Schema')"],
       [{ $ref: '' } as JSONSchema, 'Type.Any()'],
       [
         {
@@ -465,9 +465,18 @@ describe('typebox', () => {
 
   describe('date', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ type: 'date' } as JSONSchema, 'Type.Date()'],
-      [{ type: 'date', nullable: true } as JSONSchema, 'Type.Union([Type.Date(),Type.Null()])'],
-      [{ type: ['date', 'null'] } as JSONSchema, 'Type.Union([Type.Date(),Type.Null()])'],
+      [
+        { type: 'date' } as JSONSchema,
+        "Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString())",
+      ],
+      [
+        { type: 'date', nullable: true } as JSONSchema,
+        "Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])",
+      ],
+      [
+        { type: ['date', 'null'] } as JSONSchema,
+        "Type.Union([Codec(Type.String()).Decode((v)=>new Date(v)).Encode((v)=>v.toISOString()),Type.Null()])",
+      ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })
@@ -542,7 +551,7 @@ describe('typebox', () => {
         [
           { $ref: '#/components/schemas/User' },
           'UserSchema',
-          'Type.Recursive((_Self) => UserSchema)',
+          "Type.Ref('UserSchema')",
         ],
         // Nullable ref with openapi (double-wrapped: ref() wraps, then typebox() wraps again)
         [
@@ -579,7 +588,7 @@ describe('typebox', () => {
       // Fallback to any (no # and no http)
       [{ $ref: 'relative/path' }, 'Type.Any()'],
       // Self reference #
-      [{ $ref: '#' }, 'Type.Recursive((_Self) => Schema)'],
+      [{ $ref: '#' }, "Type.Ref('Schema')"],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })

@@ -2,19 +2,39 @@ import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
 
-const FORMAT_MAP: { readonly [k: string]: string } = {
-  uuid: 'Schema.UUID',
-  ulid: 'Schema.ULID',
+/**
+ * Formats whose Effect Schema v4 equivalent is a check on `Schema.String`.
+ * v3 shipped `Schema.UUID` / `Schema.ULID` schemas; v4 expresses both as
+ * filters instead.
+ */
+const FORMAT_CHECK: { readonly [k: string]: string } = {
+  uuid: 'Schema.isUUID()',
+  ulid: 'Schema.isULID()',
 }
 
-const FORMAT_PIPE: { readonly [k: string]: string } = {
-  email: 'Schema.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)',
-  uri: 'Schema.pattern(/^https?:\\/\\//)',
-  ipv4: 'Schema.pattern(/^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$/)',
-  ipv6: 'Schema.pattern(/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/)',
-  'date-time': 'Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/)',
-  date: 'Schema.pattern(/^\\d{4}-\\d{2}-\\d{2}$/)',
-  time: 'Schema.pattern(/^\\d{2}:\\d{2}:\\d{2}/)',
+const FORMAT_PATTERN: { readonly [k: string]: string } = {
+  email: 'Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/)',
+  uri: 'Schema.isPattern(/^https?:\\/\\//)',
+  ipv4: 'Schema.isPattern(/^(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$/)',
+  ipv6: 'Schema.isPattern(/^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/)',
+  'date-time': 'Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/)',
+  date: 'Schema.isPattern(/^\\d{4}-\\d{2}-\\d{2}$/)',
+  time: 'Schema.isPattern(/^\\d{2}:\\d{2}:\\d{2}/)',
+}
+
+/**
+ * The base string schema, applying any `x-trim` / `x-toLowerCase` /
+ * `x-toUpperCase` normalisation. v4 keeps `Schema.Trim` but replaced the
+ * `Schema.Lowercase` / `Schema.Uppercase` schemas with transformations that
+ * `Schema.decodeTo` applies to `Schema.String`.
+ */
+function stringBase(schema: JSONSchema): string {
+  if (schema['x-trim'] === true) return 'Schema.Trim'
+  if (schema['x-toLowerCase'] === true)
+    return 'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toLowerCase()))'
+  if (schema['x-toUpperCase'] === true)
+    return 'Schema.String.pipe(Schema.decodeTo(Schema.String,SchemaTransformation.toUpperCase()))'
+  return 'Schema.String'
 }
 
 export function string(schema: JSONSchema) {
@@ -35,57 +55,48 @@ export function string(schema: JSONSchema) {
     schema.minLength === schema.maxLength
   const startsWith =
     typeof schema['x-startsWith'] === 'string'
-      ? `Schema.startsWith(${JSON.stringify(schema['x-startsWith'])})`
+      ? `Schema.isStartsWith(${JSON.stringify(schema['x-startsWith'])})`
       : undefined
   const endsWith =
     typeof schema['x-endsWith'] === 'string'
-      ? `Schema.endsWith(${JSON.stringify(schema['x-endsWith'])})`
+      ? `Schema.isEndsWith(${JSON.stringify(schema['x-endsWith'])})`
       : undefined
   const includes =
     typeof schema['x-includes'] === 'string'
-      ? `Schema.includes(${JSON.stringify(schema['x-includes'])})`
+      ? `Schema.isIncludes(${JSON.stringify(schema['x-includes'])})`
       : undefined
-  const lengthActions = [
+  const lengthChecks = [
     startsWith,
     endsWith,
     includes,
     schema.pattern
-      ? `Schema.pattern(${regexLiteral(schema.pattern)}${patternErrorPart})`
+      ? `Schema.isPattern(${regexLiteral(schema.pattern)}${patternErrorPart})`
       : undefined,
-    isFixedLength ? `Schema.length(${schema.minLength}${lengthErrorPart})` : undefined,
+    // v4 has no single-length filter; a fixed length is a degenerate range.
+    isFixedLength
+      ? `Schema.isLengthBetween(${schema.minLength},${schema.minLength}${lengthErrorPart})`
+      : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `Schema.minLength(${schema.minLength}${minErrorPart})`
+      ? `Schema.isMinLength(${schema.minLength}${minErrorPart})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `Schema.maxLength(${schema.maxLength}${maxErrorPart})`
+      ? `Schema.isMaxLength(${schema.maxLength}${maxErrorPart})`
       : undefined,
   ].filter((v) => v !== undefined)
-  const stringBase =
-    schema['x-trim'] === true
-      ? 'Schema.Trim'
-      : schema['x-toLowerCase'] === true
-        ? 'Schema.Lowercase'
-        : schema['x-toUpperCase'] === true
-          ? 'Schema.Uppercase'
-          : 'Schema.String'
-  if (schema.format && FORMAT_MAP[schema.format]) {
-    const base = FORMAT_MAP[schema.format]
-    if (lengthActions.length > 0) {
-      const result = `${base}.pipe(${lengthActions.join(',')})`
-      return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
-    }
-    return errorMessage ? `${base}.annotations(${effectError(errorMessage)})` : base
+  const annotate = (code: string): string =>
+    errorMessage ? `${code}.annotate(${effectError(errorMessage)})` : code
+
+  if (schema.format && FORMAT_CHECK[schema.format]) {
+    const checks = [FORMAT_CHECK[schema.format], ...lengthChecks]
+    return annotate(`Schema.String.check(${checks.join(',')})`)
   }
-  const format = schema.format && FORMAT_PIPE[schema.format]
-  const formatAction = format
+  const pattern = schema.format && FORMAT_PATTERN[schema.format]
+  const formatCheck = pattern
     ? patternMessage
-      ? format.replace(/\)$/, `,${effectError(patternMessage)})`)
-      : format
+      ? pattern.replace(/\)$/, `,${effectError(patternMessage)})`)
+      : pattern
     : undefined
-  const actions = [formatAction, ...lengthActions].filter((v) => v !== undefined)
-  if (actions.length > 0) {
-    const result = `${stringBase}.pipe(${actions.join(',')})`
-    return errorMessage ? `${result}.annotations(${effectError(errorMessage)})` : result
-  }
-  return errorMessage ? `${stringBase}.annotations(${effectError(errorMessage)})` : stringBase
+  const checks = [formatCheck, ...lengthChecks].filter((v) => v !== undefined)
+  const base = stringBase(schema)
+  return annotate(checks.length > 0 ? `${base}.check(${checks.join(',')})` : base)
 }

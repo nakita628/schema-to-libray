@@ -9,5 +9,5 @@
     "noEmit": true
   },
   "include": ["**/output.ts"],
-  "exclude": ["node_modules", "src", "circular", "self-reference"]
+  "exclude": ["node_modules", "src"]
 }

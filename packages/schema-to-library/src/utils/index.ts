@@ -186,17 +186,29 @@ export function valibotError(message: string) {
 /**
  * Format an error message annotation for Effect Schema.
  *
+ * Effect Schema v4 types the `message` annotation as a plain `string` (v3 took
+ * a `() => string` thunk), so an arrow-expression message has no place to go
+ * and is emitted as its source text — see {@link effectMessage}.
+ *
  * @example
  * ```ts
- * effectError('Required')             // '{message:()=>"Required"}'
- * effectError('(issue) => ...')        // '{message:(issue) => ...}'
+ * effectError('Required') // '{message:"Required"}'
  * ```
  */
 export function effectError(message: string) {
-  const isArrowExpression = (s: string) => /^\s*\(.*?\)\s*=>/.test(s)
-  return isArrowExpression(message)
-    ? `{message:${message}}`
-    : `{message:()=>${JSON.stringify(message)}}`
+  return `{message:${effectMessage(message)}}`
+}
+
+/**
+ * The `message` annotation value for Effect Schema v4: a string literal.
+ *
+ * @example
+ * ```ts
+ * effectMessage('Required') // '"Required"'
+ * ```
+ */
+export function effectMessage(message: string) {
+  return JSON.stringify(message)
 }
 
 /**

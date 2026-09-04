@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "schema-to-library": "workspace:^",
-    "effect": "^3.14.8"
+    "effect": "^4.0.0-rc.112"
   },
   "devDependencies": {
     "tsx": "^4.21.0",
