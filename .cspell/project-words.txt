@@ -22,6 +22,7 @@ llms
 openssf
 oxfmt
 oxlint
+pipefail
 pipx
 shellcheck
 sinclairzx

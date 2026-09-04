@@ -57,10 +57,10 @@ vp run -r typecheck   # generated code against the real target libraries
 
 ## A version bump is a release
 
-`deploy.yml` publishes to npm as soon as `main` carries a version of
-`packages/schema-to-library/package.json` that is not on the registry, and `release.yml`
-then tags `v<version>`. Bumping that version **is** the release — never include a bump in
-a pull request that was not asked to publish one.
+`release.yml` tags `v<version>`, publishes to npm and creates the GitHub release as soon
+as `main` carries a version of `packages/schema-to-library/package.json` that is not on
+the registry. Bumping that version **is** the release — never include a bump in a pull
+request that was not asked to publish one.
 
 ## Opening it
 
