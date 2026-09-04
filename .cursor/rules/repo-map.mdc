@@ -53,3 +53,5 @@ vp run lint:docs                   # Markdown, terminology, spelling, secrets
 - **User-visible behaviour is documented in the README** — a new `x-*` extension, a newly
   supported keyword, a new option, or a change in emitted shape.
 - **No new runtime dependencies** in `packages/schema-to-library` without being asked.
+- **Work on a branch and land it through a pull request** — a version bump on `main`
+  publishes to npm. See `@.cursor/rules/pull-requests.mdc`.

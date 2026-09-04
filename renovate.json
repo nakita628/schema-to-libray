@@ -9,6 +9,7 @@
   "schedule": ["* * * * 6"],
   "dependencyDashboardAutoclose": true,
   "osvVulnerabilityAlerts": true,
+  "labels": ["dependencies"],
   "platformAutomerge": false,
   "lockFileMaintenance": {
     "enabled": true,

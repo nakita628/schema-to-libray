@@ -1,0 +1,69 @@
+---
+description: How to open a pull request here — branch naming, the title format that becomes the release notes, labels, and what has to be green first
+alwaysApply: false
+---
+
+# Pull requests
+
+## Branch and scope
+
+- Never commit to `main`. Branch from it, named `type/topic`, matching the history here:
+  `fix/library`, `fix/release`, `feat/x-vendor`, `feat/brand`.
+- One topic per pull request. A generator fix and a docs rewrite are two pull requests.
+- A commit pushed straight to `main` never appears in any release notes, because the
+  notes are built from merged pull requests.
+
+## The title is the changelog
+
+`.github/workflows/release.yml` cuts each GitHub Release with
+`gh release create --generate-notes`, and those notes are the **titles of the pull
+requests merged since the previous release**. Write the title for someone reading the
+releases page, not for the diff:
+
+```text
+type(scope): summary in the imperative, no trailing period
+
+type   feat | fix | perf | refactor | docs | test | build | ci | chore
+scope  zod | valibot | effect | typebox | arktype | cli | parser | fixtures | docs | ci
+```
+
+```text
+fix(valibot): emit valid schemas for null and object enum members
+feat(zod): support x-stringbool on boolean properties
+docs: point Effect Schema links at the v4 documentation
+```
+
+## Labels
+
+Apply exactly one: `bug`, `enhancement`, `documentation`, `breaking` or `dependencies`.
+`.github/release.yml` groups the generated notes by that label, and anything unlabelled
+falls into "Other changes".
+
+## Body
+
+Fill in `.github/pull_request_template.md` rather than replacing it. The section that
+matters most here is **Generated output**: this repository's review artifact is the
+`fixtures/*/*/output.ts` diff, so paste the interesting part of it or say plainly that
+generated output is unchanged.
+
+## Green before you open it
+
+```bash
+vp run -r check       # format, lint, types
+vp run lint:docs      # Markdown, terminology, spelling, secrets
+vp test && vp run schema-to-library#test
+vp run -r typecheck   # generated code against the real target libraries
+```
+
+## A version bump is a release
+
+`deploy.yml` publishes to npm as soon as `main` carries a version of
+`packages/schema-to-library/package.json` that is not on the registry, and `release.yml`
+then tags `v<version>`. Bumping that version **is** the release — never include a bump in
+a pull request that was not asked to publish one.
+
+## Opening it
+
+```bash
+gh pr create --base main --title 'fix(zod): …' --label bug --body-file <file>
+```
