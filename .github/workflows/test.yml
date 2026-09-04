@@ -24,9 +24,9 @@ jobs:
       # to each workspace by `vp run -r check`.
       - run: vp fmt --check
 
-      # Prose and metadata: Markdown structure, terminology, spelling and secret
-      # scanning. Nothing here needs a build, so it fails fast.
-      - run: vp run lint:docs
+      # Every text check in one task: Markdown structure, terminology, spelling, secret
+      # scanning and link rot. Nothing here needs a build, so it fails fast.
+      - run: vp run lint
 
       - run: vp run -r check
 

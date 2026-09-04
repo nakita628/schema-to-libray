@@ -21,7 +21,8 @@ generated files against the real library.
 | `apps/generated` | end-to-end smoke: runs the built CLIs over `apps/generated/schema/*` and type-checks the result |
 
 `README.md` at the repository root is a symlink to `@packages/schema-to-library/README.md`;
-there is one README, and it is the user-facing documentation.
+there is one README, and it is what npm shows. It is deliberately minimal — what the tool
+is, how to install it, the five commands, one worked example — and it stays that way.
 
 ## Commands
 
@@ -37,7 +38,7 @@ vp test                            # fixture assertions, from the root config
 vp run schema-to-library#test      # the library's own unit suite
 vp run schema-to-library#coverage  # 80% statements/branches/functions/lines, enforced
 vp run -r typecheck                # generated fixtures vs. the real target libraries
-vp run lint:docs                   # Markdown, terminology, spelling, secrets
+vp run lint                        # Markdown, terminology, spelling, secrets, links
 ```
 
 ## Non-negotiables
@@ -50,8 +51,9 @@ vp run lint:docs                   # Markdown, terminology, spelling, secrets
 - **New emitted API must type-check against the real library** (`vp run -r typecheck`).
   Guessing at an API that the pinned version does not have is the most common failure
   here — see `@.cursor/rules/target-libraries.mdc`.
-- **User-visible behaviour is documented in the README** — a new `x-*` extension, a newly
-  supported keyword, a new option, or a change in emitted shape.
+- **Document behaviour where it lives, not in the README.** A new `x-*` extension is
+  documented by the doc comment on its type in `src/parser/x-ext/` and by the fixture that
+  exercises it. Only installation, the commands and the one example belong in the README.
 - **No new runtime dependencies** in `packages/schema-to-library` without being asked.
 - **Work on a branch and land it through a pull request** — a version bump on `main`
   publishes to npm. See `@.cursor/rules/pull-requests.mdc`.

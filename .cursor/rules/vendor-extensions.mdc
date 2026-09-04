@@ -25,7 +25,7 @@ related option that drives string-wire coercion for OpenAPI parameters.
 - **Message precedence** is fixed: keyword-specific → `x-error-message` → the library's
   own default. Do not invent a different order for a new slot.
 - **A target with no equivalent is a no-op**, never an error and never a thrown warning.
-  Say so in the README row instead.
+  Say which targets honour it in the doc comment on the type instead.
 - Extension names are stable public API. Renaming one is a breaking change.
 
 ## Code extensions are the exception
@@ -51,5 +51,6 @@ denylist test coverage with it.
 3. Add unit-test rows per affected generator (`@.cursor/rules/tests.mdc`).
 4. Add a fixture case under every target it affects, and regenerate
    (`@.cursor/rules/fixtures.mdc`).
-5. Add the row to the README's extension table — the table is the documentation users
-   read, so an undocumented extension does not count as shipped.
+5. Document it where it lives: the doc comment on the `x-ext` type says what the
+   extension does and which targets honour it. The README stays minimal — do not add an
+   extension table to it.

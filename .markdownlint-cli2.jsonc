@@ -1,7 +1,7 @@
 {
-  // `vp fmt` does not touch Markdown, so structure is this linter's job and wrapping
-  // stays a human judgement: MD013 is off because the README's feature bullets and
-  // reference tables are deliberately single long lines.
+  // `vp fmt` (oxfmt) owns Markdown whitespace — it re-pads tables, which is what keeps
+  // MD060 satisfied — but it never re-wraps prose. Wrapping therefore stays a human
+  // judgement and MD013 is off; structure is this linter's job.
   "globs": ["**/*.md", "**/*.mdc"],
   "ignores": [
     "**/node_modules/**",

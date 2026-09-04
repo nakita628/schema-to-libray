@@ -15,7 +15,7 @@ plan.
 | Zod | `zod@^4.5.4` | `import * as z from 'zod'` | [zod.dev](https://zod.dev/), [API](https://zod.dev/api) | [llms.txt](https://zod.dev/llms.txt), [llms-full.txt](https://zod.dev/llms-full.txt) |
 | Valibot | `valibot@^1.4.2` | `import * as v from 'valibot'` | [valibot.dev](https://valibot.dev/) | [llms.txt](https://valibot.dev/llms.txt), [llms-full.txt](https://valibot.dev/llms-full.txt), [llms-api.txt](https://valibot.dev/llms-api.txt) |
 | Effect Schema | `effect@^4.0.0-rc.112` | `import { Schema } from 'effect'` | [v4 Schema docs](https://effect.website/docs/v4/schema/introduction) | none published — read the v4 docs, not v3 answers |
-| TypeBox | `typebox@^1.3.25` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — the README is the reference |
+| TypeBox | `typebox@^1.3.25` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — its GitHub README is the reference |
 | ArkType | `arktype@^2.2.3` | `import { type } from 'arktype'` | [arktype.io](https://arktype.io/) | [llms.txt](https://arktype.io/llms.txt) |
 
 The pins live in `@fixtures/zod/package.json` and its siblings — those are what
@@ -49,8 +49,11 @@ The pins live in `@fixtures/zod/package.json` and its siblings — those are wha
 
 Predicate callbacks are named the way each library's own documentation names them —
 `val` (Zod), `input` (Valibot, Effect), `value` (TypeBox), `data` (ArkType) — so
-generated code reads like hand-written code. The full table, including the destructured
-forms, is the *Callback naming* section of the README.
+generated code reads like hand-written code. Zod's `{ error: (issue) => … }` and
+`.check((ctx) => …)` keep `issue` and `ctx`, Valibot's
+`v.rawCheck(({ dataset, addIssue }) => …)` keeps its destructured form, and callbacks
+nested inside a predicate are named for what they hold: `key`, `value`, `item`. The
+committed fixtures are the worked examples.
 
 ## Upstream vocabulary
 

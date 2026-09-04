@@ -50,7 +50,7 @@ generated output is unchanged.
 
 ```bash
 vp run -r check       # format, lint, types
-vp run lint:docs      # Markdown, terminology, spelling, secrets
+vp run lint           # Markdown, terminology, spelling, secrets, links
 vp test && vp run schema-to-library#test
 vp run -r typecheck   # generated code against the real target libraries
 ```

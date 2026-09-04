@@ -4,18 +4,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "check": "vp fmt --check && vp run -r check && vp run lint:docs",
+    "check": "vp fmt --check && vp run -r check && vp run lint",
     "coverage": "vp run schema-to-library#coverage",
     "deps": "mkdir -p /tmp/pnpm-store && pnpm config set store-dir /tmp/pnpm-store && rm -rf node_modules && rm -rf pnpm-lock.yaml && rm -rf ~/.pnpm-store && pnpm store prune && pnpm install --no-prefer-frozen-lockfile",
-    "fix": "vp fmt && vp run -r check --fix && vp run fix:docs",
-    "fix:docs": "markdownlint-cli2 --fix && textlint --fix \"**/*.md\" \"**/*.mdc\"",
-    "lint:docs": "markdownlint-cli2 && textlint \"**/*.md\" \"**/*.mdc\" && cspell --no-progress \"**/*.{md,mdc,ts,js,mjs,json,jsonc,yaml,yml}\" && secretlint --secretlintignore .secretlintignore --maskSecrets \"**/*\"",
-    "lint:links": "textlint --config .textlintrc.links.json \"**/*.md\" \"**/*.mdc\"",
-    "lint:md": "markdownlint-cli2",
-    "lint:secret": "secretlint --secretlintignore .secretlintignore --maskSecrets \"**/*\"",
-    "lint:spell": "cspell --no-progress \"**/*.{md,mdc,ts,js,mjs,json,jsonc,yaml,yml}\"",
-    "lint:text": "textlint \"**/*.md\" \"**/*.mdc\"",
-    "release": "pnpm -F schema-to-library release",
+    "fix": "vp fmt && vp run -r check --fix && markdownlint-cli2 --fix && textlint --fix \"**/*.md\" \"**/*.mdc\"",
+    "lint": "markdownlint-cli2 && textlint \"**/*.md\" \"**/*.mdc\" && cspell --no-progress \"**/*.{md,mdc,ts,js,mjs,json,jsonc,yaml,yml}\" && secretlint --secretlintignore .secretlintignore --maskSecrets \"**/*\" && textlint --config .textlintrc.links.json \"**/*.md\" \"**/*.mdc\"",
     "test": "vp test && vp run schema-to-library#test"
   },
   "devDependencies": {

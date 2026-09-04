@@ -30,10 +30,11 @@ part of the `fixtures/*/*/output.ts` diff, or state that generated output is unc
 ## Checklist
 
 - [ ] `vp run -r check` — format, lint, types
-- [ ] `vp run lint:docs` — Markdown, terminology, spelling, secrets
+- [ ] `vp run lint` — Markdown, terminology, spelling, secrets, links
 - [ ] `vp test` and `vp run schema-to-library#test`
 - [ ] Fixtures regenerated and their diff reviewed, if a generator changed
 - [ ] `vp run -r typecheck` — generated code still compiles against the real target libraries
 - [ ] A regression test that fails without this change
-- [ ] README updated, if behaviour, options or `x-*` extensions changed
+- [ ] README updated, if installation, the commands or the example changed (it is
+      deliberately minimal — nothing else belongs in it)
 - [ ] `packages/schema-to-library` version bumped **only** if this pull request should publish to npm on merge
