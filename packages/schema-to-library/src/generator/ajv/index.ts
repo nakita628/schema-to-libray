@@ -28,7 +28,9 @@ export function schemaToAjv(
   const importBlock = withFormats
     ? `import Ajv from 'ajv'\nimport addFormats from 'ajv-formats'`
     : `import Ajv from 'ajv'`
-  const setupBlock = withFormats ? `const ajv = new Ajv()\naddFormats(ajv)` : `const ajv = new Ajv()`
+  const setupBlock = withFormats
+    ? `const ajv = new Ajv()\naddFormats(ajv)`
+    : `const ajv = new Ajv()`
   return [
     importBlock,
     setupBlock,

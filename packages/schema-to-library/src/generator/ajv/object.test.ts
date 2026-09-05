@@ -38,7 +38,7 @@ describe('object', () => {
         },
         required: ['full-name'],
       },
-      "{type:'object',properties:{\"full-name\":{type:'string'}},required:[\"full-name\"]}",
+      '{type:\'object\',properties:{"full-name":{type:\'string\'}},required:["full-name"]}',
     ],
     [
       {
@@ -65,10 +65,7 @@ describe('object', () => {
       },
       "{type:'object',properties:{tags:{},role:{}}}",
     ],
-    [
-      { type: 'object', required: ['name'] },
-      "{type:'object',required:[\"name\"]}",
-    ],
+    [{ type: 'object', required: ['name'] }, '{type:\'object\',required:["name"]}'],
   ])('object(%o) -> %s', (schema, expected) => {
     expect(object(schema)).toBe(expected)
   })

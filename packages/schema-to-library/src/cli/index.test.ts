@@ -325,10 +325,7 @@ const ajv = new Ajv()
 
 export const schema = {
   type: 'object',
-  properties: {
-    name: { type: 'string' },
-    age: { type: 'integer' },
-  },
+  properties: { name: { type: 'string' }, age: { type: 'integer' } },
   required: ['name'],
 }
 
@@ -349,10 +346,7 @@ const ajv = new Ajv()
 
 export const schema = {
   type: 'object',
-  properties: {
-    name: { type: 'string' },
-    age: { type: 'integer' },
-  },
+  properties: { name: { type: 'string' }, age: { type: 'integer' } },
   required: ['name'],
 }
 
