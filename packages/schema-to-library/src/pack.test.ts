@@ -1,11 +1,10 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-const packageDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const packageDir = path.join(import.meta.dirname, '..')
 
 type PackageJson = {
   readonly scripts: {
