@@ -4,10 +4,10 @@ import { Console, Effect, Schema, Stdio } from 'effect'
 import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
 
 import { mkdir, writeFile } from '../file/index.js'
-import { format } from '../format/index.js'
+import { fmt } from '../format/index.js'
 import { isRecord } from '../helper/value.js'
 import type { JSONSchema } from '../parser/index.js'
-import { parseSchema } from '../parser/index.js'
+import { parseSchemaFile } from '../parser/index.js'
 
 /** A generator: a JSON Schema in, the TypeScript source of a validation schema out. */
 export type Generator = (
@@ -98,8 +98,8 @@ function platformCause(error: unknown): unknown {
 function generate(generator: Generator) {
   return (args: Command.Command.Config.Infer<typeof commandLine>) =>
     Effect.gen(function* () {
-      const schema = yield* parseSchema(args.input)
-      const source = yield* format(
+      const schema = yield* parseSchemaFile(args.input)
+      const source = yield* fmt(
         generator(schema, { exportType: args.exportType, readonly: args.readonly }),
       )
       yield* mkdir(path.dirname(args.output))

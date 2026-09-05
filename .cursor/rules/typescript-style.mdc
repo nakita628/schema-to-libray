@@ -29,11 +29,9 @@ alone will not tell you.
 - **No default exports**, and no `require`. ESM only, `node:` protocol for built-in modules.
 - **No escape hatches**: no `any`, no non-null assertion, and `assertionStyle: 'never'` —
   `x as Y` does not compile here. Narrow with a type guard instead.
-- **Failures are values, not throws**, at the public `{ ok }` boundary: `parseSchemaFile`
-  and `fmt` answer `{ ok: true, value }` / `{ ok: false, error }`. Effect helpers
-  (`format`, `parseSchema`, `parseJson`, `stringifyJson`) fail in the error channel.
-  Keep new public `{ ok }` API in that shape. When something must throw, throw an
-  `Error` with a message; name the catch binding `error`.
+- **Failures land in the error channel.** `fmt` and `parseSchemaFile` are Effects.
+  When something must throw, throw an `Error` with a message; name the catch binding
+  `error`.
 - **No `console`** in the package (the CLI reports through its own path); `fixtures/` and
   `apps/` are separate workspaces and not bound by this config.
 - **Suppressions live at the call site** as `oxlint-disable-next-line <rule>` with a

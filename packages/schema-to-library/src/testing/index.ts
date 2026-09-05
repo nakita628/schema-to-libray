@@ -1,29 +1,19 @@
-import { NodeServices } from '@effect/platform-node'
-import { Effect } from 'effect'
 import type { Effect as EffectType, FileSystem } from 'effect'
+import { Effect } from 'effect'
 
-/** Runs an Effect that has no remaining requirements. */
-export function runEffect<A, E>(effect: EffectType.Effect<A, E>) {
-  return Effect.runPromise(effect)
-}
-
-/** The same, for an Effect that is expected to fail: answers with the error it failed with. */
-export function runEffectError<A, E>(effect: EffectType.Effect<A, E>) {
-  return Effect.runPromise(Effect.flip(effect))
-}
+import { fileSystemLayer } from '../file/index.js'
 
 /**
- * Runs an Effect that only needs the filesystem, the way the CLI writes files.
+ * Runs an Effect against the real filesystem, the way the CLI does, and answers with
+ * what it produced.
  *
  * Test-only — nothing in `dist` imports it.
  */
-export function runWithFileSystem<A, E>(effect: EffectType.Effect<A, E, FileSystem.FileSystem>) {
-  return Effect.runPromise(effect.pipe(Effect.provide(NodeServices.layer)))
+export function runGenerator<A, E>(effect: EffectType.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(effect.pipe(Effect.provide(fileSystemLayer)))
 }
 
 /** The same, for an Effect that is expected to fail: answers with the error it failed with. */
-export function runWithFileSystemError<A, E>(
-  effect: EffectType.Effect<A, E, FileSystem.FileSystem>,
-) {
-  return Effect.runPromise(Effect.flip(effect.pipe(Effect.provide(NodeServices.layer))))
+export function runGeneratorError<A, E>(effect: EffectType.Effect<A, E, FileSystem.FileSystem>) {
+  return Effect.runPromise(Effect.flip(effect.pipe(Effect.provide(fileSystemLayer))))
 }

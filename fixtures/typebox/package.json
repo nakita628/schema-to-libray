@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "effect": "^4.0.0-rc.112",
     "schema-to-library": "workspace:^",
     "typebox": "^1.3.25"
   },

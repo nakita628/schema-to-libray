@@ -5,8 +5,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 
-import { runWithFileSystem, runWithFileSystemError } from '../testing/index.js'
-import { mkdir, readdir, readFile, readLink, stat, unlink, writeFile } from './index.js'
+import { runGenerator, runGeneratorError } from '../testing/index.js'
+import { mkdir, readdir, readFile, unlink, writeFile } from './index.js'
 
 const TEST_DIR = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'schema-to-library-file-')), 'tmp')
 
@@ -19,18 +19,18 @@ describe('file', () => {
 
   describe('mkdir', () => {
     it('creates a directory', async () => {
-      await expect(runWithFileSystem(mkdir(TEST_DIR))).resolves.toBeUndefined()
+      await expect(runGenerator(mkdir(TEST_DIR))).resolves.toBeUndefined()
       expect(fs.existsSync(TEST_DIR)).toBe(true)
     })
 
     it('accepts a directory that already exists', async () => {
       await fsp.mkdir(TEST_DIR, { recursive: true })
-      await expect(runWithFileSystem(mkdir(TEST_DIR))).resolves.toBeUndefined()
+      await expect(runGenerator(mkdir(TEST_DIR))).resolves.toBeUndefined()
     })
 
     it('creates nested directories', async () => {
       const deepPath = path.join(TEST_DIR, 'a', 'b', 'c')
-      await expect(runWithFileSystem(mkdir(deepPath))).resolves.toBeUndefined()
+      await expect(runGenerator(mkdir(deepPath))).resolves.toBeUndefined()
       expect(fs.existsSync(deepPath)).toBe(true)
     })
 
@@ -38,7 +38,7 @@ describe('file', () => {
       const filePath = path.join(TEST_DIR, 'foo.txt')
       await fsp.mkdir(TEST_DIR, { recursive: true })
       await fsp.writeFile(filePath, 'dummy')
-      const result = await runWithFileSystemError(mkdir(path.join(filePath, 'bar')))
+      const result = await runGeneratorError(mkdir(path.join(filePath, 'bar')))
       expect(result.message.length).toBeGreaterThan(0)
     })
   })
@@ -51,18 +51,18 @@ describe('file', () => {
     })
 
     it('lists files', async () => {
-      const result = await runWithFileSystem(readdir(TEST_DIR))
+      const result = await runGenerator(readdir(TEST_DIR))
       expect([...result].sort()).toStrictEqual(['a.txt', 'b.txt'])
     })
 
     it('reads a missing directory as empty', async () => {
-      expect(await runWithFileSystem(readdir(path.join(TEST_DIR, 'missing')))).toStrictEqual([])
+      expect(await runGenerator(readdir(path.join(TEST_DIR, 'missing')))).toStrictEqual([])
     })
 
     it('lists an empty directory as empty', async () => {
       const emptyDir = path.join(TEST_DIR, 'empty')
       await fsp.mkdir(emptyDir, { recursive: true })
-      expect(await runWithFileSystem(readdir(emptyDir))).toStrictEqual([])
+      expect(await runGenerator(readdir(emptyDir))).toStrictEqual([])
     })
   })
 
@@ -74,15 +74,15 @@ describe('file', () => {
     it('returns the contents of an existing file', async () => {
       const filePath = path.join(TEST_DIR, 'read.txt')
       await fsp.writeFile(filePath, 'hello world')
-      expect(await runWithFileSystem(readFile(filePath))).toBe('hello world')
+      expect(await runGenerator(readFile(filePath))).toBe('hello world')
     })
 
     it('returns null when the file does not exist', async () => {
-      expect(await runWithFileSystem(readFile(path.join(TEST_DIR, 'missing.txt')))).toBeNull()
+      expect(await runGenerator(readFile(path.join(TEST_DIR, 'missing.txt')))).toBeNull()
     })
 
     it('fails when the path is a directory', async () => {
-      const result = await runWithFileSystemError(readFile(TEST_DIR))
+      const result = await runGeneratorError(readFile(TEST_DIR))
       expect(result.message.length).toBeGreaterThan(0)
     })
   })
@@ -95,13 +95,13 @@ describe('file', () => {
     it('removes an existing file', async () => {
       const filePath = path.join(TEST_DIR, 'gone.txt')
       await fsp.writeFile(filePath, 'bye')
-      await expect(runWithFileSystem(unlink(filePath))).resolves.toBeUndefined()
+      await expect(runGenerator(unlink(filePath))).resolves.toBeUndefined()
       expect(fs.existsSync(filePath)).toBe(false)
     })
 
     it('accepts a path that is already gone', async () => {
       await expect(
-        runWithFileSystem(unlink(path.join(TEST_DIR, 'missing.txt'))),
+        runGenerator(unlink(path.join(TEST_DIR, 'missing.txt'))),
       ).resolves.toBeUndefined()
     })
   })
@@ -113,7 +113,7 @@ describe('file', () => {
 
     it('writes a new file', async () => {
       const filePath = path.join(TEST_DIR, 'ok.txt')
-      await expect(runWithFileSystem(writeFile(filePath, 'hello'))).resolves.toBeUndefined()
+      await expect(runGenerator(writeFile(filePath, 'hello'))).resolves.toBeUndefined()
       expect(await fsp.readFile(filePath, 'utf8')).toBe('hello')
     })
 
@@ -124,7 +124,7 @@ describe('file', () => {
       await new Promise((resolve) => {
         setTimeout(resolve, 50)
       })
-      await expect(runWithFileSystem(writeFile(filePath, 'same'))).resolves.toBeUndefined()
+      await expect(runGenerator(writeFile(filePath, 'same'))).resolves.toBeUndefined()
       const after = await fsp.stat(filePath)
       expect(after.mtimeMs).toBe(before.mtimeMs)
     })
@@ -132,35 +132,8 @@ describe('file', () => {
     it('overwrites when the contents differ', async () => {
       const filePath = path.join(TEST_DIR, 'diff.txt')
       await fsp.writeFile(filePath, 'old')
-      await expect(runWithFileSystem(writeFile(filePath, 'new'))).resolves.toBeUndefined()
+      await expect(runGenerator(writeFile(filePath, 'new'))).resolves.toBeUndefined()
       expect(await fsp.readFile(filePath, 'utf8')).toBe('new')
-    })
-  })
-
-  describe('stat and readLink', () => {
-    beforeEach(async () => {
-      await fsp.mkdir(TEST_DIR, { recursive: true })
-    })
-
-    it('stats a regular file', async () => {
-      const filePath = path.join(TEST_DIR, 'file.txt')
-      await fsp.writeFile(filePath, 'data')
-      const info = await runWithFileSystem(stat(filePath))
-      expect(info.type).toBe('File')
-    })
-
-    it('returns null from readLink when the path is not a symlink', async () => {
-      const filePath = path.join(TEST_DIR, 'file.txt')
-      await fsp.writeFile(filePath, 'data')
-      expect(await runWithFileSystem(readLink(filePath))).toBeNull()
-    })
-
-    it('reads the destination of a symlink', async () => {
-      const filePath = path.join(TEST_DIR, 'file.txt')
-      const linkPath = path.join(TEST_DIR, 'link.txt')
-      await fsp.writeFile(filePath, 'data')
-      await fsp.symlink(filePath, linkPath)
-      expect(await runWithFileSystem(readLink(linkPath))).toBe(filePath)
     })
   })
 })

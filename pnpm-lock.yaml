@@ -59,6 +59,9 @@ importers:
       arktype:
         specifier: ^2.2.3
         version: 2.2.3
+      effect:
+        specifier: ^4.0.0-rc.112
+        version: 4.0.0-rc.112
       schema-to-library:
         specifier: workspace:^
         version: link:../../packages/schema-to-library
@@ -101,6 +104,9 @@ importers:
 
   fixtures/typebox:
     dependencies:
+      effect:
+        specifier: ^4.0.0-rc.112
+        version: 4.0.0-rc.112
       schema-to-library:
         specifier: workspace:^
         version: link:../../packages/schema-to-library
@@ -123,6 +129,9 @@ importers:
 
   fixtures/valibot:
     dependencies:
+      effect:
+        specifier: ^4.0.0-rc.112
+        version: 4.0.0-rc.112
       schema-to-library:
         specifier: workspace:^
         version: link:../../packages/schema-to-library
@@ -164,6 +173,9 @@ importers:
 
   fixtures/zod:
     dependencies:
+      effect:
+        specifier: ^4.0.0-rc.112
+        version: 4.0.0-rc.112
       schema-to-library:
         specifier: workspace:^
         version: link:../../packages/schema-to-library

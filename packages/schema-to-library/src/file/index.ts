@@ -1,4 +1,14 @@
+import { NodeFileSystem } from '@effect/platform-node'
 import { Effect, FileSystem } from 'effect'
+
+/**
+ * Node's `FileSystem` implementation.
+ *
+ * Every function below reads the service out of the environment, so a program that
+ * uses them provides this once at its boundary — the CLI folds it in through
+ * `NodeServices.layer`.
+ */
+export const fileSystemLayer = NodeFileSystem.layer
 
 /** Removes a file. A path that is already gone is not an error. */
 export function unlink(path: string) {
@@ -46,21 +56,5 @@ export function writeFile(path: string, data: string) {
     const existing = yield* fs.readFileString(path).pipe(Effect.orElseSucceed(() => null))
     if (existing === data) return
     yield* fs.writeFileString(path, data)
-  })
-}
-
-/** Metadata of a path. Symbolic links are followed. */
-export function stat(path: string) {
-  return Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    return yield* fs.stat(path)
-  })
-}
-
-/** Destination of a symbolic link, or `null` when the path is not one. */
-export function readLink(path: string) {
-  return Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    return yield* fs.readLink(path).pipe(Effect.orElseSucceed(() => null))
   })
 }

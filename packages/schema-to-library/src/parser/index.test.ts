@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
+import { runGenerator, runGeneratorError } from '../testing/index.js'
 import { parseSchemaFile } from './index.js'
 
 const tmpDir = path.join(import.meta.dirname, '__test_tmp__')
@@ -16,7 +17,7 @@ afterAll(async () => {
 })
 
 describe('parseSchemaFile', () => {
-  it('should parse a valid JSON schema file', async () => {
+  it('parses a valid JSON schema file', async () => {
     const schemaPath = path.join(tmpDir, 'test.json')
     await fsp.writeFile(
       schemaPath,
@@ -26,15 +27,12 @@ describe('parseSchemaFile', () => {
       }),
     )
 
-    const result = await parseSchemaFile(schemaPath)
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.value.type).toBe('object')
-      expect(result.value.properties).toStrictEqual({ name: { type: 'string' } })
-    }
+    const schema = await runGenerator(parseSchemaFile(schemaPath))
+    expect(schema.type).toBe('object')
+    expect(schema.properties).toStrictEqual({ name: { type: 'string' } })
   })
 
-  it('should parse a schema with $defs', async () => {
+  it('parses a schema with $defs', async () => {
     const schemaPath = path.join(tmpDir, 'defs.json')
     await fsp.writeFile(
       schemaPath,
@@ -53,45 +51,33 @@ describe('parseSchemaFile', () => {
       }),
     )
 
-    const result = await parseSchemaFile(schemaPath)
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.value.$defs).toBeDefined()
-    }
+    const schema = await runGenerator(parseSchemaFile(schemaPath))
+    expect(schema.$defs).toBeDefined()
   })
 
-  it('should return error for non-existent file', async () => {
-    const result = await parseSchemaFile('/non/existent/file.json')
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.startsWith('Failed to parse schema:')).toBe(true)
-    }
+  it('fails for a missing file', async () => {
+    const error = await runGeneratorError(parseSchemaFile('/non/existent/file.json'))
+    expect(error.message.startsWith('Failed to parse schema:')).toBe(true)
   })
 
-  it('should parse even loosely valid JSON-like content', async () => {
+  it('parses even loosely valid JSON-like content', async () => {
     const schemaPath = path.join(tmpDir, 'loose.json')
     await fsp.writeFile(schemaPath, '{}')
 
-    const result = await parseSchemaFile(schemaPath)
-    expect(result.ok).toBe(true)
+    const schema = await runGenerator(parseSchemaFile(schemaPath))
+    expect(schema).toStrictEqual({})
   })
 
-  it('should return error for invalid JSON content', async () => {
+  it('fails for invalid JSON content', async () => {
     const schemaPath = path.join(tmpDir, 'invalid.json')
     await fsp.writeFile(schemaPath, '{invalid json!!!')
 
-    const result = await parseSchemaFile(schemaPath)
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.startsWith('Failed to parse schema:')).toBe(true)
-    }
+    const error = await runGeneratorError(parseSchemaFile(schemaPath))
+    expect(error.message.startsWith('Failed to parse schema:')).toBe(true)
   })
 
-  it('should return error result with message for non-Error throw', async () => {
-    const result = await parseSchemaFile('/non/existent/path/deep/file.json')
-    expect(result).toStrictEqual({
-      ok: false,
-      error: expect.stringContaining('Failed to parse schema:'),
-    })
+  it('fails with a message for a missing deep path', async () => {
+    const error = await runGeneratorError(parseSchemaFile('/non/existent/path/deep/file.json'))
+    expect(error.message).toContain('Failed to parse schema:')
   })
 })

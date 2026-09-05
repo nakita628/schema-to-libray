@@ -34,52 +34,21 @@ export class ParseError extends Data.TaggedError('ParseError')<{
   readonly message: string
 }> {}
 
-function asParseError(cause: unknown) {
-  return new ParseError({
-    message: `Failed to parse schema: ${cause instanceof Error ? cause.message : String(cause)}`,
-  })
-}
-
-function bundleSchema(input: string) {
-  return bundle(input)
-}
-
 /** The bundled document at `input`. Failures land in the error channel. */
-export function parseSchema(input: string) {
-  return Effect.gen(function* () {
-    const schema = yield* Effect.tryPromise({
-      try: () => bundleSchema(input),
-      catch: asParseError,
-    })
-    if (!isJSONSchema(schema)) {
-      return yield* new ParseError({
-        message: 'Failed to parse schema: bundle did not return an object',
-      })
-    }
-    return schema
+export function parseSchemaFile(input: string) {
+  return Effect.tryPromise({
+    try: async () => {
+      const schema = await bundle(input)
+      if (!isJSONSchema(schema)) {
+        throw new Error('bundle did not return an object')
+      }
+      return schema
+    },
+    catch: (error) =>
+      new ParseError({
+        message: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
+      }),
   })
-}
-
-/**
- * `{ ok }` boundary for callers that are not Effects — fixtures and the published
- * programmatic API.
- */
-export async function parseSchemaFile(input: string) {
-  try {
-    const schema = await bundleSchema(input)
-    if (!isJSONSchema(schema)) {
-      return {
-        ok: false,
-        error: 'Failed to parse schema: bundle did not return an object',
-      } as const
-    }
-    return { ok: true, value: schema } as const
-  } catch (error) {
-    return {
-      ok: false,
-      error: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
-    } as const
-  }
 }
 
 /**
