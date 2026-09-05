@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { zod } from './zod.js'
 
-// Test run
-// pnpm vitest run ./src/zod/zod.test.ts
-
 describe('zod', () => {
   describe('ref', () => {
     it.concurrent.each<[JSONSchema, string]>([
@@ -340,7 +337,6 @@ describe('zod', () => {
       })
     })
 
-    // enum
     describe('enum', () => {
       it.concurrent.each<[JSONSchema, string]>([
         [{ enum: ['A', 'B'] }, 'z.enum(["A","B"])'],
@@ -414,9 +410,6 @@ describe('zod', () => {
       })
     })
 
-    // properties
-
-    // string
     describe('string', () => {
       it.concurrent.each<[JSONSchema, string]>([
         [{ type: 'string' }, 'z.string()'],
@@ -458,7 +451,6 @@ describe('zod', () => {
         expect(zod(input)).toBe(expected)
       })
 
-      // number
       describe('number', () => {
         describe('type: number', () => {
           it.concurrent.each<[JSONSchema, string]>([
@@ -521,7 +513,6 @@ describe('zod', () => {
         })
       })
 
-      // integer
       describe('integer', () => {
         describe('type: integer', () => {
           it.concurrent.each<[JSONSchema, string]>([
@@ -705,7 +696,6 @@ describe('zod', () => {
         })
       })
 
-      // boolean
       describe('boolean', () => {
         it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'boolean' }, 'z.boolean()'],
@@ -721,7 +711,6 @@ describe('zod', () => {
       })
     })
 
-    // array
     describe('array', () => {
       it.concurrent.each<[JSONSchema, string]>([
         [{ type: 'array', items: { type: 'string' } }, 'z.array(z.string())'],
@@ -814,7 +803,6 @@ describe('zod', () => {
         expect(zod(input)).toBe(expected)
       })
 
-      // object
       describe('object', () => {
         it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'object' }, 'z.object({})'],
@@ -896,7 +884,6 @@ describe('zod', () => {
         })
       })
 
-      // null
       describe('null', () => {
         it.concurrent.each<[JSONSchema, string]>([
           [{ type: 'null' }, 'z.null().nullable()'],

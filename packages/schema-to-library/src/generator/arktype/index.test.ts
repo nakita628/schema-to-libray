@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { schemaToArktype } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/generator/arktype/index.test.ts
-
 describe('schemaToArktype', () => {
   it('should drop a scalar default on an array schema', () => {
     const result = schemaToArktype(

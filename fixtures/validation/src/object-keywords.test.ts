@@ -24,10 +24,6 @@ import * as z from 'zod'
  * compatible). Tests skip TypeBox for keywords it doesn't enforce natively.
  */
 
-// ───────────────────────────── minProperties ─────────────────────────────
-//
-// Input JSON Schema:
-//   { type: 'object', properties: { a, b }, minProperties: 2 }
 describe('minProperties: at least 2 keys', () => {
   const cases: ReadonlyArray<readonly [string, Record<string, string>, boolean]> = [
     ['empty object', {}, false],
@@ -88,7 +84,6 @@ describe('minProperties: at least 2 keys', () => {
   })
 })
 
-// ───────────────────────────── maxProperties ─────────────────────────────
 describe('maxProperties: at most 2 keys', () => {
   const cases: ReadonlyArray<readonly [string, Record<string, string>, boolean]> = [
     ['empty', {}, true],
@@ -114,7 +109,6 @@ describe('maxProperties: at most 2 keys', () => {
   })
 })
 
-// ───────────────────────── propertyNames (pattern) ────────────────────────
 describe('propertyNames: keys must match ^[a-z]+$', () => {
   const cases: ReadonlyArray<readonly [string, Record<string, unknown>, boolean]> = [
     ['lowercase', { foo: 1, bar: 2 }, true],
@@ -146,7 +140,6 @@ describe('propertyNames: keys must match ^[a-z]+$', () => {
   // Value.Check (would require AJV).
 })
 
-// ────────────────────────── patternProperties ─────────────────────────────
 describe('patternProperties: keys starting with id_ must be number', () => {
   const cases: ReadonlyArray<readonly [string, Record<string, unknown>, boolean]> = [
     ['id_user numeric', { id_user: 1, name: 'foo' }, true],
@@ -195,7 +188,6 @@ describe('patternProperties: keys starting with id_ must be number', () => {
   // Value.Check (would require AJV).
 })
 
-// ─────────────────────────── dependentRequired ────────────────────────────
 describe('dependentRequired: card → billing', () => {
   const cases: ReadonlyArray<readonly [string, Record<string, unknown>, boolean]> = [
     ['empty', {}, true],

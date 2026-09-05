@@ -20,20 +20,6 @@ export function toPascalCase(name: string) {
 }
 
 /**
- * Convert string to a valid PascalCase identifier
- *
- * Splits by non-alphanumeric characters and capitalizes each segment.
- * Handles hyphens, underscores, dots, spaces, leading numbers, and non-ASCII characters.
- *
- * @example
- * ```ts
- * toIdentifierPascalCase('user-name')   // 'UserName'
- * toIdentifierPascalCase('hello_world') // 'HelloWorld'
- * toIdentifierPascalCase('123value')    // '_123Value'
- * toIdentifierPascalCase('user')        // 'User'
- * ```
- */
-/**
  * Encode non-ASCII characters as `u<hex codepoint>` so they survive identifier
  * normalization instead of being stripped (which collapses every non-ASCII name
  * to the same `Schema`, producing duplicate declarations). Pure-ASCII input is
@@ -58,6 +44,20 @@ export function encodeNonAscii(name: string) {
     .join('')
 }
 
+/**
+ * Convert string to a valid PascalCase identifier.
+ *
+ * Splits by non-alphanumeric characters and capitalizes each segment.
+ * Handles hyphens, underscores, dots, spaces, leading numbers, and non-ASCII characters.
+ *
+ * @example
+ * ```ts
+ * toIdentifierPascalCase('user-name')   // 'UserName'
+ * toIdentifierPascalCase('hello_world') // 'HelloWorld'
+ * toIdentifierPascalCase('123value')    // '_123Value'
+ * toIdentifierPascalCase('user')        // 'User'
+ * ```
+ */
 export function toIdentifierPascalCase(name: string) {
   const parts = encodeNonAscii(name)
     .split(/[^a-zA-Z0-9]+/)
@@ -71,16 +71,6 @@ export function toIdentifierPascalCase(name: string) {
   return result
 }
 
-/**
- * Normalize schema type to array format
- *
- * @example
- * ```ts
- * normalizeTypes('string')             // ['string']
- * normalizeTypes(['string', 'number']) // ['string', 'number']
- * normalizeTypes(undefined)            // []
- * ```
- */
 export function normalizeTypes(t?: string | readonly string[]) {
   if (t === undefined) return []
   if (typeof t === 'string') return [t]

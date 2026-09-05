@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { arktype } from './arktype.js'
 
-// Test run
-// pnpm vitest run ./src/generator/arktype/arktype.test.ts
-
 describe('arktype', () => {
   // Standalone exports (isArktype=false): cross-schema refs are value references to imported
   // consts; self-refs and unresolvable pointers stay quoted. See the scope-mode pair below.

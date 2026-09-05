@@ -118,13 +118,9 @@ function generate(generator: Generator) {
 
 /** What a `schema-to-*` binary has to say about itself. */
 export type CliOptions<Name extends string> = {
-  /** The binary name, as it appears in usage and error output. */
   readonly name: Name
-  /** The generator the command runs. */
   readonly generator: Generator
-  /** The one-line description shown at the top of `--help`. */
   readonly description: string
-  /** The version `--version` reports. */
   readonly version: string
 }
 

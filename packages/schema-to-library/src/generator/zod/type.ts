@@ -1,17 +1,6 @@
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 
-/**
- * Generate TypeScript type definition from JSON Schema
- *
- * @param schema - JSON Schema object
- * @param rootName - Root schema name for reference resolution
- * @returns TypeScript type definition string
- * @example
- * ```ts
- * type(schema, 'Animal') // 'string' | '{ name: string; species: string; offspring?: AnimalType[] }'
- * ```
- */
 export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
   if (schema === undefined) return ''
 

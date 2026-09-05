@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { effect } from './effect.js'
 
-// Test run
-// pnpm vitest run ./src/generator/effect/effect.test.ts
-
 describe('effect', () => {
   describe('ref', () => {
     it.concurrent.each<[JSONSchema, string]>([

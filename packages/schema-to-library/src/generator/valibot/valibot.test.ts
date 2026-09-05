@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibot } from './valibot.js'
 
-// Test run
-// pnpm vitest run ./src/generator/valibot/valibot.test.ts
-
 describe('valibot', () => {
   describe('ref', () => {
     it.concurrent.each<[JSONSchema, string]>([

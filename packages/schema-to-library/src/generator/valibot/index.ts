@@ -13,9 +13,6 @@ function annotation(name: string) {
   return `v.GenericSchema<unknown, _${name}>`
 }
 
-/**
- * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
- */
 function hasSelfReference(schema: JSONSchema): boolean {
   const stack = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
@@ -40,9 +37,6 @@ function hasSelfReference(schema: JSONSchema): boolean {
   return false
 }
 
-/**
- * Convert JSON Schema to Valibot schema code
- */
 export function schemaToValibot(
   schema: JSONSchema,
   options?: {
@@ -88,7 +82,6 @@ export function schemaToValibot(
     ? orderedSchemas.filter((name) => name !== rootName)
     : orderedSchemas
 
-  // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
         const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
@@ -108,8 +101,6 @@ export function schemaToValibot(
   // any schema whose input differs — a field with a `default`, say — so only
   // the output is constrained here. `_X` describes the output, which is what
   // `v.InferOutput` reads.
-
-  // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
@@ -119,7 +110,6 @@ export function schemaToValibot(
     })
     .join('\n\n')
 
-  // Generate root schema
   const rootSchema = rootInDefs
     ? valibot(rootDefinition, rootName, true, genOptions)
     : valibot(schema, rootName, true, genOptions)
@@ -128,7 +118,6 @@ export function schemaToValibot(
     ? `export const ${rootName}: ${annotation(rootName)} = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
-  // Assemble output
   return [
     ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     `import * as v from 'valibot'`,

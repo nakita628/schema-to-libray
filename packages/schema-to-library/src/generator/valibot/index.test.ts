@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { schemaToValibot } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/valibot/index.test.ts
-
 describe('schemaToValibot', () => {
   it('should drop a scalar default on an array schema', () => {
     const result = schemaToValibot(

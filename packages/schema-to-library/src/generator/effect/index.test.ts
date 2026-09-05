@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { schemaToEffect } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/effect/index.test.ts
-
 describe('schemaToEffect', () => {
   it('should drop a scalar default on an array schema', () => {
     const result = schemaToEffect(
