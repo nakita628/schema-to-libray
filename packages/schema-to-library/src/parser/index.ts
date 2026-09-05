@@ -1,4 +1,5 @@
 import { bundle } from '@apidevtools/json-schema-ref-parser'
+import { Data, Effect } from 'effect'
 
 import type { XExtCode } from './x-ext/code.js'
 import type { XExtMessages } from './x-ext/messages.js'
@@ -28,9 +29,44 @@ function isJSONSchema(value: unknown): value is JSONSchema {
   return typeof value === 'object' && value !== null
 }
 
+/** The document could not be bundled as a JSON Schema. */
+export class ParseError extends Data.TaggedError('ParseError')<{
+  readonly message: string
+}> {}
+
+function asParseError(cause: unknown) {
+  return new ParseError({
+    message: `Failed to parse schema: ${cause instanceof Error ? cause.message : String(cause)}`,
+  })
+}
+
+function bundleSchema(input: string) {
+  return bundle(input)
+}
+
+/** The bundled document at `input`. Failures land in the error channel. */
+export function parseSchema(input: string) {
+  return Effect.gen(function* () {
+    const schema = yield* Effect.tryPromise({
+      try: () => bundleSchema(input),
+      catch: asParseError,
+    })
+    if (!isJSONSchema(schema)) {
+      return yield* new ParseError({
+        message: 'Failed to parse schema: bundle did not return an object',
+      })
+    }
+    return schema
+  })
+}
+
+/**
+ * `{ ok }` boundary for callers that are not Effects — fixtures and the published
+ * programmatic API.
+ */
 export async function parseSchemaFile(input: string) {
   try {
-    const schema = await bundle(input)
+    const schema = await bundleSchema(input)
     if (!isJSONSchema(schema)) {
       return {
         ok: false,

@@ -4,10 +4,10 @@ import { Console, Effect, Schema, Stdio } from 'effect'
 import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
 
 import { mkdir, writeFile } from '../file/index.js'
-import { fmt } from '../format/index.js'
+import { format } from '../format/index.js'
 import { isRecord } from '../helper/value.js'
 import type { JSONSchema } from '../parser/index.js'
-import { parseSchemaFile } from '../parser/index.js'
+import { parseSchema } from '../parser/index.js'
 
 /** A generator: a JSON Schema in, the TypeScript source of a validation schema out. */
 export type Generator = (
@@ -65,34 +65,6 @@ const commandLine = {
 } as const
 
 /**
- * Runs one of the library's `{ ok }` functions in the error channel.
- *
- * `Effect.tryPromise` rather than `Effect.promise`: both functions answer with `ok:
- * false` for the failures they expect, but a rejection they did not expect would
- * otherwise become a defect and print a stack trace instead of a sentence.
- */
-function attempt<A>(run: () => Promise<{ ok: true; value: A } | { ok: false; error: string }>) {
-  return Effect.gen(function* () {
-    const result = yield* Effect.tryPromise({
-      try: run,
-      catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
-    })
-    if (!result.ok) return yield* Effect.fail(new Error(result.error))
-    return result.value
-  })
-}
-
-/** The bundled document at `input`, or the parser's sentence about why it is not one. */
-function readSchema(input: string) {
-  return attempt(() => parseSchemaFile(input))
-}
-
-/** The formatted source, or the formatter's sentence about why it could not be. */
-function format(source: string) {
-  return attempt(() => fmt(source))
-}
-
-/**
  * The sentence a failure is reported with.
  *
  * `FileSystem` normalises a host failure to `BadResource: FileSystem.writeFile (path)`,
@@ -126,7 +98,7 @@ function platformCause(error: unknown): unknown {
 function generate(generator: Generator) {
   return (args: Command.Command.Config.Infer<typeof commandLine>) =>
     Effect.gen(function* () {
-      const schema = yield* readSchema(args.input)
+      const schema = yield* parseSchema(args.input)
       const source = yield* format(
         generator(schema, { exportType: args.exportType, readonly: args.readonly }),
       )
