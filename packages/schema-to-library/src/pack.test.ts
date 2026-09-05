@@ -8,6 +8,7 @@ import { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner
 import { describe, expect, it } from 'vite-plus/test'
 
 import { readFile } from './file/index.js'
+import { parseJson } from './json/index.js'
 
 const packageDir = path.join(import.meta.dirname, '..')
 
@@ -41,10 +42,7 @@ function inspectPackage() {
   return Effect.gen(function* () {
     const raw = yield* readFile(path.join(packageDir, 'package.json'))
     if (raw === null) return yield* Effect.fail(new Error('package.json is missing'))
-    const manifest = yield* Effect.try({
-      try: (): unknown => JSON.parse(raw),
-      catch: (cause) => new Error('package.json is not valid JSON', { cause }),
-    })
+    const manifest = yield* parseJson(raw)
     const scripts = scriptsOf(manifest)
     if (scripts === null) {
       return yield* Effect.fail(new Error('package.json is missing a scripts object'))
@@ -53,10 +51,7 @@ function inspectPackage() {
     const listing = yield* spawner.string(
       ChildProcess.make('npm', ['pack', '--dry-run', '--json'], { cwd: packageDir }),
     )
-    const packed = yield* Effect.try({
-      try: (): unknown => JSON.parse(listing),
-      catch: (cause) => new Error('npm pack did not return JSON', { cause }),
-    })
+    const packed = yield* parseJson(listing)
     return {
       scripts,
       packedFiles: packedFilesOf(packed),
