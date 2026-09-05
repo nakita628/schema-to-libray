@@ -5,7 +5,7 @@ alwaysApply: true
 # schema-to-library
 
 A code generator: a JSON Schema / OpenAPI document in, **TypeScript source text** for a
-validation library out. Five targets — Zod, Valibot, Effect Schema, TypeBox, ArkType —
+validation library out. Six targets — Zod, Valibot, Effect Schema, TypeBox, ArkType, Ajv —
 each written in that library's own idiom. Generators build strings; nothing is evaluated
 at generation time, so a mistake is only caught by the fixtures and by type-checking the
 generated files against the real library.
@@ -14,7 +14,7 @@ generated files against the real library.
 
 | Path | What it is |
 | --- | --- |
-| `packages/schema-to-library` | the published npm package: parser, generators, five CLIs |
+| `packages/schema-to-library` | the published npm package: parser, generators, six CLIs |
 | `packages/schema-to-library/src/generator/<lib>` | one directory per target library |
 | `fixtures/<lib>/<case>/{input.json,output.ts}` | golden files — `output.ts` is generated and committed |
 | `fixtures/validation`, `fixtures/elysia` | runtime tests: the emitted schemas must actually accept/reject data |
@@ -22,7 +22,7 @@ generated files against the real library.
 
 `README.md` at the repository root is a symlink to `@packages/schema-to-library/README.md`;
 there is one README, and it is what npm shows. It is deliberately minimal — what the tool
-is, how to install it, the five commands, one worked example — and it stays that way.
+is, how to install it, the commands, one worked example — and it stays that way.
 
 ## Commands
 

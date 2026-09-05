@@ -3,6 +3,7 @@
 # term of art; fix the text instead when cspell is right.
 
 # Target libraries and their APIs
+ajv
 arktype
 cidrv
 elysia

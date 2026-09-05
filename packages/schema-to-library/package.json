@@ -1,8 +1,9 @@
 {
   "name": "schema-to-library",
   "version": "0.3.6",
-  "description": "Generate Zod/Valibot/Effect/TypeBox/Arktype schemas from JSON or YAML files",
+  "description": "Generate Zod/Valibot/Effect/TypeBox/ArkType/Ajv schemas from JSON or YAML files",
   "keywords": [
+    "ajv",
     "arktype",
     "effect",
     "typebox",
@@ -19,6 +20,7 @@
     "url": "git+https://github.com/nakita628/schema-to-libray.git"
   },
   "bin": {
+    "schema-to-ajv": "dist/cli/ajv.js",
     "schema-to-arktype": "dist/cli/arktype.js",
     "schema-to-effect": "dist/cli/effect.js",
     "schema-to-typebox": "dist/cli/typebox.js",
@@ -32,6 +34,9 @@
   "main": "dist/index.js",
   "typesVersions": {
     "*": {
+      "ajv": [
+        "./dist/ajv.d.ts"
+      ],
       "zod": [
         "./dist/zod.d.ts"
       ],
@@ -53,6 +58,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./ajv": {
+      "types": "./dist/ajv.d.ts",
+      "import": "./dist/ajv.js"
     },
     "./zod": {
       "types": "./dist/zod.d.ts",

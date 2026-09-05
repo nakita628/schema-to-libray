@@ -35,7 +35,7 @@ serve automated requests — never to silence a link that is genuinely broken.
   section it belongs to. When it is an ordinary word, cspell is right: fix the text.
   British and American spellings are both accepted (`"language": "en,en-GB"`).
 - **textlint flags a term** — write the product name the way its owners write it:
-  **ArkType**, **TypeBox**, **Valibot**, **Zod**, **Effect Schema**, **JSON Schema**,
+  **Ajv**, **ArkType**, **TypeBox**, **Valibot**, **Zod**, **Effect Schema**, **JSON Schema**,
   **OpenAPI**. `readme` and `regex` are deliberately exempt from the default list.
 - **markdownlint flags a table** (`MD060`) — run `vp fmt`: oxfmt re-pads Markdown tables
   and that is what MD060 checks. It never re-wraps prose, so line length (`MD013`) is off

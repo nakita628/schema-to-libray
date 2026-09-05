@@ -1,5 +1,7 @@
 export * from './format/index.js'
 // Expression-level functions for composing with external wrappers (e.g., openapi-hono)
+export * from './generator/ajv/ajv.js'
+export * from './generator/ajv/index.js'
 export * from './generator/arktype/arktype.js'
 export * from './generator/arktype/index.js'
 export * from './generator/effect/effect.js'

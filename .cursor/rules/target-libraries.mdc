@@ -1,5 +1,5 @@
 ---
-description: Target library versions, documentation links and llms.txt sources for Zod, Valibot, Effect Schema, TypeBox and ArkType — read before emitting, changing or reviewing generated schema code
+description: Target library versions, documentation links and llms.txt sources for Zod, Valibot, Effect Schema, TypeBox, ArkType and Ajv — read before emitting, changing or reviewing generated schema code
 alwaysApply: false
 ---
 
@@ -17,6 +17,7 @@ plan.
 | Effect Schema | `effect@^4.0.0-rc.112` | `import { Schema } from 'effect'` | [v4 Schema docs](https://effect.website/docs/v4/schema/introduction) | none published — read the v4 docs, not v3 answers |
 | TypeBox | `typebox@^1.3.25` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — its GitHub README is the reference |
 | ArkType | `arktype@^2.2.3` | `import { type } from 'arktype'` | [arktype.io](https://arktype.io/) | [llms.txt](https://arktype.io/llms.txt) |
+| Ajv | `ajv@^8.20.0` (+ `ajv-formats@^3.0.1`) | `import Ajv from 'ajv'` | [ajv.js.org](https://ajv.js.org/) | none published — Getting started, TypeScript and [ajv-formats](https://ajv.js.org/packages/ajv-formats.html) are the reference |
 
 The pins live in `@fixtures/zod/package.json` and its siblings — those are what
 `vp run -r typecheck` compiles against, so they are the source of truth over this table.
@@ -44,6 +45,9 @@ The pins live in `@fixtures/zod/package.json` and its siblings — those are wha
 - **TypeBox** has no lazy combinator: a cycle becomes one `Type.Cyclic` map.
 - **ArkType** is string-syntax first (`'string.email'`, `'number.integer >= 0'`), and a
   cycle becomes a `scope`.
+- **Ajv** consumes JSON Schema: emit a reconstructed draft-07 object literal plus
+  `ajv.compile`. Use the default `import Ajv from 'ajv'` class, not `ajv/dist/2020`.
+  Call `addFormats(ajv)` only when a `format` is emitted.
 
 ## Callback parameter naming
 

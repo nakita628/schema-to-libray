@@ -5,9 +5,10 @@ alwaysApply: false
 
 # Writing a generator
 
-Five generators, one directory each, all with the same module shape. Read the Zod one
+Six generators, one directory each, all with the same module shape. Read the Zod one
 first — `@packages/schema-to-library/src/generator/zod` is the reference implementation
-and the other four mirror it.
+and the others mirror it. Ajv is a first slice (object / string / number / integer)
+that emits a reconstructed schema object plus `ajv.compile`, not a chain API.
 
 | Module | Role |
 | --- | --- |
@@ -42,8 +43,8 @@ generator with an import reaching across.
 - **Output must be deterministic** — same input, same bytes. Never iterate an object in
   a way whose order depends on anything but the document; the fixtures compare exact
   bytes.
-- **Cover all five targets.** Adding support for a keyword or extension in one generator
-  means either implementing it in the other four or making it a documented no-op there.
+- **Cover every target.** Adding support for a keyword or extension in one generator
+  means either implementing it in the others or making it a documented no-op there.
   A target with no equivalent is a silent no-op, never a thrown error.
 - **Never break a message slot.** A keyword that accepts `x-<keyword>-message` must keep
   honouring it — see `@.cursor/rules/vendor-extensions.mdc`.
@@ -57,7 +58,7 @@ generator with an import reaching across.
 ```bash
 vp run schema-to-library#test      # unit tests for the emitters you touched
 vp run schema-to-library#build     # fixtures import the built dist
-vp run @fixtures/zod#generate      # ...and the other four targets you touched
+vp run @fixtures/zod#generate      # ...and the other targets you touched
 vp run -r typecheck                # generated code vs. the real libraries
 vp test                            # fixture golden assertions
 vp run -r check                    # fmt + lint + tsc

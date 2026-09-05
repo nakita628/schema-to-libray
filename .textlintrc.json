@@ -11,6 +11,7 @@
     "terminology": {
       "defaultTerms": true,
       "terms": [
+        "Ajv",
         "ArkType",
         "TypeBox",
         "Valibot",
