@@ -1,8 +1,9 @@
 import path from 'node:path'
 
-import { Console, Effect, FileSystem, Schema, Stdio } from 'effect'
+import { Console, Effect, Schema, Stdio } from 'effect'
 import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
 
+import { mkdir, writeFile } from '../file/index.js'
 import { fmt } from '../format/index.js'
 import { isRecord } from '../helper/value.js'
 import type { JSONSchema } from '../parser/index.js'
@@ -129,9 +130,8 @@ function generate(generator: Generator) {
       const source = yield* format(
         generator(schema, { exportType: args.exportType, readonly: args.readonly }),
       )
-      const fs = yield* FileSystem.FileSystem
-      yield* fs.makeDirectory(path.dirname(args.output), { recursive: true })
-      yield* fs.writeFileString(args.output, source)
+      yield* mkdir(path.dirname(args.output))
+      yield* writeFile(args.output, source)
       return yield* Console.log(`Generated: ${args.output}`)
     }).pipe(
       // A `CliError` is already something the runner knows how to render. Everything else
