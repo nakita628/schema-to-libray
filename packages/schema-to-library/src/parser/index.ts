@@ -36,18 +36,20 @@ export class ParseError extends Data.TaggedError('ParseError')<{
 
 /** The bundled document at `input`. Failures land in the error channel. */
 export function parseSchemaFile(input: string) {
-  return Effect.tryPromise({
-    try: async () => {
-      const schema = await bundle(input)
-      if (!isJSONSchema(schema)) {
-        throw new Error('bundle did not return an object')
-      }
-      return schema
-    },
-    catch: (error) =>
-      new ParseError({
-        message: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
-      }),
+  return Effect.gen(function* () {
+    const schema = yield* Effect.tryPromise({
+      try: () => bundle(input),
+      catch: (error) =>
+        new ParseError({
+          message: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
+        }),
+    })
+    if (!isJSONSchema(schema)) {
+      return yield* new ParseError({
+        message: 'Failed to parse schema: bundle did not return an object',
+      })
+    }
+    return schema
   })
 }
 
