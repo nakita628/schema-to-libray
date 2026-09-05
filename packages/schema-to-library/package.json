@@ -1,6 +1,6 @@
 {
   "name": "schema-to-library",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "description": "Generate Zod/Valibot/Effect/TypeBox/ArkType/Ajv/Yup schemas from JSON or YAML files",
   "keywords": [
     "ajv",
