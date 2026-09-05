@@ -1,21 +1,4 @@
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import { Effect, FileSystem } from 'effect'
-import type { PlatformError } from 'effect'
-
-/**
- * Node's `FileSystem` implementation.
- *
- * Every function below reads the service out of the environment, so a program that
- * uses them provides this once at its boundary — the CLI folds it in through
- * `NodeServices.layer`.
- */
-export const fileSystemLayer = NodeFileSystem.layer
-
-/** Whether a platform failure is "the path is not there", the one case worth absorbing. */
-function isNotFound(error: PlatformError.PlatformError) {
-  // oxlint-disable-next-line no-underscore-dangle -- Effect tags system errors as `_tag`
-  return error.reason._tag === 'NotFound'
-}
 
 /** Removes a file. A path that is already gone is not an error. */
 export function unlink(path: string) {
@@ -37,10 +20,8 @@ export function mkdir(dir: string) {
 export function readdir(dir: string) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const entries: readonly string[] = yield* fs
-      .readDirectory(dir)
-      .pipe(Effect.catchIf(isNotFound, () => Effect.succeed<string[]>([])))
-    return entries
+    if (!(yield* fs.exists(dir))) return []
+    return yield* fs.readDirectory(dir)
   })
 }
 
@@ -48,9 +29,8 @@ export function readdir(dir: string) {
 export function readFile(path: string) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    return yield* fs
-      .readFileString(path)
-      .pipe(Effect.catchIf(isNotFound, () => Effect.succeed(null)))
+    if (!(yield* fs.exists(path))) return null
+    return yield* fs.readFileString(path)
   })
 }
 
