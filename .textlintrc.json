@@ -16,6 +16,7 @@
         "TypeBox",
         "Valibot",
         "Zod",
+        "Yup",
         "Effect Schema",
         "JSON Schema",
         "OpenAPI",

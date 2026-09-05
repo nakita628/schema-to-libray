@@ -19,6 +19,7 @@ npx schema-to-effect path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-typebox path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-ajv path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-yup path/to/input.{json,yaml} -o path/to/output.ts
 ```
 
 | Flag             | What it does                                            |
@@ -124,6 +125,18 @@ export const schema = {
 }
 
 export const validate = ajv.compile(schema)
+```
+
+### [Yup](https://github.com/jquense/yup)
+
+```ts
+import * as yup from 'yup'
+
+export const User = yup.object({
+  name: yup.string().required(),
+  email: yup.string().email().required(),
+  age: yup.number().integer().min(0),
+})
 ```
 
 ## License

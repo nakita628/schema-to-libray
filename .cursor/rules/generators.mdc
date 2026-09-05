@@ -5,10 +5,11 @@ alwaysApply: false
 
 # Writing a generator
 
-Six generators, one directory each, all with the same module shape. Read the Zod one
+Seven generators, one directory each, all with the same module shape. Read the Zod one
 first — `@packages/schema-to-library/src/generator/zod` is the reference implementation
 and the others mirror it. Ajv is a first slice (object / string / number / integer)
-that emits a reconstructed schema object plus `ajv.compile`, not a chain API.
+that emits a reconstructed schema object plus `ajv.compile`, not a chain API. Yup is
+a first slice of the same shape and falls back to `yup.mixed()` for unsupported nodes.
 
 | Module | Role |
 | --- | --- |
