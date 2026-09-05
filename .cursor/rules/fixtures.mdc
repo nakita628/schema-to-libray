@@ -44,7 +44,7 @@ workspaces import the built `dist`, not `src`:
 
 ```bash
 vp run schema-to-library#build
-vp run @fixtures/zod#generate      # and valibot / effect / typebox / arktype / ajv
+vp run @fixtures/zod#generate      # and valibot / effect / typebox / arktype / ajv / yup
 ```
 
 `fmt.ignorePatterns` excludes `fixtures/**` from repository formatting on purpose: those bytes

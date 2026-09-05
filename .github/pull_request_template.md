@@ -2,7 +2,7 @@
 Title format: `type(scope): summary`, imperative mood, no trailing period.
 
   type   feat | fix | perf | refactor | docs | test | build | ci | chore
-  scope  zod | valibot | effect | typebox | arktype | ajv | cli | parser | fixtures | docs | ci
+  scope  zod | valibot | effect | typebox | arktype | ajv | yup | cli | parser | fixtures | docs | ci
 
 The title is the changelog: GitHub builds each release's notes from the titles of the
 pull requests merged since the previous release. Write it for the person reading

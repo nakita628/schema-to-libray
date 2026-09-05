@@ -15,6 +15,7 @@ stringbool
 typebox
 uuidv
 valibot
+yup
 
 # Toolchain and vendors
 actionlint

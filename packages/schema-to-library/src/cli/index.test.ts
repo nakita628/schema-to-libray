@@ -11,6 +11,7 @@ import { schemaToArktype } from '../generator/arktype/index.js'
 import { schemaToEffect } from '../generator/effect/index.js'
 import { schemaToTypebox } from '../generator/typebox/index.js'
 import { schemaToValibot } from '../generator/valibot/index.js'
+import { schemaToYup } from '../generator/yup/index.js'
 import { schemaToZod } from '../generator/zod/index.js'
 import { runCli } from './index.js'
 import type { Generator } from './index.js'
@@ -26,6 +27,7 @@ const GENERATORS = {
   typebox: { name: 'schema-to-typebox', generator: schemaToTypebox },
   arktype: { name: 'schema-to-arktype', generator: schemaToArktype },
   ajv: { name: 'schema-to-ajv', generator: schemaToAjv },
+  yup: { name: 'schema-to-yup', generator: schemaToYup },
 } as const
 
 /**
@@ -334,6 +336,19 @@ export const validate = ajv.compile(schema)
   })
 })
 
+describe('schema-to-yup', () => {
+  it('should generate yup schema', async () => {
+    const result = await generate(GENERATORS.yup, schema)
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as yup from 'yup'
+
+export const User = yup.object({ name: yup.string().required(), age: yup.number().integer() })
+`)
+  })
+})
+
 describe('schema-to-ajv --export-type', () => {
   it('should not throw and should omit JSONSchemaType', async () => {
     const result = await generate(GENERATORS.ajv, schema, ['--export-type'])
@@ -351,6 +366,21 @@ export const schema = {
 }
 
 export const validate = ajv.compile(schema)
+`)
+  })
+})
+
+describe('schema-to-yup --export-type', () => {
+  it('should generate yup schema with type export', async () => {
+    const result = await generate(GENERATORS.yup, schema, ['--export-type'])
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import * as yup from 'yup'
+
+export const User = yup.object({ name: yup.string().required(), age: yup.number().integer() })
+
+export type User = yup.InferType<typeof User>
 `)
   })
 })
