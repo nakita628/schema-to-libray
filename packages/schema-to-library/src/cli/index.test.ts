@@ -14,9 +14,6 @@ import { schemaToZod } from '../generator/zod/index.js'
 import { runCli } from './index.js'
 import type { Generator } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/cli/index.test.ts
-
 /** Colour codes the CLI writes; stripped so assertions compare the words. */
 // eslint-disable-next-line no-control-regex
 const ANSI = /\u001B\[[0-9;]*m/g
@@ -669,8 +666,6 @@ export const Shape = type({ kind: 'string', value: 'string | number | boolean' }
   })
 })
 
-// --- help, version and argument validation ---
-
 describe('--help', () => {
   it.each(Object.values(GENERATORS))('renders the usage block for $name', async (bin) => {
     const result = await runBin(bin, ['--help'])
@@ -755,8 +750,6 @@ describe('argument validation', () => {
   })
 })
 
-// --- failure paths ---
-
 describe('failure paths', () => {
   it('reports a schema it cannot parse', async () => {
     const dir = useTmpDir('schema-to-library-cli-parse-')
@@ -811,8 +804,6 @@ describe('failure paths', () => {
   })
 })
 
-// --- every generator against every schema shape ---
-
 describe('syntax validation', () => {
   const schemas = [
     { name: 'basic', schema },
@@ -841,7 +832,6 @@ describe('syntax validation', () => {
       expect(code.length).toBeGreaterThan(0)
       expect(code.startsWith('import')).toBe(true)
       expect(code.includes('export const')).toBe(true)
-      // No unclosed brackets or parens.
       expect((code.match(/[({[]/g) ?? []).length).toBe((code.match(/[)}\]]/g) ?? []).length)
     },
   )

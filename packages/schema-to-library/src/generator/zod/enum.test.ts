@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { _enum } from './enum.js'
 
-// Test run
-// pnpm vitest run ./src/zod/enum.test.ts
-
 describe('_enum', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [{ enum: ['A', 'B'] }, 'z.enum(["A","B"])'],

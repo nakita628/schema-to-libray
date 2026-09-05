@@ -9,9 +9,6 @@ import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { type } from './type.js'
 import { zod } from './zod.js'
 
-/**
- * Detect self-references ($ref: "#") in schema, excluding definitions/$defs
- */
 function hasSelfReference(schema: JSONSchema): boolean {
   const stack: unknown[] = Object.entries(schema)
     .filter(([key]) => key !== 'definitions' && key !== '$defs')
@@ -36,15 +33,6 @@ function hasSelfReference(schema: JSONSchema): boolean {
   return false
 }
 
-/**
- * Convert JSON Schema to Zod schema code
- *
- * @param schema - JSON Schema object to convert
- * @param options - Generation options
- * @param options.exportType - Whether to include type export (default: true)
- * @param options.openapi - Enable OpenAPI component-aware naming (default: false)
- * @returns Generated TypeScript/Zod code string
- */
 export function schemaToZod(
   schema: JSONSchema,
   options?: {
@@ -81,19 +69,15 @@ export function schemaToZod(
   const hasDefinitions = Object.keys(definitions).length > 0
   const needsTypeDef = hasDefinitions || hasSelfReference(schema)
 
-  // Resolve dependency order once
   const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
 
-  // Check if root schema is defined in definitions
   const rootInDefs = definitions[rootName] !== undefined
   const rootDefinition = definitions[rootName]
 
-  // Non-root definitions (filtered and ordered)
   const nonRootDefs = rootInDefs
     ? orderedSchemas.filter((name) => name !== rootName)
     : orderedSchemas
 
-  // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
         const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
@@ -107,7 +91,6 @@ export function schemaToZod(
       })()
     : ''
 
-  // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
@@ -117,7 +100,6 @@ export function schemaToZod(
     })
     .join('\n\n')
 
-  // Generate root schema
   const rootSchema = rootInDefs
     ? zod(rootDefinition, rootName, true, genOptions)
     : zod(schema, rootName, true, genOptions)
@@ -126,7 +108,6 @@ export function schemaToZod(
     ? `export const ${rootName}: z.ZodType<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`
 
-  // Assemble output
   return [
     ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     `import * as z from 'zod'`,

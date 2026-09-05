@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { schemaToZod } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/zod/index.test.ts
-
 describe('schemaToZod', () => {
   it('should generate simple schema without definitions', () => {
     const result = schemaToZod({

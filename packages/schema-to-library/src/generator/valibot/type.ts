@@ -4,7 +4,6 @@ import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
   if (schema === undefined) return ''
 
-  // $ref case
   if (schema.$ref) {
     if (schema.$ref === '#' || schema.$ref === '') {
       return `v.InferOutput<typeof ${rootName}>`
@@ -32,13 +31,11 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
     return 'unknown'
   }
 
-  // combinators
   if (schema.oneOf) return union(schema.oneOf, rootName)
   if (schema.anyOf) return union(schema.anyOf, rootName)
   if (schema.allOf) return intersection(schema.allOf, rootName)
   if (schema.not) return 'unknown'
 
-  // const
   if (schema.const !== undefined) {
     if (typeof schema.const === 'string') return `"${schema.const}"`
     if (typeof schema.const === 'number' || typeof schema.const === 'boolean') {
@@ -47,7 +44,6 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
     return JSON.stringify(schema.const) ?? 'null'
   }
 
-  // enum
   if (schema.enum) {
     if (schema.enum.length === 1) {
       const v = schema.enum[0]
@@ -56,7 +52,6 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
     return `(${schema.enum.map((v: unknown) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
   }
 
-  // properties
   if (schema.properties) return object(schema, rootName)
 
   const t = normalizeTypes(schema.type)

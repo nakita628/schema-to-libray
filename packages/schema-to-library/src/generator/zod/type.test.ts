@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { type } from './type.js'
 
-// Test run
-// pnpm vitest run ./src/helper/dep/type.test.ts
-
 describe('type', () => {
   it('should return empty string for undefined schema', () => {
     expect(type(undefined)).toBe('')

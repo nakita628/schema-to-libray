@@ -9,9 +9,6 @@ import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
 
-/**
- * Convert JSON Schema to Effect Schema code
- */
 export function schemaToEffect(
   schema: JSONSchema,
   options?: {
@@ -57,7 +54,6 @@ export function schemaToEffect(
     ? orderedSchemas.filter((name) => name !== rootName)
     : orderedSchemas
 
-  // Generate type definitions
   const typeDefsCode = needsTypeDef
     ? (() => {
         const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
@@ -76,7 +72,6 @@ export function schemaToEffect(
   // the decoded `Type` — which is what `_X` describes and what the exported
   // type reads — while `Schema.Codec<T>` would also pin `Encoded` to `T` and
   // reject any field carrying a decoding default or other transformation.
-  // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
@@ -86,7 +81,6 @@ export function schemaToEffect(
     })
     .join('\n\n')
 
-  // Generate root schema
   const rootSchema = rootInDefs
     ? effect(rootDefinition, rootName, true, genOptions)
     : effect(schema, rootName, true, genOptions)
@@ -105,7 +99,6 @@ export function schemaToEffect(
   ]
   const importLine = `import { ${modules.join(', ')} } from "effect"`
 
-  // Assemble output
   return [
     ...(codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []),
     importLine,

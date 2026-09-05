@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { number } from './number.js'
 
-// Test run
-// pnpm vitest run ./src/zod/number.test.ts
-
 describe('number', () => {
   it.concurrent.each<[JSONSchema, string]>([
     [{ type: 'number' }, 'z.number()'],

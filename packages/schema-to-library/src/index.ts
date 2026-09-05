@@ -11,5 +11,4 @@ export * from './generator/valibot/valibot.js'
 export * from './generator/zod/index.js'
 export * from './generator/zod/zod.js'
 export * from './parser/index.js'
-// Utilities for OpenAPI component naming
 export * from './utils/index.js'

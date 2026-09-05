@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { resolveSchemaDependenciesFromSchema } from './resolve-schema-dependencies-from-schema.js'
 
-// Test run
-// pnpm vitest run ./src/helper/resolve-schema-dependencies-from-schema.test.ts
-
 describe('resolveSchemaDependenciesFromSchema', () => {
   it('should return empty array for schema without definitions', () => {
     expect(

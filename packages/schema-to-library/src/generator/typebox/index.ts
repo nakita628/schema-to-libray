@@ -88,7 +88,6 @@ export function schemaToTypebox(
       .join('\n\n')
   }
 
-  // Generate schema definitions (non-root, non-exported)
   const schemaDefsCode = nonRootDefs
     .map((name) => {
       const def = definitions[name]
@@ -98,7 +97,6 @@ export function schemaToTypebox(
     })
     .join('\n\n')
 
-  // Generate root schema
   const rootSchema = rootInDefs
     ? typebox(rootDefinition, rootName, true, genOptions)
     : typebox(schema, rootName, true, genOptions)
@@ -109,7 +107,6 @@ export function schemaToTypebox(
   // from `typebox`; import it only when the generated code emitted one.
   const usesCodec = `${schemaDefsCode}\n${rootExport}`.includes('Codec(')
 
-  // Assemble output
   return [
     ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
     `import { ${usesCodec ? 'Codec, ' : ''}Type, type Static } from 'typebox'`,

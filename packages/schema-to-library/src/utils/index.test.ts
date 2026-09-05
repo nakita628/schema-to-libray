@@ -11,9 +11,6 @@ import {
   zodError,
 } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/utils/index.test.ts
-
 describe('helper', () => {
   describe('toPascalCase', () => {
     it('should return the pascal case of the given string', () => {
@@ -114,7 +111,6 @@ describe('helper', () => {
       ['---', 'Schema'],
       ['foo--bar', 'FooBar'],
       ['user_name_test', 'UserNameTest'],
-      // Additional edge cases
       ['a', 'A'],
       ['ABC', 'ABC'],
       ['123', '_123'],

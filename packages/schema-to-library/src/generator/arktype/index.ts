@@ -47,7 +47,6 @@ export function schemaToArktype(
 
   const rootInDefs = definitions[rootName] !== undefined
 
-  // Check if we need scope (definitions exist)
   if (hasDefinitions) {
     const defEntries = orderedSchemas.map((name) => {
       const def = definitions[name]
@@ -77,7 +76,6 @@ export function schemaToArktype(
       .join('\n\n')
   }
 
-  // Simple schema without definitions
   const rootSchema = arktype(schema, rootName, false, genOptions)
 
   const rootExpr = rootSchema.startsWith('type(')

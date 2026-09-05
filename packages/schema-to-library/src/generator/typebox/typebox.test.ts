@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vite-plus/test'
 import type { JSONSchema } from '../../parser/index.js'
 import { typebox } from './typebox.js'
 
-// Test run
-// pnpm vitest run ./src/generator/typebox/typebox.test.ts
-
 describe('typebox', () => {
   describe('ref', () => {
     it.concurrent.each<[JSONSchema, string]>([

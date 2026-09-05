@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { schemaToTypebox } from './index.js'
 
-// Test run
-// pnpm vitest run ./src/generator/typebox/index.test.ts
-
 describe('schemaToTypebox', () => {
   it('should drop a scalar default on an array schema', () => {
     const result = schemaToTypebox(
