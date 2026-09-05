@@ -10,25 +10,6 @@ export type { XExtMessages } from './x-ext/messages.js'
 export type { XExtTransform } from './x-ext/transform.js'
 export type { ParamIn } from './x-ext/param.js'
 
-/**
- * Parse and resolve a JSON Schema file using @apidevtools/json-schema-ref-parser.
- *
- * Uses `bundle()` to resolve external $ref while preserving internal references,
- * matching the pattern used in hono-takibi with swagger-parser.
- *
- * Supports:
- * - JSON and YAML input files
- * - JSON Schema Draft 4, 6, 7, 2019-09, 2020-12
- * - Circular references
- * - External $ref resolution
- *
- * @param input - File path to JSON/YAML schema
- * @returns Bundled JSON Schema or error
- */
-function isJSONSchema(value: unknown): value is JSONSchema {
-  return typeof value === 'object' && value !== null
-}
-
 /** The document could not be bundled as a JSON Schema. */
 export class ParseError extends Data.TaggedError('ParseError')<{
   readonly message: string
@@ -36,20 +17,12 @@ export class ParseError extends Data.TaggedError('ParseError')<{
 
 /** The bundled document at `input`. Failures land in the error channel. */
 export function parseSchemaFile(input: string) {
-  return Effect.gen(function* () {
-    const schema = yield* Effect.tryPromise({
-      try: () => bundle(input),
-      catch: (error) =>
-        new ParseError({
-          message: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
-        }),
-    })
-    if (!isJSONSchema(schema)) {
-      return yield* new ParseError({
-        message: 'Failed to parse schema: bundle did not return an object',
-      })
-    }
-    return schema
+  return Effect.tryPromise({
+    try: () => bundle<JSONSchema>(input),
+    catch: (error) =>
+      new ParseError({
+        message: `Failed to parse schema: ${error instanceof Error ? error.message : String(error)}`,
+      }),
   })
 }
 
