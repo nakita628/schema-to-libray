@@ -9,11 +9,13 @@ export default defineConfig({
       'cli/effect': './src/effect.ts',
       'cli/typebox': './src/typebox.ts',
       'cli/arktype': './src/arktype.ts',
+      'cli/ajv': './src/ajv.ts',
       zod: './src/generator/zod/index.ts',
       valibot: './src/generator/valibot/index.ts',
       effect: './src/generator/effect/index.ts',
       typebox: './src/generator/typebox/index.ts',
       arktype: './src/generator/arktype/index.ts',
+      ajv: './src/generator/ajv/index.ts',
     },
     format: 'esm',
     dts: true,
@@ -31,7 +33,7 @@ export default defineConfig({
       // bin entry shims (a top-level `NodeRuntime.runMain(cli(...))` only); the
       // command itself is covered through src/cli/index.test.ts, which runs it the
       // way the shims do, and each generator has its own tests
-      exclude: ['src/{zod,valibot,effect,typebox,arktype}.ts'],
+      exclude: ['src/{zod,valibot,effect,typebox,arktype,ajv}.ts'],
       reporter: ['text', 'html'],
       thresholds: {
         statements: 80,
@@ -373,7 +375,7 @@ export default defineConfig({
       {
         // The bin entries are the one place a program is run rather than returned, and
         // `NodeRuntime.runMain` is the top-level statement that does it.
-        files: ['src/{zod,valibot,effect,typebox,arktype}.ts'],
+        files: ['src/{zod,valibot,effect,typebox,arktype,ajv}.ts'],
         rules: { 'import/no-unassigned-import': 'off' },
       },
       {
@@ -399,7 +401,7 @@ export default defineConfig({
         // where an accidental cycle would appear.
         files: [
           'src/generator/*/object.ts',
-          'src/generator/{zod,valibot,effect,typebox,arktype}/{zod,valibot,effect,typebox,arktype}.ts',
+          'src/generator/{zod,valibot,effect,typebox,arktype,ajv}/{zod,valibot,effect,typebox,arktype,ajv}.ts',
         ],
         rules: { 'import/no-cycle': 'off' },
       },

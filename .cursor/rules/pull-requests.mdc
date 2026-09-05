@@ -24,7 +24,7 @@ releases page, not for the diff:
 type(scope): summary in the imperative, no trailing period
 
 type   feat | fix | perf | refactor | docs | test | build | ci | chore
-scope  zod | valibot | effect | typebox | arktype | cli | parser | fixtures | docs | ci
+scope  zod | valibot | effect | typebox | arktype | ajv | cli | parser | fixtures | docs | ci
 ```
 
 ```text

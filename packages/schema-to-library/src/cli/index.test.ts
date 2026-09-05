@@ -6,6 +6,7 @@ import { NodeServices } from '@effect/platform-node'
 import { Console, Effect, Exit } from 'effect'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import { schemaToAjv } from '../generator/ajv/index.js'
 import { schemaToArktype } from '../generator/arktype/index.js'
 import { schemaToEffect } from '../generator/effect/index.js'
 import { schemaToTypebox } from '../generator/typebox/index.js'
@@ -24,6 +25,7 @@ const GENERATORS = {
   effect: { name: 'schema-to-effect', generator: schemaToEffect },
   typebox: { name: 'schema-to-typebox', generator: schemaToTypebox },
   arktype: { name: 'schema-to-arktype', generator: schemaToArktype },
+  ajv: { name: 'schema-to-ajv', generator: schemaToAjv },
 } as const
 
 /**
@@ -307,6 +309,54 @@ describe('schema-to-arktype --export-type', () => {
 export const User = type({ name: 'string', 'age?': 'number.integer' })
 
 export type User = typeof User.infer
+`)
+  })
+})
+
+describe('schema-to-ajv', () => {
+  it('should generate an Ajv schema object and compile wrapper', async () => {
+    const result = await generate(GENERATORS.ajv, schema)
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import Ajv from 'ajv'
+
+const ajv = new Ajv()
+
+export const schema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    age: { type: 'integer' },
+  },
+  required: ['name'],
+}
+
+export const validate = ajv.compile(schema)
+`)
+  })
+})
+
+describe('schema-to-ajv --export-type', () => {
+  it('should not throw and should omit JSONSchemaType', async () => {
+    const result = await generate(GENERATORS.ajv, schema, ['--export-type'])
+
+    expect(result.ok).toBe(true)
+    expect(result.stdout).toBe(`Generated: ${result.output}`)
+    expect(result.code).toBe(`import Ajv from 'ajv'
+
+const ajv = new Ajv()
+
+export const schema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    age: { type: 'integer' },
+  },
+  required: ['name'],
+}
+
+export const validate = ajv.compile(schema)
 `)
   })
 })

@@ -18,6 +18,7 @@ npx schema-to-valibot path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-effect path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-typebox path/to/input.{json,yaml} -o path/to/output.ts
 npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-ajv path/to/input.{json,yaml} -o path/to/output.ts
 ```
 
 | Flag             | What it does                                            |
@@ -101,6 +102,28 @@ export const User = Type.Object({
 import { type } from 'arktype'
 
 export const User = type({ name: 'string', email: 'string.email', 'age?': 'number.integer >= 0' })
+```
+
+### [Ajv](https://ajv.js.org/)
+
+```ts
+import Ajv from 'ajv'
+import addFormats from 'ajv-formats'
+
+const ajv = new Ajv()
+addFormats(ajv)
+
+export const schema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    email: { type: 'string', format: 'email' },
+    age: { type: 'integer', minimum: 0 },
+  },
+  required: ['name', 'email'],
+}
+
+export const validate = ajv.compile(schema)
 ```
 
 ## License
