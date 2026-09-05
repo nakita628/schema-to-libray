@@ -1,16 +1,28 @@
+import { Data, Effect } from 'effect'
 import { format } from 'oxfmt'
 
-export async function fmt(input: string) {
-  const { code, errors } = await format('<stdin>.ts', input, {
-    printWidth: 100,
-    singleQuote: true,
-    semi: false,
+/** oxfmt rejected the source it was handed. */
+export class FormatError extends Data.TaggedError('FormatError')<{
+  readonly message: string
+}> {}
+
+const FMT_OPTIONS = {
+  printWidth: 100,
+  singleQuote: true,
+  semi: false,
+} as const
+
+/** Formats generated TypeScript. Failures land in the error channel. */
+export function fmt(input: string) {
+  return Effect.gen(function* () {
+    const { code, errors } = yield* Effect.tryPromise({
+      try: () => format('<stdin>.ts', input, FMT_OPTIONS),
+      catch: (cause) =>
+        new FormatError({ message: cause instanceof Error ? cause.message : String(cause) }),
+    })
+    if (errors.length > 0) {
+      return yield* new FormatError({ message: errors.map((error) => error.message).join('\n') })
+    }
+    return code
   })
-  if (errors.length > 0) {
-    return {
-      ok: false,
-      error: errors.map((e) => e.message).join('\n'),
-    } as const
-  }
-  return { ok: true, value: code } as const
 }

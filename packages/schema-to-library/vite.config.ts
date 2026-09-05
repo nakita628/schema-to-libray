@@ -429,7 +429,7 @@ export default defineConfig({
           'unicorn/no-array-sort': 'off',
           // Stub callbacks (`() => {}` passed as a generator) are the point.
           'no-empty-function': 'off',
-          // The suite asserts inside conditionals that narrow a Result before reading it.
+          // A few suites still branch before `expect` when a fixture is missing a file.
           'vitest/no-conditional-expect': 'off',
           'vitest/no-identical-title': 'error',
           'vitest/valid-expect': 'error',

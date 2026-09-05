@@ -27,6 +27,7 @@
 // Tests are exempt from the structural rules: a test arranges and asserts imperatively
 // when that is the clearest way to spell a fixture out.
 const TEST_FILE = /\.test\.tsx?$/u
+const TEST_HELPER = /[/\\]testing[/\\]/u
 const PREDICATE_PREFIX = /^(is|has|can)[A-Z]/u
 const PASCAL_CASE = /^[A-Z][A-Za-z0-9]*$/u
 const EFFECT_RUNNERS = new Set([
@@ -60,7 +61,7 @@ function filenameOf(context) {
 }
 
 function isTestPath(filename) {
-  return TEST_FILE.test(filename)
+  return TEST_FILE.test(filename) || TEST_HELPER.test(filename)
 }
 
 function effectMember(node) {

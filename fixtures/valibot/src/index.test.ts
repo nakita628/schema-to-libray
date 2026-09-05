@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { Effect } from 'effect'
 import { fmt, parseSchemaFile, schemaToValibot } from 'schema-to-library'
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -24,12 +25,7 @@ describe('schemaToValibot fixtures', () => {
     const dir = join(fixturesDir, name)
     const input = JSON.parse(readFileSync(join(dir, 'input.json'), 'utf-8'))
     const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
-    const raw = schemaToValibot(input)
-    const fmtResult = await fmt(raw)
-    expect(fmtResult.ok).toBe(true)
-    if (fmtResult.ok) {
-      expect(fmtResult.value).toBe(expected)
-    }
+    expect(await Effect.runPromise(fmt(schemaToValibot(input)))).toBe(expected)
   })
 })
 
@@ -38,12 +34,7 @@ describe('schemaToValibot readonly fixtures', () => {
     const dir = join(fixturesDir, name)
     const input = JSON.parse(readFileSync(join(dir, 'input.json'), 'utf-8'))
     const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
-    const raw = schemaToValibot(input, { readonly: true })
-    const fmtResult = await fmt(raw)
-    expect(fmtResult.ok).toBe(true)
-    if (fmtResult.ok) {
-      expect(fmtResult.value).toBe(expected)
-    }
+    expect(await Effect.runPromise(fmt(schemaToValibot(input, { readonly: true })))).toBe(expected)
   })
 })
 
@@ -52,16 +43,7 @@ describe('schemaToValibot split fixtures (parseSchemaFile + schemaToValibot)', (
     const dir = join(fixturesDir, name)
     const inputPath = join(dir, 'input.json')
     const expected = readFileSync(join(dir, 'output.ts'), 'utf-8')
-
-    const result = await parseSchemaFile(inputPath)
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      const raw = schemaToValibot(result.value)
-      const fmtResult = await fmt(raw)
-      expect(fmtResult.ok).toBe(true)
-      if (fmtResult.ok) {
-        expect(fmtResult.value).toBe(expected)
-      }
-    }
+    const schema = await Effect.runPromise(parseSchemaFile(inputPath))
+    expect(await Effect.runPromise(fmt(schemaToValibot(schema)))).toBe(expected)
   })
 })

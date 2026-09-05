@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { Effect } from 'effect'
 import { fmt, parseSchemaFile, schemaToValibot } from 'schema-to-library'
 
 const fixturesDir = join(import.meta.dirname, '..')
@@ -18,12 +19,7 @@ for (const name of fixtures) {
 
   let raw: string
   if (SPLIT_FIXTURES.includes(name)) {
-    const result = await parseSchemaFile(inputPath)
-    if (!result.ok) {
-      console.error(`${name}: ${result.error}`)
-      continue
-    }
-    raw = schemaToValibot(result.value)
+    raw = schemaToValibot(await Effect.runPromise(parseSchemaFile(inputPath)))
   } else if (READONLY_FIXTURES.includes(name)) {
     const input = JSON.parse(readFileSync(inputPath, 'utf-8'))
     raw = schemaToValibot(input, { readonly: true })
@@ -32,12 +28,7 @@ for (const name of fixtures) {
     raw = schemaToValibot(input)
   }
 
-  const fmtResult = await fmt(raw)
-  if (!fmtResult.ok) {
-    console.error(`${name}: fmt error: ${fmtResult.error}`)
-    continue
-  }
-  writeFileSync(outputPath, fmtResult.value)
+  writeFileSync(outputPath, await Effect.runPromise(fmt(raw)))
 
   console.log(`generated: ${name}/output.ts`)
 }

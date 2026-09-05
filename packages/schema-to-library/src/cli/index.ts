@@ -1,8 +1,9 @@
 import path from 'node:path'
 
-import { Console, Effect, FileSystem, Schema, Stdio } from 'effect'
+import { Console, Effect, Schema, Stdio } from 'effect'
 import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
 
+import { mkdir, writeFile } from '../file/index.js'
 import { fmt } from '../format/index.js'
 import { isRecord } from '../helper/value.js'
 import type { JSONSchema } from '../parser/index.js'
@@ -64,34 +65,6 @@ const commandLine = {
 } as const
 
 /**
- * Runs one of the library's `{ ok }` functions in the error channel.
- *
- * `Effect.tryPromise` rather than `Effect.promise`: both functions answer with `ok:
- * false` for the failures they expect, but a rejection they did not expect would
- * otherwise become a defect and print a stack trace instead of a sentence.
- */
-function attempt<A>(run: () => Promise<{ ok: true; value: A } | { ok: false; error: string }>) {
-  return Effect.gen(function* () {
-    const result = yield* Effect.tryPromise({
-      try: run,
-      catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
-    })
-    if (!result.ok) return yield* Effect.fail(new Error(result.error))
-    return result.value
-  })
-}
-
-/** The bundled document at `input`, or the parser's sentence about why it is not one. */
-function readSchema(input: string) {
-  return attempt(() => parseSchemaFile(input))
-}
-
-/** The formatted source, or the formatter's sentence about why it could not be. */
-function format(source: string) {
-  return attempt(() => fmt(source))
-}
-
-/**
  * The sentence a failure is reported with.
  *
  * `FileSystem` normalises a host failure to `BadResource: FileSystem.writeFile (path)`,
@@ -125,13 +98,12 @@ function platformCause(error: unknown): unknown {
 function generate(generator: Generator) {
   return (args: Command.Command.Config.Infer<typeof commandLine>) =>
     Effect.gen(function* () {
-      const schema = yield* readSchema(args.input)
-      const source = yield* format(
+      const schema = yield* parseSchemaFile(args.input)
+      const source = yield* fmt(
         generator(schema, { exportType: args.exportType, readonly: args.readonly }),
       )
-      const fs = yield* FileSystem.FileSystem
-      yield* fs.makeDirectory(path.dirname(args.output), { recursive: true })
-      yield* fs.writeFileString(args.output, source)
+      yield* mkdir(path.dirname(args.output))
+      yield* writeFile(args.output, source)
       return yield* Console.log(`Generated: ${args.output}`)
     }).pipe(
       // A `CliError` is already something the runner knows how to render. Everything else
