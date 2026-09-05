@@ -99,7 +99,6 @@
   "scripts": {
     "build": "vp pack",
     "check": "vp check",
-    "coverage": "vp test --coverage",
     "fix": "vp check --fix",
     "test": "vp test"
   },

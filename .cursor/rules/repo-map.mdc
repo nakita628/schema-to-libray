@@ -37,7 +37,6 @@ vp run schema-to-library#build     # build dist/ — fixtures and apps/ import t
 vp run @fixtures/zod#generate      # regenerate one library's fixtures (needs a fresh build)
 vp test                            # fixture assertions, from the root config
 vp run schema-to-library#test      # the library's own unit suite
-vp run schema-to-library#coverage  # 80% statements/branches/functions/lines, enforced
 vp run -r typecheck                # generated fixtures vs. the real target libraries
 vp run lint                        # Markdown, terminology, spelling, secrets, links
 ```

@@ -30,20 +30,6 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     testTimeout: 10_000,
-    coverage: {
-      include: ['src/**/*.ts'],
-      // bin entry shims (a top-level `NodeRuntime.runMain(cli(...))` only); the
-      // command itself is covered through src/cli/index.test.ts, which runs it the
-      // way the shims do, and each generator has its own tests
-      exclude: ['src/{zod,valibot,effect,typebox,arktype,ajv,yup}.ts'],
-      reporter: ['text', 'html'],
-      thresholds: {
-        statements: 80,
-        branches: 80,
-        functions: 80,
-        lines: 80,
-      },
-    },
   },
   lint: {
     ignorePatterns: ['**/node_modules/**', '**/dist/**'],

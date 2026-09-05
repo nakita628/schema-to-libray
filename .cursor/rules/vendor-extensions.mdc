@@ -40,8 +40,8 @@ related option that drives string-wire coercion for OpenAPI parameters.
 - marked in the output with `UNSAFE_GENERATED_MARKER`
   (`// @generated-with-unsafe-code-extensions`) so review can find the file.
 
-Keep all three properties intact. If you widen what a code extension accepts, widen the
-denylist test coverage with it.
+Keep all three properties intact. If you widen what a code extension accepts, add
+denylist tests for the new cases.
 
 ## Checklist for a new extension
 

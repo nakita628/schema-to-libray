@@ -21,7 +21,6 @@
   "ignorePaths": [
     "**/node_modules/**",
     "**/dist/**",
-    "**/coverage/**",
     ".git/**",
     "pnpm-lock.yaml",
     ".cspell/project-words.txt",
