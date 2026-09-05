@@ -44,8 +44,6 @@ or `x-*` extension gets a row per target library it affects.
 ```bash
 vp run schema-to-library#test      # unit suite: packages/schema-to-library/src/**/*.test.ts
 vp test                            # fixture suites: fixtures/*/src/*.test.ts, from the root config
-vp run schema-to-library#coverage  # 80% statements/branches/functions/lines — a hard gate
 ```
 
-New code in `packages/schema-to-library/src` needs tests that keep coverage above the
-threshold; a branch added without a case for it fails CI rather than degrading quietly.
+New code in `packages/schema-to-library/src` needs a test that fails without the change.

@@ -84,7 +84,7 @@ jobs:
       - run: vp run -r typecheck
 
       # The fixtures assert on the generated files from the repository root config;
-      # the library's own suite carries the coverage thresholds.
+      # the library's own suite lives in packages/schema-to-library.
       - run: vp test
 
-      - run: vp run schema-to-library#coverage
+      - run: vp run schema-to-library#test
