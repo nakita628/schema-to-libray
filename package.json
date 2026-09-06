@@ -11,15 +11,15 @@
     "test": "vp test && vp run schema-to-library#test"
   },
   "devDependencies": {
-    "@secretlint/secretlint-rule-preset-recommend": "^13.0.5",
-    "cspell": "^10.2.1",
-    "markdownlint-cli2": "^0.23.2",
-    "secretlint": "^13.0.5",
-    "textlint": "^15.8.0",
-    "textlint-filter-rule-comments": "^1.3.0",
-    "textlint-rule-no-dead-link": "^6.2.3",
-    "textlint-rule-terminology": "^5.2.16",
-    "vite-plus": "^0.3.0"
+    "@secretlint/secretlint-rule-preset-recommend": "13.0.5",
+    "cspell": "10.2.2",
+    "markdownlint-cli2": "0.23.2",
+    "secretlint": "13.0.5",
+    "textlint": "15.8.0",
+    "textlint-filter-rule-comments": "1.3.0",
+    "textlint-rule-no-dead-link": "6.2.3",
+    "textlint-rule-terminology": "5.2.16",
+    "vite-plus": "0.3.0"
   },
   "packageManager": "pnpm@11.24.0"
 }
