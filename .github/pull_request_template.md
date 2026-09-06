@@ -1,40 +1,42 @@
 <!--
-Title format: `type(scope): summary`, imperative mood, no trailing period.
+Title: `type(scope): summary` — imperative mood, no trailing period. Release notes are
+built from pull request titles, so write it for the person reading the releases page.
 
   type   feat | fix | perf | refactor | docs | test | build | ci | chore
   scope  zod | valibot | effect | typebox | arktype | ajv | yup | cli | parser | fixtures | docs | ci
 
-The title is the changelog: GitHub builds each release's notes from the titles of the
-pull requests merged since the previous release. Write it for the person reading
-`v0.3.7` on the releases page, not for the diff.
-
   fix(valibot): emit valid schemas for null and object enum members
-  feat(zod): support x-stringbool on boolean properties
 -->
-
-## What
-
-<!-- One or two sentences: what changed, from the point of view of someone using the package. -->
 
 ## Why
 
-<!-- The bug, the missing capability, or the issue this closes (`Closes #123`). -->
+<!-- The bug, the missing capability or the request behind this change. Link the issue: `Closes #123`. -->
 
-## Generated output
+## What
+
+<!-- What changed, as a user of the package sees it. One to three sentences. -->
+
+## Where
+
+<!-- Scope: the generators, parser, CLI, fixtures or docs touched. Name what is deliberately left out. -->
+
+## Who
+
+<!-- Who notices: every user, users of one target library, contributors only. Breaking for anyone? -->
+
+## When
+
+<!-- Release impact: `none` | `next release` | `version bumped to x.y.z — publishes to npm on merge`. -->
+
+## How
 
 <!--
-The review artifact for this repository is the fixture diff. Either paste the interesting
-part of the `fixtures/*/*/output.ts` diff, or state that generated output is unchanged.
+The approach in a sentence, then the evidence. If a generator changed, paste the interesting
+part of the `fixtures/*/*/output.ts` diff, or say that generated output is unchanged.
+Tick only what you ran; paste the output of anything that failed.
 -->
 
-## Checklist
-
-- [ ] `vp run -r check` — format, lint, types
-- [ ] `vp run lint` — Markdown, terminology, spelling, secrets, links
-- [ ] `vp test` and `vp run schema-to-library#test`
-- [ ] Fixtures regenerated and their diff reviewed, if a generator changed
-- [ ] `vp run -r typecheck` — generated code still compiles against the real target libraries
-- [ ] A regression test that fails without this change
-- [ ] README updated, if installation, the commands or the example changed (it is
-      deliberately minimal — nothing else belongs in it)
-- [ ] `packages/schema-to-library` version bumped **only** if this pull request should publish to npm on merge
+- [ ] `vp run -r check`
+- [ ] `vp run lint`
+- [ ] `vp run schema-to-library#build && vp run -r typecheck`
+- [ ] `vp test && vp run schema-to-library#test`
