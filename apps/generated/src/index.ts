@@ -31,8 +31,7 @@ async function fixtureFiles(): Promise<readonly string[]> {
   return dirents
     .map((d) => d.name)
     .filter(
-      (n) =>
-        /\.(ya?ml|json|tsp)$/.test(n) && !n.endsWith('.examples.json') && !SKIP_FIXTURES.has(n),
+      (n) => /\.(yaml|json|tsp)$/.test(n) && !n.endsWith('.examples.json') && !SKIP_FIXTURES.has(n),
     )
 }
 
@@ -40,7 +39,7 @@ async function generate(
   gen: Generator,
   file: string,
 ): Promise<{ readonly file: string; readonly gen: Generator['name'] }> {
-  const filename = file.replace(/\.(ya?ml|json|tsp)$/, '')
+  const filename = file.replace(/\.(yaml|json|tsp)$/, '')
   const output = join(appRoot, 'generated', gen.name, `${filename}.ts`)
   const { stderr } = await execFileAsync('node', [gen.cli, `schema/${file}`, '-o', output], {
     cwd: appRoot,

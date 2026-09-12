@@ -13,13 +13,13 @@ npm install -D schema-to-library
 One binary per target library, each taking the same arguments:
 
 ```bash
-npx schema-to-zod path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-valibot path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-effect path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-typebox path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-arktype path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-ajv path/to/input.{json,yml} -o path/to/output.ts
-npx schema-to-yup path/to/input.{json,yml} -o path/to/output.ts
+npx schema-to-zod path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-valibot path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-effect path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-typebox path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-arktype path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-ajv path/to/input.{json,yaml} -o path/to/output.ts
+npx schema-to-yup path/to/input.{json,yaml} -o path/to/output.ts
 ```
 
 | Flag             | What it does                                            |
