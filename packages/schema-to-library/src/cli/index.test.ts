@@ -768,7 +768,7 @@ describe('--version', () => {
 })
 
 describe('argument validation', () => {
-  it('rejects an input that is not .json or .yaml', async () => {
+  it('rejects an input that is not .json, .yml or .yaml', async () => {
     const dir = useTmpDir('schema-to-library-cli-ext-')
     const input = path.join(dir, 'schema.txt')
     fs.writeFileSync(input, JSON.stringify(schema))
@@ -776,7 +776,19 @@ describe('argument validation', () => {
     const result = await runBin(GENERATORS.zod, [input, '-o', path.join(dir, 'out.ts')])
 
     expect(result.ok).toBe(false)
-    expect(result.stderr).toContain('a JSON Schema document ending in .json or .yaml')
+    expect(result.stderr).toContain('a JSON Schema document ending in .json, .yml or .yaml')
+  })
+
+  it.each(['.yml', '.yaml'] as const)('accepts a %s input', async (ext) => {
+    const dir = useTmpDir(`schema-to-library-cli-${ext.slice(1)}-`)
+    const input = path.join(dir, `schema${ext}`)
+    const output = path.join(dir, 'out.ts')
+    fs.writeFileSync(input, JSON.stringify(schema))
+
+    const result = await runBin(GENERATORS.zod, [input, '-o', output])
+
+    expect(result.ok).toBe(true)
+    expect(fs.existsSync(output)).toBe(true)
   })
 
   it('rejects an output that is not .ts', async () => {

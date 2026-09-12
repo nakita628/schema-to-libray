@@ -7,11 +7,27 @@ labels: ['enhancement']
 
 ## Why
 
-<!-- The problem, in one paragraph. What do you do today instead? -->
+<!-- The problem. What do you do today instead? -->
 
 ## What
 
-<!-- The behaviour you want: the input schema in, the generated code out. -->
+<!-- The behaviour you want. -->
+
+## Where
+
+<!-- Which target libraries. -->
+
+## Who
+
+<!-- Who needs this. -->
+
+## When
+
+<!-- When it is needed. -->
+
+## How
+
+<!-- The input schema and the generated code you want. -->
 
 ```json
 { "type": "string", "x-example": "..." }
@@ -20,7 +36,3 @@ labels: ['enhancement']
 ```ts
 // what should be generated
 ```
-
-## Where
-
-<!-- Which target libraries it applies to, and whether it is a no-op for the others. -->

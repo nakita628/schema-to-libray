@@ -17,13 +17,15 @@ export type Generator = (
 
 // `Schema.refine` both rejects the value at runtime and narrows the parsed type, so a
 // wrong extension never reaches the parser and the ones that do arrive as
-// `${string}.json | ${string}.yaml` without a cast. The template literal alone would do
-// the same check but reports "Expected a string matching template literal parts";
-// wrapping it in `Schema.is` and refining with it is what buys the sentence below.
+// `${string}.json | ${string}.yml | ${string}.yaml` without a cast. The template literal
+// alone would do the same check but reports "Expected a string matching template literal
+// parts"; wrapping it in `Schema.is` and refining with it is what buys the sentence below.
 const InputPathSchema = Schema.String.pipe(
   Schema.refine(
-    Schema.is(Schema.TemplateLiteral([Schema.String, Schema.Literals(['.json', '.yaml'])])),
-    { message: 'a JSON Schema document ending in .json or .yaml' },
+    Schema.is(
+      Schema.TemplateLiteral([Schema.String, Schema.Literals(['.json', '.yml', '.yaml'])]),
+    ),
+    { message: 'a JSON Schema document ending in .json, .yml or .yaml' },
   ),
 )
 
@@ -41,7 +43,7 @@ const commandLine = {
   input: Argument.file('input', { mustExist: true }).pipe(
     Argument.withSchema(InputPathSchema),
     Argument.withDescription('JSON Schema document to generate from'),
-    Argument.withMetavar('input.{json,yaml}'),
+    Argument.withMetavar('input.{json,yml}'),
   ),
   // `Flag.string`, not `Flag.file`: the file primitive rewrites its value to an absolute
   // path, and `--output` is echoed back in the "Generated" message, which should read as
@@ -140,7 +142,7 @@ export function makeCli<Name extends string>(options: CliOptions<Name>) {
         description: 'Generate a schema file',
       },
       {
-        command: `${options.name} schema.yaml -o src/schema.ts --export-type`,
+        command: `${options.name} schema.yml -o src/schema.ts --export-type`,
         description: 'Also export the inferred type',
       },
       {
