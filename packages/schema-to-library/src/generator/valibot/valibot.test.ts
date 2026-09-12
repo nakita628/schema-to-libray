@@ -438,11 +438,14 @@ describe('valibot', () => {
       [{ type: 'string', format: 'uri' }, 'v.pipe(v.string(),v.url())'],
       [{ type: 'string', format: 'ipv4' }, 'v.pipe(v.string(),v.ipv4())'],
       [{ type: 'string', format: 'ipv6' }, 'v.pipe(v.string(),v.ipv6())'],
-      [{ type: 'string', format: 'date-time' }, 'v.pipe(v.string(),v.isoDateTime())'],
+      [{ type: 'string', format: 'date-time' }, 'v.pipe(v.string(),v.isoTimestamp())'],
       [{ type: 'string', format: 'base64' }, 'v.pipe(v.string(),v.base64())'],
       [{ type: 'string', format: 'emoji' }, 'v.pipe(v.string(),v.emoji())'],
       [{ type: 'string', format: 'date' }, 'v.pipe(v.string(),v.isoDate())'],
-      [{ type: 'string', format: 'time' }, 'v.pipe(v.string(),v.isoTime())'],
+      [
+        { type: 'string', format: 'time' },
+        'v.pipe(v.string(),v.regex(/^(?:0\\d|1\\d|2[0-3])(?::[0-5]\\d){2}(?:\\.\\d{1,9})?(?:Z| ?[+-](?:0\\d|1\\d|2[0-3])(?::?[0-5]\\d)?)$/))',
+      ],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
