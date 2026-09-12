@@ -31,7 +31,8 @@ async function fixtureFiles(): Promise<readonly string[]> {
   return dirents
     .map((d) => d.name)
     .filter(
-      (n) => /\.(ya?ml|json|tsp)$/.test(n) && !n.endsWith('.examples.json') && !SKIP_FIXTURES.has(n),
+      (n) =>
+        /\.(ya?ml|json|tsp)$/.test(n) && !n.endsWith('.examples.json') && !SKIP_FIXTURES.has(n),
     )
 }
 

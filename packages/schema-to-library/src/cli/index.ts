@@ -22,9 +22,7 @@ export type Generator = (
 // parts"; wrapping it in `Schema.is` and refining with it is what buys the sentence below.
 const InputPathSchema = Schema.String.pipe(
   Schema.refine(
-    Schema.is(
-      Schema.TemplateLiteral([Schema.String, Schema.Literals(['.json', '.yml', '.yaml'])]),
-    ),
+    Schema.is(Schema.TemplateLiteral([Schema.String, Schema.Literals(['.json', '.yml', '.yaml'])])),
     { message: 'a JSON Schema document ending in .json, .yml or .yaml' },
   ),
 )
