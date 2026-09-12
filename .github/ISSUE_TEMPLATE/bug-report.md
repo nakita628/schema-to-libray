@@ -5,17 +5,29 @@ title: 'fix: '
 labels: ['bug']
 ---
 
+## Why
+
+<!-- Why this is a bug. -->
+
 ## What
 
 <!-- What happens, and what should happen instead. -->
 
 ## Where
 
-<!-- `schema-to-library` version, target library (zod / valibot / effect / typebox / arktype / ajv / yup) and its version, Node.js version. -->
+<!-- Package version, target library, Node.js version. -->
+
+## Who
+
+<!-- Who is affected. -->
+
+## When
+
+<!-- When it started, if known. -->
 
 ## How
 
-<!-- The smallest input that reproduces it, the command, and the output or error. -->
+<!-- The smallest reproduction: input, command, output. -->
 
 ```json
 { "type": "string" }

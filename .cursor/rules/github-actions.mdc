@@ -42,7 +42,7 @@ at that level. Keep it that way:
   `GH_TOKEN`, and the two jobs that only talk to that API check nothing out at all.
 - **Quote shell variables** — `>> "$GITHUB_OUTPUT"`, not `>> $GITHUB_OUTPUT`. shellcheck
   runs inside actionlint on the runner even though it is absent locally.
-- **`${{ vars.* }}` is rejected outright.** `@.github/actionlint.yaml` declares
+- **`${{ vars.* }}` is rejected outright.** `@.github/actionlint.yml` declares
   `config-variables: []`, so a configuration variable has to be added to that list before
   it can be used — which is what turns a typo into an error instead of an empty string.
 - Bumping actionlint means changing **both** `ACTIONLINT_VERSION` and `ACTIONLINT_SHA256`

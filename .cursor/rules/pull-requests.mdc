@@ -11,7 +11,7 @@ not in the conversation.
 
 ## From an issue
 
-1. Read the issue as **Why / What / Where / How**. When a section is missing and the answer
+1. Read the issue as **Why / What / Where / Who / When / How**. When a section is missing and the answer
    would change the work, ask in the issue first; otherwise state the assumption in the pull
    request body.
 2. Reproduce before fixing: a failing unit-test row or fixture case that shows the bug or
