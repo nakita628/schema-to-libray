@@ -10,8 +10,8 @@ describe('valibot string', () => {
     [{ type: 'string', format: 'uuid' }, 'v.pipe(v.string(),v.uuid())'],
     [{ type: 'string', format: 'uri' }, 'v.pipe(v.string(),v.url())'],
     [{ type: 'string', format: 'date' }, 'v.pipe(v.string(),v.isoDate())'],
-    [{ type: 'string', format: 'date-time' }, 'v.pipe(v.string(),v.isoDateTime())'],
-    [{ type: 'string', format: 'time' }, 'v.pipe(v.string(),v.isoTime())'],
+    [{ type: 'string', format: 'date-time' }, 'v.pipe(v.string(),v.isoTimestamp())'],
+    [{ type: 'string', format: 'time' }, 'v.pipe(v.string(),v.isoTimeSecond())'],
     [{ type: 'string', format: 'ipv4' }, 'v.pipe(v.string(),v.ipv4())'],
     [{ type: 'string', format: 'ipv6' }, 'v.pipe(v.string(),v.ipv6())'],
     [{ type: 'string', format: 'emoji' }, 'v.pipe(v.string(),v.emoji())'],
@@ -34,6 +34,14 @@ describe('valibot string', () => {
       [
         { type: 'string', format: 'email', 'x-error-message': 'Invalid email' },
         'v.pipe(v.string("Invalid email"),v.email("Invalid email"))',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-error-message': 'Invalid timestamp' },
+        'v.pipe(v.string("Invalid timestamp"),v.isoTimestamp("Invalid timestamp"))',
+      ],
+      [
+        { type: 'string', format: 'time', 'x-error-message': 'Invalid time' },
+        'v.pipe(v.string("Invalid time"),v.isoTimeSecond("Invalid time"))',
       ],
       [
         {

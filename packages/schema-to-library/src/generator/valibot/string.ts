@@ -10,9 +10,10 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
   ipv6: 'v.ipv6()',
   emoji: 'v.emoji()',
   base64: 'v.base64()',
-  'date-time': 'v.isoDateTime()',
+  'date-time': 'v.isoTimestamp()',
   date: 'v.isoDate()',
-  time: 'v.isoTime()',
+  // Valibot has no RFC 3339 full-time action; `isoTimeSecond` is `hh:mm:ss`.
+  time: 'v.isoTimeSecond()',
 }
 
 export function string(schema: JSONSchema) {
