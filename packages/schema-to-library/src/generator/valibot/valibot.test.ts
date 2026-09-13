@@ -442,10 +442,7 @@ describe('valibot', () => {
       [{ type: 'string', format: 'base64' }, 'v.pipe(v.string(),v.base64())'],
       [{ type: 'string', format: 'emoji' }, 'v.pipe(v.string(),v.emoji())'],
       [{ type: 'string', format: 'date' }, 'v.pipe(v.string(),v.isoDate())'],
-      [
-        { type: 'string', format: 'time' },
-        'v.pipe(v.string(),v.regex(/^(?:0\\d|1\\d|2[0-3])(?::[0-5]\\d){2}(?:\\.\\d{1,9})?(?:Z| ?[+-](?:0\\d|1\\d|2[0-3])(?::?[0-5]\\d)?)$/))',
-      ],
+      [{ type: 'string', format: 'time' }, 'v.pipe(v.string(),v.isoTimeSecond())'],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })

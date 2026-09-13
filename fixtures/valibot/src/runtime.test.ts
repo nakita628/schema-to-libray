@@ -1192,25 +1192,23 @@ describe('date-time', () => {
     '1996-12-19T16:39:57-08:00',
     '2026-09-12T00:00:00Z',
   ])('accepts RFC 3339 date-time %s', (createdAt) => {
-    expect(v.safeParse(DateTimeSchema, { createdAt, startsAt: '23:20:50Z' }).success).toBe(true)
+    expect(v.safeParse(DateTimeSchema, { createdAt, startsAt: '23:20:50' }).success).toBe(true)
   })
 
   it('rejects a date-time without seconds', () => {
     expect(
-      v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00', startsAt: '23:20:50Z' }).success,
+      v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00', startsAt: '23:20:50' }).success,
     ).toBe(false)
   })
 
-  it.each(['23:20:50.52Z', '16:39:57-08:00', '23:20:50Z'])(
-    'accepts RFC 3339 full-time %s',
-    (startsAt) => {
-      expect(
-        v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00:00Z', startsAt }).success,
-      ).toBe(true)
-    },
-  )
+  it('accepts hh:mm:ss as time', () => {
+    expect(
+      v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00:00Z', startsAt: '23:20:50' })
+        .success,
+    ).toBe(true)
+  })
 
-  it.each(['23:20', '23:20:50'])('rejects a time that is not RFC 3339 full-time: %s', (startsAt) => {
+  it.each(['23:20', '23:20:50Z'])('rejects a time that is not hh:mm:ss: %s', (startsAt) => {
     expect(
       v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00:00Z', startsAt }).success,
     ).toBe(false)

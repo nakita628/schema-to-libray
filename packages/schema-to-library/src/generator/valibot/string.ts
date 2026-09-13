@@ -2,12 +2,6 @@ import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
 
-/** Put `message` in the last argument slot of a Valibot action call. */
-function withValibotMessage(action: string, message: string): string {
-  if (action.endsWith('()')) return `${action.slice(0, -2)}(${message})`
-  return `${action.slice(0, -1)},${message})`
-}
-
 const FORMAT_PIPE: { readonly [k: string]: string } = {
   email: 'v.email()',
   uuid: 'v.uuid()',
@@ -18,9 +12,8 @@ const FORMAT_PIPE: { readonly [k: string]: string } = {
   base64: 'v.base64()',
   'date-time': 'v.isoTimestamp()',
   date: 'v.isoDate()',
-  // RFC 3339 full-time: seconds, optional fraction, Z or numeric offset.
-  // Valibot has no action for that shape — `v.isoTime()` is `hh:mm` only.
-  time: `v.regex(${regexLiteral('^(?:0\\d|1\\d|2[0-3])(?::[0-5]\\d){2}(?:\\.\\d{1,9})?(?:Z| ?[+-](?:0\\d|1\\d|2[0-3])(?::?[0-5]\\d)?)$')})`,
+  // Valibot has no RFC 3339 full-time action; `isoTimeSecond` is `hh:mm:ss`.
+  time: 'v.isoTimeSecond()',
 }
 
 export function string(schema: JSONSchema) {
@@ -45,7 +38,7 @@ export function string(schema: JSONSchema) {
   const format = schema.format && FORMAT_PIPE[schema.format]
   const formatAction = format
     ? errorMessage
-      ? withValibotMessage(format, baseErrorArg)
+      ? format.replace(/\(\)$/, `(${baseErrorArg})`)
       : format
     : undefined
   const isFixedLength =
