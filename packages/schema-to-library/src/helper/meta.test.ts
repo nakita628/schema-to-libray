@@ -131,6 +131,14 @@ describe('typeboxMetaOpts', () => {
       'examples:["foo"]',
     ])
   })
+
+  it('puts a host ref first when one is supplied', () => {
+    expect(typeboxMetaOpts({ description: 'd' }, 'X')).toStrictEqual(['ref:"X"', 'description:"d"'])
+  })
+
+  it('returns only the ref entry when the schema has no metadata', () => {
+    expect(typeboxMetaOpts({ type: 'string' }, 'Name')).toStrictEqual(['ref:"Name"'])
+  })
 })
 
 describe('typeboxWrap (default/nullable only)', () => {

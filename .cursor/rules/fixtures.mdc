@@ -32,8 +32,9 @@ Three layers, each catching something different:
 4. If the case needs non-default generation, add its directory name to the matching list
    in **both** `src/index.ts` (the generator) and `src/index.test.ts` (the assertion) —
    `SPLIT_FIXTURES` for multi-file documents that must go through `parseSchemaFile`,
-   `READONLY_FIXTURES` for `{ readonly: true }`. The two lists drifting apart is a silent
-   failure: the file is generated one way and asserted another.
+   `READONLY_FIXTURES` for `{ readonly: true }`, `REF_FIXTURES` (TypeBox) for
+   `{ ref: name }`. The two lists drifting apart is a silent failure: the file is
+   generated one way and asserted another.
 5. Add runtime assertions to `src/runtime.test.ts` when the case is about *behaviour*
    (a message, a refinement, a coercion) rather than shape.
 

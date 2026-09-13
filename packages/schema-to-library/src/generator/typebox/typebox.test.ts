@@ -552,6 +552,51 @@ describe('typebox', () => {
     })
   })
 
+  describe('ref option', () => {
+    it('puts ref on Type.String', () => {
+      expect(typebox({ type: 'string' }, 'Schema', false, { ref: 'X' })).toBe(
+        'Type.String({ref:"X"})',
+      )
+    })
+
+    it('puts ref on Type.Object alongside description', () => {
+      expect(
+        typebox(
+          { type: 'object', properties: { a: { type: 'string' } }, description: 'd' },
+          'Schema',
+          false,
+          { ref: 'X' },
+        ),
+      ).toBe('Type.Object({a:Type.Optional(Type.String())},{ref:"X",description:"d"})')
+    })
+
+    it('keeps ref on the inner Type.Object under Type.Readonly', () => {
+      expect(
+        typebox(
+          { type: 'object', properties: { a: { type: 'string' } }, 'x-readonly': true },
+          'Schema',
+          false,
+          { ref: 'X' },
+        ),
+      ).toBe('Type.Readonly(Type.Object({a:Type.Optional(Type.String())},{ref:"X"}))')
+    })
+
+    it('does not leak ref onto nested properties', () => {
+      expect(
+        typebox(
+          {
+            type: 'object',
+            properties: { a: { type: 'string', minLength: 1 } },
+            required: ['a'],
+          },
+          'Schema',
+          false,
+          { ref: 'X' },
+        ),
+      ).toBe('Type.Object({a:Type.String({minLength:1})},{ref:"X"})')
+    })
+  })
+
   describe('readonly option', () => {
     it('should wrap object with Type.Readonly()', () => {
       expect(

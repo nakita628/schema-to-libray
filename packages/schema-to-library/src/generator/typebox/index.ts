@@ -16,6 +16,14 @@ export function schemaToTypebox(
     openapi?: boolean
     readonly?: boolean
     paramIn?: ParamIn
+    /**
+     * Host `$ref` name for OpenAPI component registration. TypeBox has no
+     * post-construction `.meta()`, so this lands in the outermost builder's
+     * options (`Type.String({ref})`, `Type.Object({…},{ref})`, or the third
+     * argument of `Type.Cyclic`). Named `$defs` members are not given this
+     * value. Omit it and the emit is unchanged.
+     */
+    ref?: string
   },
 ): string {
   const {
@@ -23,12 +31,14 @@ export function schemaToTypebox(
     openapi = false,
     readonly: readonlyMode = false,
     paramIn,
+    ref: hostRef,
   } = options ?? {}
   const genOptions = {
     openapi,
     readonly: readonlyMode,
     ...(paramIn !== undefined && { paramIn }),
   }
+  const rootOptions = hostRef === undefined ? genOptions : { ...genOptions, ref: hostRef }
   const notKeywordPresent = hasNotKeyword(schema)
   const toName = openapi ? toIdentifierPascalCase : toPascalCase
   const rootName = schema.title ? toName(schema.title) : 'Schema'
@@ -76,7 +86,8 @@ export function schemaToTypebox(
       `${rootName}: ${typebox(rootInDefs ? rootDefinition : schema, rootName, true, cyclicOptions)}`,
     ].join(',\n')
 
-    const cyclicExport = `export const ${rootName} = Type.Cyclic({\n${members}\n},'${rootName}')`
+    const cyclicRefOpt = hostRef === undefined ? '' : `,{ref:${JSON.stringify(hostRef)}}`
+    const cyclicExport = `export const ${rootName} = Type.Cyclic({\n${members}\n},'${rootName}'${cyclicRefOpt})`
 
     return [
       ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
@@ -98,8 +109,8 @@ export function schemaToTypebox(
     .join('\n\n')
 
   const rootSchema = rootInDefs
-    ? typebox(rootDefinition, rootName, true, genOptions)
-    : typebox(schema, rootName, true, genOptions)
+    ? typebox(rootDefinition, rootName, true, rootOptions)
+    : typebox(schema, rootName, true, rootOptions)
 
   const rootExport = `export const ${rootName} = ${rootSchema}`
 

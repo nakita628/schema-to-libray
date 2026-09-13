@@ -63,6 +63,20 @@ describe('typebox string', () => {
     })
   })
 
+  describe('host ref', () => {
+    it('puts ref first on Type.String when other options are present', () => {
+      expect(string({ type: 'string', minLength: 1 }, 'Name')).toBe(
+        'Type.String({ref:"Name",minLength:1})',
+      )
+    })
+
+    it('puts ref on the Type.String inside Codec, not on Codec', () => {
+      expect(string({ type: 'string', 'x-trim': true }, 'Name')).toBe(
+        'Codec(Type.String({ref:"Name"})).Decode((value: string) => value.trim()).Encode((value: string) => value)',
+      )
+    })
+  })
+
   describe('declarative behavior extensions', () => {
     it('wraps Type.String with Type.Transform for x-trim', () => {
       expect(string({ type: 'string', 'x-trim': true })).toBe(

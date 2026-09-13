@@ -1,4 +1,4 @@
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 const FORMAT_MAP: { readonly [k: string]: string } = {
@@ -16,7 +16,7 @@ function escapeRegex(s: string) {
   return s.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function string(schema: JSONSchema) {
+export function string(schema: JSONSchema, ref?: string) {
   // ajv-errors `errorMessage` accepts two shapes:
   //   - string  → used as a single message for any validation failure
   //   - object  → per-keyword messages keyed by JSON Schema keyword
@@ -68,6 +68,7 @@ export function string(schema: JSONSchema) {
   })()
 
   const opts = [
+    ...typeboxRefOpt(ref),
     schema.format && FORMAT_MAP[schema.format]
       ? `format:${JSON.stringify(FORMAT_MAP[schema.format])}`
       : undefined,

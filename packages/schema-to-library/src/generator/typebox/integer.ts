@@ -1,7 +1,7 @@
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
-export function integer(schema: JSONSchema) {
+export function integer(schema: JSONSchema, ref?: string) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const minMessage = schema['x-minimum-message']
@@ -39,6 +39,7 @@ export function integer(schema: JSONSchema) {
 
   if (schema.format === 'bigint') {
     const opts = [
+      ...typeboxRefOpt(ref),
       schema.minimum !== undefined ? `minimum:BigInt(${schema.minimum})` : undefined,
       schema.maximum !== undefined ? `maximum:BigInt(${schema.maximum})` : undefined,
       errorMessageField,
@@ -50,6 +51,7 @@ export function integer(schema: JSONSchema) {
   }
 
   const opts = [
+    ...typeboxRefOpt(ref),
     schema.minimum !== undefined ? `minimum:${schema.minimum}` : undefined,
     typeof schema.exclusiveMinimum === 'number'
       ? `exclusiveMinimum:${schema.exclusiveMinimum}`
