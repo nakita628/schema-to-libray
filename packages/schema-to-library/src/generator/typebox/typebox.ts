@@ -170,8 +170,9 @@ export function typebox(
   }
 
   if (schema.oneOf) {
-    if (schema.oneOf.length === 0)
+    if (schema.oneOf.length === 0) {
       return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
     const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, childOptions))
     return typeboxWrap(
       tbComp(
@@ -186,8 +187,9 @@ export function typebox(
   }
 
   if (schema.anyOf) {
-    if (schema.anyOf.length === 0)
+    if (schema.anyOf.length === 0) {
       return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
     const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, childOptions))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     return typeboxWrap(
@@ -197,8 +199,9 @@ export function typebox(
   }
 
   if (schema.allOf) {
-    if (schema.allOf.length === 0)
+    if (schema.allOf.length === 0) {
       return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
