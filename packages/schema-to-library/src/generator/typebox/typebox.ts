@@ -5,7 +5,7 @@ import {
   isShapelessMember,
   typeboxWrap,
 } from '../../helper/index.js'
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import {
   normalizeTypes,
@@ -26,31 +26,61 @@ import { string } from './string.js'
  * inside a single `Type.Cyclic($defs, root)` map. References to those names
  * become `Type.Ref('Name')` instead of a bare identifier, because a `const`
  * cannot reference a peer that is declared later in the cycle.
+ *
+ * `ref` is a host `$ref` name for the **current** node only (the outermost
+ * `Type.*` factory). Nested calls drop it so properties and `$defs` members
+ * do not inherit the root's name.
  */
 export type TypeboxOptions = {
   openapi?: boolean
   readonly?: boolean
   paramIn?: ParamIn
   cyclicRefs?: ReadonlySet<string>
+  ref?: string
+}
+
+/**
+ * Options for a nested TypeBox node: the same as `options` but without a
+ * host `ref`, so only the outermost factory of a declaration receives it.
+ */
+export function nestedTypeboxOptions(options?: TypeboxOptions): TypeboxOptions | undefined {
+  if (options === undefined) return undefined
+  return {
+    ...(options.openapi !== undefined && { openapi: options.openapi }),
+    ...(options.readonly !== undefined && { readonly: options.readonly }),
+    ...(options.paramIn !== undefined && { paramIn: options.paramIn }),
+    ...(options.cyclicRefs !== undefined && { cyclicRefs: options.cyclicRefs }),
+  }
 }
 
 /**
  * Emits a single-argument TypeBox factory call (`Type.X({opts})`), embedding
  * any meta options from the schema. Returns `Type.X()` when no options.
  */
-function tbPrim(name: string, schema: JSONSchema, extraOpts: readonly string[] = []): string {
-  const opts = [...extraOpts, ...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
+function tbPrim(
+  name: string,
+  schema: JSONSchema,
+  extraOpts: readonly string[] = [],
+  ref?: string,
+): string {
+  const opts = [
+    ...typeboxRefOpt(ref),
+    ...extraOpts,
+    ...typeboxMetaOpts(schema),
+    ...typeboxDefaultOpt(schema),
+  ]
   return opts.length === 0 ? `${name}()` : `${name}({${opts.join(',')}})`
 }
 
 /**
  * The `Type.String(...)` input of a string-wire coercion `Codec`. A query/path
  * default is carried here in its string-wire form (`{default:'1'}`), since the
- * Codec decodes from a string.
+ * Codec decodes from a string. A host `ref` lands on this inner `Type.String`,
+ * not on the `Codec(...)` wrapper.
  */
-function wireString(schema: JSONSchema): string {
-  const defaultOpt = typeboxDefaultOpt(schema, true)
-  return defaultOpt.length > 0 ? `Type.String({${defaultOpt.join(',')}})` : 'Type.String()'
+function wireString(schema: JSONSchema, ref?: string): string {
+  const opts = [...typeboxRefOpt(ref), ...typeboxDefaultOpt(schema, true)]
+  return opts.length > 0 ? `Type.String({${opts.join(',')}})` : 'Type.String()'
 }
 
 /**
@@ -63,8 +93,14 @@ function tbComp(
   payload: string,
   schema: JSONSchema,
   extraOpts: readonly string[] = [],
+  ref?: string,
 ): string {
-  const opts = [...extraOpts, ...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
+  const opts = [
+    ...typeboxRefOpt(ref),
+    ...extraOpts,
+    ...typeboxMetaOpts(schema),
+    ...typeboxDefaultOpt(schema),
+  ]
   return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
 }
 
@@ -81,6 +117,8 @@ export function typebox(
   const isStringWireParam =
     (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
   const readonly = (v: string) => (options?.readonly ? `Type.Readonly(${v})` : v)
+  const hostRef = options?.ref
+  const childOptions = nestedTypeboxOptions(options)
 
   // A name emitted inside `Type.Cyclic($defs, root)` can only be reached by
   // name — the peer `const` it would otherwise reference may be declared later
@@ -132,26 +170,38 @@ export function typebox(
   }
 
   if (schema.oneOf) {
-    if (schema.oneOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
-    const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, options))
+    if (schema.oneOf.length === 0) {
+      return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
+    const schemas = schema.oneOf.map((s) => typebox(s, rootName, isTypebox, childOptions))
     return typeboxWrap(
-      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(schema['x-oneOf-message'])),
+      tbComp(
+        'Type.Union',
+        `[${schemas.join(',')}]`,
+        schema,
+        messageOpt(schema['x-oneOf-message']),
+        hostRef,
+      ),
       schema,
     )
   }
 
   if (schema.anyOf) {
-    if (schema.anyOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
-    const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, options))
+    if (schema.anyOf.length === 0) {
+      return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
+    const schemas = schema.anyOf.map((s) => typebox(s, rootName, isTypebox, childOptions))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
     return typeboxWrap(
-      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(anyOfMessage)),
+      tbComp('Type.Union', `[${schemas.join(',')}]`, schema, messageOpt(anyOfMessage), hostRef),
       schema,
     )
   }
 
   if (schema.allOf) {
-    if (schema.allOf.length === 0) return typeboxWrap(tbPrim('Type.Any', schema), schema)
+    if (schema.allOf.length === 0) {
+      return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
+    }
     const nullable =
       schema.nullable === true ||
       (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
@@ -159,9 +209,9 @@ export function typebox(
     const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
       .filter((s) => !isShapelessMember(s))
-      .map((s) => typebox(s, rootName, isTypebox, options))
+      .map((s) => typebox(s, rootName, isTypebox, childOptions))
     if (schemas.length === 0) {
-      return typeboxWrap(tbPrim('Type.Any', schema), { ...schema, nullable })
+      return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), { ...schema, nullable })
     }
     const baseResult =
       schemas.length === 1
@@ -171,6 +221,7 @@ export function typebox(
             `[${schemas.join(',')}]`,
             schema,
             messageOpt(schema['x-allOf-message']),
+            hostRef,
           )
     if (defaultValue !== undefined) {
       const formatLiteral =
@@ -180,7 +231,11 @@ export function typebox(
       // TypeBox v1's `Type.Optional` takes one arg, so the default must live in an
       // inner type's options. Carry it on the `Type.Intersect` wrapper (a single
       // member intersect is the identity, so this is valid for both arities).
-      const intersectOpts = [...messageOpt(schema['x-allOf-message']), `default:${formatLiteral}`]
+      const intersectOpts = [
+        ...typeboxRefOpt(hostRef),
+        ...messageOpt(schema['x-allOf-message']),
+        `default:${formatLiteral}`,
+      ]
       const baseWithDefault = `Type.Intersect([${schemas.join(',')}],{${intersectOpts.join(',')}})`
       const withDefault = `Type.Optional(${baseWithDefault})`
       return nullable ? `Type.Union([${withDefault},Type.Null()])` : withDefault
@@ -195,7 +250,10 @@ export function typebox(
     // and surface the omission via a file-level marker in `index.ts`.
     // `x-not-message` rides through `errorMessage` for ajv-compatible
     // downstreams; TypeBox's own `Value.Check` will not surface it.
-    return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(schema['x-not-message'])), schema)
+    return typeboxWrap(
+      tbPrim('Type.Any', schema, messageOpt(schema['x-not-message']), hostRef),
+      schema,
+    )
   }
 
   if (schema.const !== undefined) {
@@ -205,27 +263,33 @@ export function typebox(
     // Type.Null(), and an array/object const degrades to Type.Any() (the same
     // fallback the enum path uses for composite members).
     if (schema.const === null) {
-      return typeboxWrap(tbPrim('Type.Null', schema, messageOpt(constMessage)), schema)
+      return typeboxWrap(tbPrim('Type.Null', schema, messageOpt(constMessage), hostRef), schema)
     }
     if (typeof schema.const === 'object') {
-      return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(constMessage)), schema)
+      return typeboxWrap(tbPrim('Type.Any', schema, messageOpt(constMessage), hostRef), schema)
     }
     return typeboxWrap(
-      tbComp('Type.Literal', JSON.stringify(schema.const), schema, messageOpt(constMessage)),
+      tbComp(
+        'Type.Literal',
+        JSON.stringify(schema.const),
+        schema,
+        messageOpt(constMessage),
+        hostRef,
+      ),
       schema,
     )
   }
-  if (schema.enum) return typeboxWrap(_enum(schema), schema)
+  if (schema.enum) return typeboxWrap(_enum(schema, hostRef), schema)
   if (schema.properties) {
     return readonly(typeboxWrap(object(schema, rootName, isTypebox, options), schema))
   }
 
   const types = normalizeTypes(schema.type)
-  if (types.includes('string')) return typeboxWrap(string(schema), schema)
+  if (types.includes('string')) return typeboxWrap(string(schema, hostRef), schema)
   if (types.includes('number')) {
-    const base = number(schema)
+    const base = number(schema, hostRef)
     if (isStringWireParam) {
-      const wire = wireString(schema)
+      const wire = wireString(schema, hostRef)
       return typeboxWrap(
         `Codec(${wire}).Decode((value)=>Number(value)).Encode((value)=>String(value))`,
         schema,
@@ -234,9 +298,9 @@ export function typebox(
     return typeboxWrap(base, schema)
   }
   if (types.includes('integer')) {
-    const base = integer(schema)
+    const base = integer(schema, hostRef)
     if (isStringWireParam) {
-      const wire = wireString(schema)
+      const wire = wireString(schema, hostRef)
       return typeboxWrap(
         `Codec(${wire}).Decode((value)=>Number.parseInt(value,10)).Encode((value)=>String(value))`,
         schema,
@@ -246,22 +310,22 @@ export function typebox(
   }
   if (types.includes('boolean')) {
     if (isStringWireParam) {
-      const defaultOpt = typeboxDefaultOpt(schema, true)
+      const unionOpts = [...typeboxRefOpt(hostRef), ...typeboxDefaultOpt(schema, true)]
       const union =
-        defaultOpt.length > 0
-          ? `Type.Union([Type.Literal('true'),Type.Literal('false')],{${defaultOpt.join(',')}})`
+        unionOpts.length > 0
+          ? `Type.Union([Type.Literal('true'),Type.Literal('false')],{${unionOpts.join(',')}})`
           : `Type.Union([Type.Literal('true'),Type.Literal('false')])`
       return typeboxWrap(
         `Codec(${union}).Decode((value)=>value==='true').Encode((value)=>value?'true':'false')`,
         schema,
       )
     }
-    return typeboxWrap(tbPrim('Type.Boolean', schema), schema)
+    return typeboxWrap(tbPrim('Type.Boolean', schema, [], hostRef), schema)
   }
 
   if (types.includes('array')) {
     if (schema.prefixItems?.length) {
-      const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, options))
+      const items = schema.prefixItems.map((s) => typebox(s, rootName, isTypebox, childOptions))
       const prefixItemsMessage = schema['x-prefixItems-message']
       const tupleOpts = prefixItemsMessage
         ? [
@@ -269,10 +333,15 @@ export function typebox(
           ]
         : []
       return readonly(
-        typeboxWrap(tbComp('Type.Tuple', `[${items.join(',')}]`, schema, tupleOpts), schema),
+        typeboxWrap(
+          tbComp('Type.Tuple', `[${items.join(',')}]`, schema, tupleOpts, hostRef),
+          schema,
+        ),
       )
     }
-    const items = schema.items ? typebox(schema.items, rootName, isTypebox, options) : 'Type.Any()'
+    const items = schema.items
+      ? typebox(schema.items, rootName, isTypebox, childOptions)
+      : 'Type.Any()'
     // v3.0: per-keyword array messages aggregated into ajv-errors errorMessage.
     const arrayErrorMessageEntries: string[] = []
     const arrayErrorMessage = schema['x-error-message']
@@ -326,7 +395,7 @@ export function typebox(
         ? `errorMessage:{${arrayErrorMessageEntries.join(',')}}`
         : undefined,
     ].filter((v) => v !== undefined)
-    return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts), schema))
+    return readonly(typeboxWrap(tbComp('Type.Array', items, schema, arrayOpts, hostRef), schema))
   }
 
   if (types.includes('object')) {
@@ -336,15 +405,15 @@ export function typebox(
     // TypeBox v1 dropped `Type.Date()` — it models JSON Schema only, and
     // `Date` has no JSON Schema type. The portable equivalent is a `Codec`
     // over an ISO string, which is also what the query/path wire form uses.
-    const wire = wireString(schema)
+    const wire = wireString(schema, hostRef)
     return typeboxWrap(
       `Codec(${wire}).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString())`,
       schema,
     )
   }
   if (types.length === 1 && types[0] === 'null') {
-    return typeboxWrap(tbPrim('Type.Null', schema), schema)
+    return typeboxWrap(tbPrim('Type.Null', schema, [], hostRef), schema)
   }
 
-  return typeboxWrap(tbPrim('Type.Any', schema), schema)
+  return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
 }

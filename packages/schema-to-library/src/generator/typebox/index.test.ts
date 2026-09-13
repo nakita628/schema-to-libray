@@ -658,6 +658,122 @@ export type Null = Static<typeof Null>`
     })
   })
 
+  describe('ref option', () => {
+    it('puts ref on Type.String options', () => {
+      expect(schemaToTypebox({ type: 'string' }, { exportType: false, ref: 'X' })).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Schema = Type.String({ref:"X"})`,
+      )
+    })
+
+    it('puts ref first on Type.String when other options are present', () => {
+      expect(
+        schemaToTypebox(
+          { title: 'Name', type: 'string', minLength: 1 },
+          { exportType: false, ref: 'Name' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Name = Type.String({ref:"Name",minLength:1})`,
+      )
+    })
+
+    it('puts ref in the same Type.Object options as description', () => {
+      expect(
+        schemaToTypebox(
+          { type: 'object', properties: { a: { type: 'string' } }, description: 'd' },
+          { exportType: false, ref: 'X' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Schema = Type.Object({a:Type.Optional(Type.String())},{ref:"X",description:"d"})`,
+      )
+    })
+
+    it('keeps ref on the inner Type.Object, not on Type.Readonly from x-readonly', () => {
+      expect(
+        schemaToTypebox(
+          { type: 'object', properties: { a: { type: 'string' } }, 'x-readonly': true },
+          { exportType: false, openapi: true, ref: 'X' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Schema = Type.Readonly(Type.Object({a:Type.Optional(Type.String())},{ref:"X"}))`,
+      )
+    })
+
+    it('keeps ref on the inner Type.Object, not on Type.Readonly from the readonly option', () => {
+      expect(
+        schemaToTypebox(
+          {
+            title: 'Pet',
+            type: 'object',
+            properties: { name: { type: 'string' } },
+            required: ['name'],
+          },
+          { exportType: false, readonly: true, ref: 'Pet' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Pet = Type.Readonly(Type.Object({name:Type.String()},{ref:"Pet"}))`,
+      )
+    })
+
+    it('puts ref on the Type.String inside Codec, not on Codec', () => {
+      expect(
+        schemaToTypebox(
+          { title: 'Name', type: 'string', 'x-trim': true },
+          { exportType: false, ref: 'Name' },
+        ),
+      ).toBe(
+        `import { Codec, Type, type Static } from 'typebox'\n\nexport const Name = Codec(Type.String({ref:"Name"})).Decode((value: string) => value.trim()).Encode((value: string) => value)`,
+      )
+    })
+
+    it('puts ref on the Type.String inside a date Codec', () => {
+      expect(schemaToTypebox({ title: 'D', type: 'date' }, { exportType: false, ref: 'D' })).toBe(
+        `import { Codec, Type, type Static } from 'typebox'\n\nexport const D = Codec(Type.String({ref:"D"})).Decode((value)=>new Date(value)).Encode((value)=>value.toISOString())`,
+      )
+    })
+
+    it('puts ref as the third argument of Type.Cyclic, not on members', () => {
+      expect(
+        schemaToTypebox(
+          {
+            title: 'Node',
+            type: 'object',
+            properties: { next: { $ref: '#' } },
+          },
+          { exportType: false, ref: 'Node' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Node = Type.Cyclic({\nNode: Type.Object({next:Type.Optional(Type.Ref('Node'))})\n},'Node',{ref:"Node"})`,
+      )
+    })
+
+    it('does not put the host ref on named $defs members', () => {
+      expect(
+        schemaToTypebox(
+          {
+            title: 'User',
+            type: 'object',
+            $defs: {
+              Address: {
+                type: 'object',
+                properties: { street: { type: 'string' } },
+              },
+            },
+            properties: { address: { $ref: '#/$defs/Address' } },
+          },
+          { exportType: false, ref: 'User' },
+        ),
+      ).toBe(
+        `import { Type, type Static } from 'typebox'\n\nconst Address = Type.Object({street:Type.Optional(Type.String())})\n\nexport const User = Type.Object({address:Type.Optional(Address)},{ref:"User"})`,
+      )
+    })
+
+    it("omitting ref is today's output", () => {
+      expect(schemaToTypebox({ type: 'string' }, { exportType: false })).toBe(
+        `import { Type, type Static } from 'typebox'\n\nexport const Schema = Type.String()`,
+      )
+    })
+  })
+
   describe('self-reference and complex schemas', () => {
     it('should handle empty schema', () => {
       const result = schemaToTypebox({}, { exportType: false })

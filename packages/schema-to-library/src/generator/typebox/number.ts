@@ -1,7 +1,7 @@
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
-export function number(schema: JSONSchema) {
+export function number(schema: JSONSchema, ref?: string) {
   const errorMessage = schema['x-error-message']
   const requiredMessage = schema['x-required-message']
   const minMessage = schema['x-minimum-message']
@@ -34,6 +34,7 @@ export function number(schema: JSONSchema) {
         }}`
 
   const opts = [
+    ...typeboxRefOpt(ref),
     schema.minimum !== undefined ? `minimum:${schema.minimum}` : undefined,
     typeof schema.exclusiveMinimum === 'number'
       ? `exclusiveMinimum:${schema.exclusiveMinimum}`

@@ -2,15 +2,27 @@ import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault, makeSafeKey } from '../utils/index.js'
 
 /**
+ * Host `$ref` name for OpenAPI component registration (hono-openapi
+ * `components.schemas`). TypeBox stores this on the schema at construction
+ * time — there is no post-construction `.meta()` — so it must land in the
+ * factory options object. Empty when the caller omitted `ref`.
+ */
+export function typeboxRefOpt(ref?: string): readonly string[] {
+  return ref === undefined ? [] : [`ref:${JSON.stringify(ref)}`]
+}
+
+/**
  * Returns OpenAPI/JSON Schema metadata fields as a list of TypeBox option
  * entries (`'key:value'` strings) ready to be joined into a `{...}` literal.
  *
  * Used by TypeBox type-level generators to embed metadata directly into the
- * `Type.X(payload, options)` constructor call.
+ * `Type.X(payload, options)` constructor call. A host `ref` is emitted first
+ * when supplied, in the same object as description / examples / deprecated.
  */
-export function typeboxMetaOpts(schema: JSONSchema): readonly string[] {
+export function typeboxMetaOpts(schema: JSONSchema, ref?: string): readonly string[] {
   const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
   return [
+    ...typeboxRefOpt(ref),
     schema.description !== undefined
       ? `description:${JSON.stringify(schema.description)}`
       : undefined,

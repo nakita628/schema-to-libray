@@ -1,7 +1,7 @@
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
-import { typebox } from './typebox.js'
+import { nestedTypeboxOptions, typebox } from './typebox.js'
 import type { TypeboxOptions } from './typebox.js'
 
 /**
@@ -24,15 +24,18 @@ export function object(
   isTypebox: boolean,
   options?: TypeboxOptions,
 ) {
+  const childOptions = nestedTypeboxOptions(options)
+
   if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
     return typebox(schema, rootName, isTypebox, options)
   }
 
   // ── additionalProperties: schema → Type.Record(...) ──
   if (typeof schema.additionalProperties === 'object') {
-    const value = typebox(schema.additionalProperties, rootName, isTypebox, options)
+    const value = typebox(schema.additionalProperties, rootName, isTypebox, childOptions)
     const recordOpts = [
-      ...buildAdvancedOpts(schema, rootName, isTypebox, options),
+      ...typeboxRefOpt(options?.ref),
+      ...buildAdvancedOpts(schema, rootName, isTypebox, childOptions),
       ...typeboxMetaOpts(schema),
       ...typeboxDefaultOpt(schema),
     ].filter((v) => v !== undefined)
@@ -42,9 +45,17 @@ export function object(
   }
 
   if (!schema.properties) {
-    if (schema.additionalProperties === true) return 'Type.Any()'
+    if (schema.additionalProperties === true) {
+      const anyOpts = [
+        ...typeboxRefOpt(options?.ref),
+        ...typeboxMetaOpts(schema),
+        ...typeboxDefaultOpt(schema),
+      ]
+      return anyOpts.length === 0 ? 'Type.Any()' : `Type.Any({${anyOpts.join(',')}})`
+    }
     const emptyOpts = [
-      ...buildAdvancedOpts(schema, rootName, isTypebox, options),
+      ...typeboxRefOpt(options?.ref),
+      ...buildAdvancedOpts(schema, rootName, isTypebox, childOptions),
       ...typeboxMetaOpts(schema),
       ...typeboxDefaultOpt(schema),
     ].filter((v) => v !== undefined)
@@ -54,7 +65,7 @@ export function object(
   const required = Array.isArray(schema.required) ? schema.required : []
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
-      const parsed = typebox(propSchema, rootName, isTypebox, options)
+      const parsed = typebox(propSchema, rootName, isTypebox, childOptions)
       if (!parsed) return null
       const isRequired = required.includes(key)
       const safeKey = makeSafeKey(key)
@@ -129,8 +140,9 @@ export function object(
       ? `errorMessage:{${objectErrorMessageEntries.join(',')}}`
       : undefined
   const optParts = [
+    ...typeboxRefOpt(options?.ref),
     schema.additionalProperties === false ? 'additionalProperties:false' : undefined,
-    ...buildAdvancedOpts(schema, rootName, isTypebox, options),
+    ...buildAdvancedOpts(schema, rootName, isTypebox, childOptions),
     objectErrorMessageField,
     ...typeboxMetaOpts(schema),
     ...typeboxDefaultOpt(schema),

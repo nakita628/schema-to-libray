@@ -1,4 +1,4 @@
-import { typeboxDefaultOpt, typeboxMetaOpts } from '../../helper/meta.js'
+import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 function lit(v: unknown): string {
@@ -12,11 +12,11 @@ function isComposite(v: unknown): boolean {
   return v !== null && typeof v === 'object'
 }
 
-export function _enum(schema: JSONSchema) {
+export function _enum(schema: JSONSchema, ref?: string) {
   // v3.0: x-enum-message overrides x-error-message for enum mismatch.
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
-  const metaOpts = [...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
+  const metaOpts = [...typeboxRefOpt(ref), ...typeboxMetaOpts(schema), ...typeboxDefaultOpt(schema)]
   const optsParts = [
     errorMessage ? `errorMessage:${JSON.stringify(errorMessage)}` : undefined,
     ...metaOpts,
