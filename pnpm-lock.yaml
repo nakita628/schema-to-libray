@@ -232,7 +232,7 @@ importers:
     dependencies:
       '@apidevtools/json-schema-ref-parser':
         specifier: ^16.0.1
-        version: 16.0.1(@types/json-schema@7.0.15)
+        version: 16.0.2(@types/json-schema@7.0.15)
       '@effect/platform-node':
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)
@@ -249,8 +249,8 @@ importers:
 
 packages:
 
-  '@apidevtools/json-schema-ref-parser@16.0.1':
-    resolution: {integrity: sha512-JmQn9gXVZ83h3IgC+xXVmR4CXWbX1TTyQBj+q4d8BeJqDWSSD/Q3GbkrjhAbXCZxtjnlljOjyy0vio14vQjJtg==}
+  '@apidevtools/json-schema-ref-parser@16.0.2':
+    resolution: {integrity: sha512-oCwWUyRdMtt/hnp6ONPudFZzF7tSqiHy46lLx5VsnsLTacs8TSU558VPAiOueFJ8WddCH30PINWDA8ByxhGHmQ==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
       '@types/json-schema': ^7.0.15
@@ -3151,6 +3151,10 @@ packages:
     resolution: {integrity: sha512-YQ3WlbqjYMmNpdvDH64jAgLjxuAR9+649calDWhbshYaeQGO2bR4nI94ORJmwI3J9YhoKQnpyGOK+0zlWS5N5Q==}
     engines: {node: '>=22.19.0'}
 
+  undici@8.10.2:
+    resolution: {integrity: sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ==}
+    engines: {node: '>=22.19.0'}
+
   unicorn-magic@0.1.0:
     resolution: {integrity: sha512-lRfVq8fE8gz6QMBuDM6a+LO3IAzTi05H6gCVaUpir2E1Rwpo4ZUog45KpNXKC/Mn3Yb9UDuHumeFTo9iV/D9FQ==}
     engines: {node: '>=18'}
@@ -3345,11 +3349,11 @@ packages:
 
 snapshots:
 
-  '@apidevtools/json-schema-ref-parser@16.0.1(@types/json-schema@7.0.15)':
+  '@apidevtools/json-schema-ref-parser@16.0.2(@types/json-schema@7.0.15)':
     dependencies:
       '@types/json-schema': 7.0.15
       js-yaml: 5.4.1
-      undici: 8.10.1
+      undici: 8.10.2
 
   '@ark/schema@0.56.2':
     dependencies:
@@ -6064,6 +6068,8 @@ snapshots:
   undici-types@8.3.0: {}
 
   undici@8.10.1: {}
+
+  undici@8.10.2: {}
 
   unicorn-magic@0.1.0: {}
 
