@@ -104,7 +104,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^16.0.1",
-    "@effect/platform-node": "4.0.0-rc.112",
+    "@effect/platform-node": "4.0.0-rc.116",
     "effect": "4.0.0-rc.112",
     "oxfmt": "^0.68.0"
   },
