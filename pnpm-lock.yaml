@@ -235,7 +235,7 @@ importers:
     dependencies:
       arktype:
         specifier: ^2.2.3
-        version: 2.2.3
+        version: 2.2.5
       effect:
         specifier: ^4.0.0-rc.112
         version: 4.0.0-rc.116
@@ -330,7 +330,7 @@ importers:
         version: 0.34.52
       arktype:
         specifier: ^2.2.3
-        version: 2.2.3
+        version: 2.2.5
       effect:
         specifier: ^4.0.0-rc.112
         version: 4.0.0-rc.116
@@ -413,11 +413,11 @@ packages:
     peerDependencies:
       '@types/json-schema': ^7.0.15
 
-  '@ark/schema@0.56.2':
-    resolution: {integrity: sha512-Qx4D2JFbBWpntiHZaTv7bGG4H/M2rigiknezKg/WVyDSaLdE4YCcWAOoFB7pjjDqHbbV2OqRfntm1nnXvwMexg==}
+  '@ark/schema@0.56.4':
+    resolution: {integrity: sha512-nd4OqaWdKZJeGF5zNmZysDQO7NyyJ1ycl4S7i16Hj1VxqL+x72Z66lOn7ErpsoMUZtCtslAMHMjqJhuQSxciyw==}
 
-  '@ark/util@0.56.2':
-    resolution: {integrity: sha512-9kU2sUE38FZEGG7l3hamYMBieLYEJh2L1mrYD2eXpT+78EnQSV1bhjxJhnxGBMSTbtwpBSDNSK+K60WvaI/DTQ==}
+  '@ark/util@0.56.4':
+    resolution: {integrity: sha512-KKqwGSia44cvuuDY70jGfbiUdG2E8F2cM4npdqvJ22S5a0LknlwG6nIrfQG1nF8fzxpzP30098wp0a8ASs0prQ==}
 
   '@azu/format-text@1.0.2':
     resolution: {integrity: sha512-Swi4N7Edy1Eqq82GxgEECXSSLyn6GOb5htRFPzBDdUkECGXtlf12ynO5oJSpWKPwCaUssOu7NfhDcCWpIC6Ywg==}
@@ -2061,11 +2061,11 @@ packages:
   aria-query@5.3.0:
     resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
 
-  arkregex@0.0.8:
-    resolution: {integrity: sha512-PJcx6G1kQTgLKPUbeYlYecDRaKq15AMSGVajlKFYWlPeJRQL+j3dKE6tyMs40HZ99djS1l9Vhl3ezAHy9JBIqQ==}
+  arkregex@0.0.10:
+    resolution: {integrity: sha512-+iDWBYBjH8w7wqEv8VY4loBwRldFxX84KNwKbobH3FJPay/18XI9sTesmXYpKyIrgbC5z/s16+vSJYHCC9FEvQ==}
 
-  arktype@2.2.3:
-    resolution: {integrity: sha512-7W+0RLTUNJiBFIIZXwOQxSR8Z273IAd6IvqBeG9+gHnQKFsIx2C0iOtGTmMrPnlX4qLXyc5+ll7A0BIj9WrbTg==}
+  arktype@2.2.5:
+    resolution: {integrity: sha512-c9oqY1eBab2LceqvpWX50xae2HB8P/nJPxRhuhPVf5lEDi3WQpf7WQflJFMsyCiA3NGh6zENOlse30gWBzlwDg==}
 
   array-timsort@1.0.3:
     resolution: {integrity: sha512-/+3GRL7dDAGEfM6TseQk/U+mi18TU2Ms9I3UlLdUMhz2hbvGNTKdj9xniwXfUqgYhHxRx0+8UnKkvlNwVU+cWQ==}
@@ -3526,11 +3526,11 @@ snapshots:
       js-yaml: 5.4.2
       undici: 8.10.2
 
-  '@ark/schema@0.56.2':
+  '@ark/schema@0.56.4':
     dependencies:
-      '@ark/util': 0.56.2
+      '@ark/util': 0.56.4
 
-  '@ark/util@0.56.2': {}
+  '@ark/util@0.56.4': {}
 
   '@azu/format-text@1.0.2': {}
 
@@ -4808,15 +4808,15 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  arkregex@0.0.8:
+  arkregex@0.0.10:
     dependencies:
-      '@ark/util': 0.56.2
+      '@ark/util': 0.56.4
 
-  arktype@2.2.3:
+  arktype@2.2.5:
     dependencies:
-      '@ark/schema': 0.56.2
-      '@ark/util': 0.56.2
-      arkregex: 0.0.8
+      '@ark/schema': 0.56.4
+      '@ark/util': 0.56.4
+      arkregex: 0.0.10
 
   array-timsort@1.0.3: {}
 
