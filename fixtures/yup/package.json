@@ -14,7 +14,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
-    "tsx": "4.23.13",
+    "tsx": "4.23.15",
     "typescript": "7.0.2"
   }
 }
