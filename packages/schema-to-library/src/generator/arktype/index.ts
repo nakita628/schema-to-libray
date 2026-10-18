@@ -1,69 +1,50 @@
+import { UNSAFE_GENERATED_MARKER } from '../../constants/index.js'
 import {
+  emitOptionsOf,
   findCodeExtensionKeysInSchema,
-  resolveSchemaDependenciesFromSchema,
-  UNSAFE_GENERATED_MARKER,
+  missingDefinitionComment,
+  planDocument,
+  rootNameOf,
+  schemaNamer,
 } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import type { GenerateOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { issueMessageExpression } from '../../utils/index.js'
 import { arktype } from './arktype.js'
 
-export function schemaToArktype(
-  schema: JSONSchema,
-  options?: {
-    exportType?: boolean
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
-): string {
-  const {
-    exportType = true,
-    openapi = false,
-    readonly: readonlyMode = false,
-    unsafeCodeExtensions = false,
-    paramIn,
-  } = options ?? {}
-  const genOptions = {
-    openapi,
-    readonly: readonlyMode,
-    unsafeCodeExtensions,
-    ...(paramIn !== undefined && { paramIn }),
-  }
+/**
+ * A whole JSON Schema document as an ArkType module. A document with definitions becomes
+ * a `scope({...}).export()` so members can name one another; one without is a bare
+ * `type(...)` export.
+ */
+export function schemaToArktype(schema: JSONSchema, options?: GenerateOptions): string {
+  const exportType = options?.exportType ?? true
+  const emitOptions = emitOptionsOf(options)
   const codeExtensionsPresent =
-    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
+    emitOptions.unsafeCodeExtensions === true && findCodeExtensionKeysInSchema(schema).length > 0
   const prefix = codeExtensionsPresent ? [UNSAFE_GENERATED_MARKER] : []
-  const toName = openapi ? toIdentifierPascalCase : toPascalCase
-  const rootName = schema.title ? toName(schema.title) : 'Schema'
+  const toName = schemaNamer(emitOptions.openapi)
+  const plan = planDocument(schema, rootNameOf(schema, toName))
+  const { rootName } = plan
 
-  const definitions: { [k: string]: JSONSchema } = {
-    ...schema.definitions,
-    ...schema.$defs,
-  }
-
-  const hasDefinitions = Object.keys(definitions).length > 0
-
-  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
-
-  const rootInDefs = definitions[rootName] !== undefined
-
-  if (hasDefinitions) {
-    const defEntries = orderedSchemas.map((name) => {
-      const def = definitions[name]
-      if (!def) return `// ⚠️ missing definition for ${name}`
+  if (plan.hasDefinitions) {
+    const defEntries = plan.orderedNames.map((name) => {
+      const def = plan.definitions[name]
+      if (!def) return missingDefinitionComment(name)
       const pc = toName(name)
-      return `${pc}:${arktype(def, pc, true, genOptions)}`
+      return `${pc}:${arktype(def, pc, true, emitOptions)}`
     })
 
-    const scopeEntries = rootInDefs
-      ? defEntries
-      : [...defEntries, `${rootName}:${arktype(schema, rootName, true, genOptions)}`]
+    const scopeEntries =
+      plan.rootDefinition === undefined
+        ? [...defEntries, `${rootName}:${arktype(schema, rootName, true, emitOptions)}`]
+        : defEntries
 
     // Entries may call `type(...)` — `arktypeWrap` reaches for it whenever a
     // bare definition needs a method such as `.describe()` — so the import has
     // to carry it alongside `scope`.
     const scopeBody = `const types = scope({${scopeEntries.join(',')}}).export()`
-    const usesType = /\btype\(/.test(scopeBody)
+    const usesType = /\btype\(/u.test(scopeBody)
 
     return [
       ...prefix,
@@ -76,7 +57,7 @@ export function schemaToArktype(
       .join('\n\n')
   }
 
-  const rootSchema = arktype(schema, rootName, false, genOptions)
+  const rootSchema = arktype(schema, rootName, false, emitOptions)
 
   const rootExpr = rootSchema.startsWith('type(')
     ? rootSchema
@@ -90,8 +71,7 @@ export function schemaToArktype(
   const allOfMessage = schema.allOf && schema['x-allOf-message']
   if (allOfMessage) {
     const innerName = `${rootName}Inner`
-    const isArrow = /^\s*\(.*?\)\s*=>/.test(allOfMessage)
-    const msgExpr = isArrow ? `(${allOfMessage})(issue)` : JSON.stringify(allOfMessage)
+    const msgExpr = issueMessageExpression(allOfMessage)
     const wrapped = `type('unknown').narrow((data, ctx) => {const result = ${innerName}(data); if (result instanceof type.errors) {for (const issue of result) ctx.reject({ message: ${msgExpr}, path: issue.path }); return false;} return true;})`
     return [
       ...prefix,

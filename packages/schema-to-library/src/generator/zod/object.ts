@@ -1,5 +1,7 @@
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { makeSafeKey, zodError } from '../../utils/index.js'
+import { hasCombinator, hasConditional } from '../../guard/index.js'
+import type { EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { issueMessageExpression, makeSafeKey, zodError } from '../../utils/index.js'
 import { zod } from './zod.js'
 
 /**
@@ -16,11 +18,9 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isZod: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: EmitOptions,
 ) {
-  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
-    return zod(schema, rootName, isZod, options)
-  }
+  if (hasCombinator(schema)) return zod(schema, rootName, isZod, options)
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
@@ -67,8 +67,7 @@ export function object(
     return 'z.object({})'
   }
 
-  const conditionalKeysReferenced =
-    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
+  const conditionalKeysReferenced = hasConditional(schema)
   const objectType =
     schema.additionalProperties === true
       ? 'looseObject'
@@ -77,13 +76,13 @@ export function object(
         : conditionalKeysReferenced
           ? 'looseObject'
           : 'object'
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = zod(propSchema, rootName, isZod, options)
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
-      return `${safeKey}:${parsed}${required.includes(key) ? '' : '.exactOptional()'}`
+      return `${safeKey}:${parsed}${required.has(key) ? '' : '.exactOptional()'}`
     })
     .filter((v) => v !== null)
   // x-additionalProperties-message / x-unevaluatedProperties-message both
@@ -102,8 +101,7 @@ export function object(
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {
-        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
-        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        const msgExpr = issueMessageExpression(propsMessage)
         return `(()=>{const Schema=${rawBase};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
       })()
     : rawBase

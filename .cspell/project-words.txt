@@ -6,6 +6,7 @@
 ajv
 arktype
 cidrv
+ksuid
 elysia
 nonpositive
 picklist

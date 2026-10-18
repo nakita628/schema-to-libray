@@ -5,7 +5,7 @@ import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
 
 import { mkdir, writeFile } from '../file/index.js'
 import { fmt } from '../format/index.js'
-import { isRecord } from '../helper/value.js'
+import { isRecord } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
 import { parseSchemaFile } from '../parser/index.js'
 

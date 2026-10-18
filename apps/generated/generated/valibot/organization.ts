@@ -25,7 +25,7 @@ const Member: v.GenericSchema<unknown, _Member> = v.pipe(
       v.description('The role of the user in the organization.'),
     ),
     joinedAt: v.pipe(
-      v.pipe(v.string(), v.isoDateTime()),
+      v.pipe(v.string(), v.isoTimestamp()),
       v.description('The timestamp when the user joined the organization.'),
     ),
     invitedBy: v.optional(

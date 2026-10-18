@@ -1,3 +1,4 @@
+import { hasCombinator } from '../../guard/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
@@ -26,9 +27,7 @@ export function object(
 ) {
   const childOptions = nestedTypeboxOptions(options)
 
-  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
-    return typebox(schema, rootName, isTypebox, options)
-  }
+  if (hasCombinator(schema)) return typebox(schema, rootName, isTypebox, options)
 
   // ── additionalProperties: schema → Type.Record(...) ──
   if (typeof schema.additionalProperties === 'object') {
@@ -62,12 +61,12 @@ export function object(
     return emptyOpts.length === 0 ? 'Type.Object({})' : `Type.Object({},{${emptyOpts.join(',')}})`
   }
 
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = typebox(propSchema, rootName, isTypebox, childOptions)
       if (!parsed) return null
-      const isRequired = required.includes(key)
+      const isRequired = required.has(key)
       const safeKey = makeSafeKey(key)
       return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:Type.Optional(${parsed})`
     })

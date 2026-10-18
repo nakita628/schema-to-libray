@@ -1,3 +1,4 @@
+import { hasType, isComposite, isPlainObject } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, zodError } from '../../utils/index.js'
 
@@ -18,20 +19,6 @@ import { makeSafeKey, zodError } from '../../utils/index.js'
  * come from `x-error-message`; finer-grained business rules belong in
  * handler code, not the schema.
  */
-/**
- * A non-array object. Distinct from {@link isRecord}: an enum member that is an array
- * needs `z.tuple`, and one that is a plain object needs `z.strictObject`, so the two are
- * told apart here rather than lumped together.
- */
-function isPlainObject(value: unknown): value is { readonly [k: string]: unknown } {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-/** An enum member that needs a structural matcher rather than `z.literal`. */
-function isComposite(value: unknown): boolean {
-  return Array.isArray(value) || isPlainObject(value)
-}
-
 function lit(v: unknown): string {
   if (v === null) return 'null'
   if (typeof v === 'string') return `'${v.replaceAll("'", "\\'")}'`
@@ -41,8 +28,6 @@ function lit(v: unknown): string {
 
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'z.any()'
-  const ht = (t: string): boolean =>
-    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x) => x === t))
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   // Zod v4 `z.enum` emits a single issue code (`invalid_value`) for both
   // type and value mismatches, so the override is a clearer name for the
@@ -76,12 +61,12 @@ export function _enum(schema: JSONSchema) {
   // Outer tuple — used when a single tuple is the entire schema output.
   const outerTuple = (arr: readonly unknown[]): string =>
     `z.tuple([${arr.map(innerLit).join(',')}]${errorArg})`
-  if (ht('number') || ht('integer') || ht('boolean')) {
+  if (hasType(schema, 'number') || hasType(schema, 'integer') || hasType(schema, 'boolean')) {
     return schema.enum.length > 1
       ? `z.union([${schema.enum.map(innerLit).join(',')}]${errorArg})`
       : outerLit(schema.enum[0])
   }
-  if (ht('array')) {
+  if (hasType(schema, 'array')) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
       return outerTuple(schema.enum[0])
     }

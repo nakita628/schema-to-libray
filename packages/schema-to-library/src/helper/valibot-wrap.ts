@@ -1,8 +1,10 @@
+import { isNullable } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
 import { readCodeExtension } from './code-extensions.js'
 import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
+import { examplesOf } from './schema.js'
 import { jsLiteral } from './value.js'
 
 /**
@@ -11,15 +13,11 @@ import { jsLiteral } from './value.js'
  * (`v.optional(v.nullable(x), null)`) — nesting it inside `v.nullable` is a
  * type error. Non-null defaults keep the established nullable-outer nesting.
  */
-function wrapDefaultNullable(
-  inner: string,
-  isNullable: boolean,
-  defaultLiteral: string | undefined,
-) {
-  if (defaultLiteral === 'null' && isNullable) return `v.optional(v.nullable(${inner}),null)`
+function wrapDefaultNullable(inner: string, nullable: boolean, defaultLiteral: string | undefined) {
+  if (defaultLiteral === 'null' && nullable) return `v.optional(v.nullable(${inner}),null)`
   const withDefault =
     defaultLiteral !== undefined ? `v.optional(${inner},${defaultLiteral})` : inner
-  return isNullable ? `v.nullable(${withDefault})` : withDefault
+  return nullable ? `v.nullable(${withDefault})` : withDefault
 }
 
 /**
@@ -41,9 +39,6 @@ export function valibotWrap(
   schema: JSONSchema,
   options?: CodeExtensionOptions & { readonly stringWire?: boolean },
 ): string {
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
   // For a string-wire param (`query` / `path`), `valibotStr` is a coercion pipe
@@ -55,9 +50,9 @@ export function valibotWrap(
     defaultResult?.keep === true
       ? jsLiteral(options?.stringWire === true ? String(defaultResult.value) : defaultResult.value)
       : undefined
-  const withNullable = wrapDefaultNullable(valibotStr, isNullable, defaultLiteral)
+  const withNullable = wrapDefaultNullable(valibotStr, isNullable(schema), defaultLiteral)
 
-  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = examplesOf(schema)
   const actions: string[] = []
   if (schema.description !== undefined) {
     actions.push(`v.description(${JSON.stringify(schema.description)})`)

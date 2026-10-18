@@ -1,5 +1,6 @@
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import type { GenerateOptions } from '../../helper/index.js'
+import { rootNameOf, schemaNamer } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { yup } from './yup.js'
 
 /**
@@ -14,19 +15,9 @@ import { yup } from './yup.js'
  * @param options.openapi - Enable OpenAPI component-aware naming (default: false)
  * @returns Generated TypeScript/Yup code string
  */
-export function schemaToYup(
-  schema: JSONSchema,
-  options?: {
-    exportType?: boolean
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
-): string {
+export function schemaToYup(schema: JSONSchema, options?: GenerateOptions): string {
   const exportType = options?.exportType ?? true
-  const toName = options?.openapi === true ? toIdentifierPascalCase : toPascalCase
-  const rootName = schema.title ? toName(schema.title) : 'Schema'
+  const rootName = rootNameOf(schema, schemaNamer(options?.openapi))
 
   return [
     `import * as yup from 'yup'`,

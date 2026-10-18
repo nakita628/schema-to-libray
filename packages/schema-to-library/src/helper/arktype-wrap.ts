@@ -1,22 +1,7 @@
+import { isArktypeDefinition, isNullable, isQuoted } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
 import { readCodeExtension } from './code-extensions.js'
 import type { CodeExtensionOptions } from './code-extensions.js'
-
-function isQuoted(s: string) {
-  return s.startsWith('"') && s.endsWith('"')
-}
-
-/**
- * A bare ArkType definition — a string, object or tuple literal — as opposed to
- * an expression that already evaluates to a `Type` and so carries methods.
- */
-export function isArktypeDefinition(s: string): boolean {
-  return (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith('{') && s.endsWith('}')) ||
-    (s.startsWith('[') && s.endsWith(']'))
-  )
-}
 
 /**
  * Options accepted by {@link arktypeWrap}.
@@ -55,11 +40,8 @@ export function arktypeWrap(
 ): string {
   const inScope = options?.scopeMode === true
   const isDefinition = isArktypeDefinition
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   // A quoted definition takes the string-union shortcut instead of `.or`.
-  const withNullable = isNullable
+  const withNullable = isNullable(schema)
     ? isQuoted(arktypeStr)
       ? `"${arktypeStr.slice(1, -1)} | null"`
       : inScope && isDefinition(arktypeStr)

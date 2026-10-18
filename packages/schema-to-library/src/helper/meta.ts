@@ -1,5 +1,6 @@
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault, makeSafeKey } from '../utils/index.js'
+import { examplesOf } from './schema.js'
 
 /**
  * Host `$ref` name for OpenAPI component registration (hono-openapi
@@ -20,7 +21,7 @@ export function typeboxRefOpt(ref?: string): readonly string[] {
  * when supplied, in the same object as description / examples / deprecated.
  */
 export function typeboxMetaOpts(schema: JSONSchema, ref?: string): readonly string[] {
-  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = examplesOf(schema)
   return [
     ...typeboxRefOpt(ref),
     schema.description !== undefined

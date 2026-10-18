@@ -1,3 +1,4 @@
+import { hasType } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
 
@@ -26,8 +27,6 @@ function lit(v: unknown): string {
  */
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'Schema.Unknown'
-  const ht = (t: string): boolean =>
-    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
 
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   const enumMessage = schema['x-enum-message']
@@ -40,10 +39,10 @@ export function _enum(schema: JSONSchema) {
     values.length > 1
       ? `Schema.Literals([${values.map(lit).join(',')}])`
       : `Schema.Literal(${lit(values[0])})`
-  if (ht('number') || ht('integer') || ht('boolean')) {
+  if (hasType(schema, 'number') || hasType(schema, 'integer') || hasType(schema, 'boolean')) {
     return annotate(literals(schema.enum))
   }
-  if (ht('array')) {
+  if (hasType(schema, 'array')) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
       return annotate(tuple(schema.enum[0]))
     }

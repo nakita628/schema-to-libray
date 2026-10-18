@@ -1,37 +1,31 @@
+import { ANCHOR_REF_PATTERN, DEFINITION_POINTER_PATTERN } from '../constants/index.js'
+import { isRootRef } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
-import { isRecord } from './value.js'
+import { collectDefinitions } from './schema.js'
+import { walkSchema } from './walk.js'
 
 /**
- * Collect the local definition names a schema refers to, following every
- * `$ref` form the generators understand (`#/definitions/X`, `#/$defs/X` and
- * the bare `#X` shorthand). Nested `definitions`/`$defs` are not traversed:
- * only references reachable from the schema body count as edges.
+ * The definition a local `$ref` names, in any form the generators understand:
+ * `#/definitions/X`, `#/$defs/X` and the bare `#X` shorthand. `undefined` for the
+ * whole-document reference and for a pointer into a sub-schema.
+ */
+export function localDefinitionName(ref: string): string | undefined {
+  return (
+    DEFINITION_POINTER_PATTERN.exec(ref)?.groups?.name ?? ANCHOR_REF_PATTERN.exec(ref)?.groups?.name
+  )
+}
+
+/**
+ * Collect the local definition names a schema refers to. Nested `definitions`/`$defs`
+ * are not traversed: only references reachable from the schema body count as edges.
  */
 function collectLocalRefs(schema: JSONSchema): readonly string[] {
   const refs = new Set<string>()
-  const stack: unknown[] = [schema]
-
-  while (stack.length > 0) {
-    const node = stack.pop()
-    if (!isRecord(node)) continue
-
-    if (typeof node.$ref === 'string') {
-      const match = node.$ref.match(/^#\/(?:definitions|\$defs)\/([^/]+)$/)
-      if (match?.[1] !== undefined) refs.add(match[1])
-      const shorthand = node.$ref.match(/^#([^/]+)$/)
-      if (shorthand?.[1] !== undefined) refs.add(shorthand[1])
-    }
-
-    for (const [key, value] of Object.entries(node)) {
-      if (key === 'definitions' || key === '$defs') continue
-      if (Array.isArray(value)) {
-        for (const item of value) if (isRecord(item)) stack.push(item)
-      } else if (isRecord(value)) {
-        stack.push(value)
-      }
-    }
+  for (const node of walkSchema(schema, { skipDefinitions: true })) {
+    if (typeof node.$ref !== 'string') continue
+    const name = localDefinitionName(node.$ref)
+    if (name !== undefined) refs.add(name)
   }
-
   return [...refs]
 }
 
@@ -46,26 +40,11 @@ function collectLocalRefs(schema: JSONSchema): readonly string[] {
  */
 export function hasRootSelfReference(
   schema: JSONSchema,
-  isSelfRef: (ref: string) => boolean = (ref) => ref === '#' || ref === '',
+  isSelfRef: (ref: string) => boolean = isRootRef,
 ): boolean {
-  const stack: unknown[] = Object.entries(schema)
-    .filter(([key]) => key !== 'definitions' && key !== '$defs')
-    .map(([, value]) => value)
-
-  while (stack.length > 0) {
-    const node = stack.pop()
-    if (!isRecord(node)) continue
+  for (const node of walkSchema(schema, { skipDefinitions: true, skipRoot: true })) {
     if (typeof node.$ref === 'string' && isSelfRef(node.$ref)) return true
-    for (const [key, value] of Object.entries(node)) {
-      if (key === 'definitions' || key === '$defs') continue
-      if (Array.isArray(value)) {
-        for (const item of value) if (isRecord(item)) stack.push(item)
-      } else if (isRecord(value)) {
-        stack.push(value)
-      }
-    }
   }
-
   return false
 }
 
@@ -88,10 +67,7 @@ export function hasRootSelfReference(
  * ```
  */
 export function cyclicDefinitionNames(schema: JSONSchema): ReadonlySet<string> {
-  const definitions: { [k: string]: JSONSchema } = {
-    ...schema.definitions,
-    ...schema.$defs,
-  }
+  const definitions = collectDefinitions(schema)
 
   const edges = new Map<string, readonly string[]>()
   for (const [name, def] of Object.entries(definitions)) {

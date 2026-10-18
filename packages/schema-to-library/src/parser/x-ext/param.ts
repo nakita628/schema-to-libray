@@ -1,3 +1,5 @@
+import type { PARAM_LOCATIONS } from '../../constants/index.js'
+
 /**
  * OpenAPI parameter location.
  *
@@ -9,4 +11,4 @@
  *
  * @see https://spec.openapis.org/oas/v3.2.0.html#parameter-object
  */
-export type ParamIn = 'query' | 'path' | 'header' | 'cookie'
+export type ParamIn = (typeof PARAM_LOCATIONS)[number]

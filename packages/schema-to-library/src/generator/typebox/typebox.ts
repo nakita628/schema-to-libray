@@ -1,18 +1,17 @@
+import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
 import {
   isDeepLocalPointer,
   isDefaultOnlyMember,
+  isNullable,
   isNullTypeMember,
+  isRootRef,
   isShapelessMember,
-  typeboxWrap,
-} from '../../helper/index.js'
+  isStringWireLocation,
+} from '../../guard/index.js'
+import { itemsSchemaOf, schemaNamer, typeboxWrap } from '../../helper/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import {
-  normalizeTypes,
-  resolveOpenAPIRef,
-  toIdentifierPascalCase,
-  toPascalCase,
-} from '../../utils/index.js'
+import { normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -32,11 +31,11 @@ import { string } from './string.js'
  * do not inherit the root's name.
  */
 export type TypeboxOptions = {
-  openapi?: boolean
-  readonly?: boolean
-  paramIn?: ParamIn
-  cyclicRefs?: ReadonlySet<string>
-  ref?: string
+  readonly openapi?: boolean
+  readonly readonly?: boolean
+  readonly paramIn?: ParamIn
+  readonly cyclicRefs?: ReadonlySet<string>
+  readonly ref?: string
 }
 
 /**
@@ -110,12 +109,11 @@ function messageOpt(msg: unknown): readonly string[] {
 
 export function typebox(
   schema: JSONSchema,
-  rootName = 'Schema',
+  rootName: string = DEFAULT_ROOT_NAME,
   isTypebox = false,
   options?: TypeboxOptions,
 ): string {
-  const isStringWireParam =
-    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const isStringWireParam = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
   const readonly = (v: string) => (options?.readonly ? `Type.Readonly(${v})` : v)
   const hostRef = options?.ref
   const childOptions = nestedTypeboxOptions(options)
@@ -132,7 +130,7 @@ export function typebox(
       // A reference back to the schema being emitted is always a cycle, so it
       // always goes by name — `schemaToTypebox` puts such a schema inside a
       // `Type.Cyclic` map.
-      if (s.$ref === '#' || s.$ref === '') {
+      if (isRootRef(s.$ref)) {
         return typeboxWrap(byName(rootName, s), s)
       }
       if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
@@ -145,9 +143,8 @@ export function typebox(
           return typeboxWrap(named(resolved, s), s)
         }
       }
-      const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
-      const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
-      for (const prefix of REF_PREFIXES) {
+      const toName = schemaNamer(options?.openapi)
+      for (const prefix of DEFINITION_REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) {
           return typeboxWrap(named(toName(s.$ref.slice(prefix.length)), s), s)
         }
@@ -163,8 +160,9 @@ export function typebox(
       }
       return 'Type.Any()'
     }
-    if (schema.type === 'array' && schema.items?.$ref) {
-      return `Type.Array(${typeboxWrap(ref(schema.items), schema.items)})`
+    const items = itemsSchemaOf(schema.items)
+    if (schema.type === 'array' && items?.$ref) {
+      return `Type.Array(${typeboxWrap(ref(items), items)})`
     }
     return typeboxWrap(ref(schema), schema)
   }
@@ -202,10 +200,7 @@ export function typebox(
     if (schema.allOf.length === 0) {
       return typeboxWrap(tbPrim('Type.Any', schema, [], hostRef), schema)
     }
-    const nullable =
-      schema.nullable === true ||
-      (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullTypeMember)
+    const nullable = isNullable(schema) || schema.allOf.some(isNullTypeMember)
     const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
       .filter((s) => !isShapelessMember(s))
@@ -339,9 +334,8 @@ export function typebox(
         ),
       )
     }
-    const items = schema.items
-      ? typebox(schema.items, rootName, isTypebox, childOptions)
-      : 'Type.Any()'
+    const itemSchema = itemsSchemaOf(schema.items)
+    const items = itemSchema ? typebox(itemSchema, rootName, isTypebox, childOptions) : 'Type.Any()'
     // v3.0: per-keyword array messages aggregated into ajv-errors errorMessage.
     const arrayErrorMessageEntries: string[] = []
     const arrayErrorMessage = schema['x-error-message']

@@ -1,70 +1,50 @@
+import { DEFAULT_ROOT_NAME, UNSAFE_GENERATED_MARKER } from '../../constants/index.js'
 import {
+  emitOptionsOf,
   findCodeExtensionKeysInSchema,
   hasRootSelfReference,
-  resolveSchemaDependenciesFromSchema,
-  UNSAFE_GENERATED_MARKER,
+  planDocument,
+  renderDefinitions,
+  rootNameOf,
+  schemaNamer,
 } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import type { GenerateOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { effect } from './effect.js'
 import { type } from './type.js'
 
-export function schemaToEffect(
-  schema: JSONSchema,
-  options?: {
-    exportType?: boolean
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
-): string {
-  const {
-    exportType = true,
-    openapi = false,
-    unsafeCodeExtensions = false,
-    paramIn,
-  } = options ?? {}
-  const genOptions = {
-    openapi,
-    unsafeCodeExtensions,
-    ...(paramIn !== undefined && { paramIn }),
-  }
+/** The root name when the document has none, or when its title would shadow the import. */
+const EFFECT_ROOT_FALLBACK = `${DEFAULT_ROOT_NAME}_`
+
+/**
+ * A whole JSON Schema document as an Effect Schema module: imports, `$defs` in
+ * dependency order, the root export, and the inferred type.
+ *
+ * `options.readonly` is accepted for API symmetry and is a no-op: `Schema.Struct` and
+ * `Schema.Array` are already readonly at the type level.
+ */
+export function schemaToEffect(schema: JSONSchema, options?: GenerateOptions): string {
+  const exportType = options?.exportType ?? true
+  const emitOptions = emitOptionsOf(options)
   const codeExtensionsPresent =
-    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
-  const toName = openapi ? toIdentifierPascalCase : toPascalCase
-  const pascalTitle = schema.title ? toName(schema.title) : 'Schema_'
-  // Avoid conflict with `import { Schema } from "effect"`
-  const rootName = pascalTitle === 'Schema' ? 'Schema_' : pascalTitle
-
-  const definitions: { [k: string]: JSONSchema } = {
-    ...schema.definitions,
-    ...schema.$defs,
-  }
-
-  const hasDefinitions = Object.keys(definitions).length > 0
-  const needsTypeDef = hasDefinitions || hasRootSelfReference(schema)
-
-  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
-
-  const rootInDefs = definitions[rootName] !== undefined
-  const rootDefinition = definitions[rootName]
-
-  const nonRootDefs = rootInDefs
-    ? orderedSchemas.filter((name) => name !== rootName)
-    : orderedSchemas
+    emitOptions.unsafeCodeExtensions === true && findCodeExtensionKeysInSchema(schema).length > 0
+  const toName = schemaNamer(emitOptions.openapi)
+  // A root named `Schema` would collide with `import { Schema } from "effect"`.
+  const pascalTitle = rootNameOf(schema, toName, EFFECT_ROOT_FALLBACK)
+  const plan = planDocument(
+    schema,
+    pascalTitle === DEFAULT_ROOT_NAME ? EFFECT_ROOT_FALLBACK : pascalTitle,
+  )
+  const { rootName } = plan
+  const needsTypeDef = plan.hasDefinitions || hasRootSelfReference(schema)
 
   const typeDefsCode = needsTypeDef
-    ? (() => {
-        const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
-        const otherTypeDefs = nonRootDefs.map((name) => {
-          const def = definitions[name]
-          if (!def) return `// ⚠️ missing definition for ${name}`
-          const pc = toName(name)
-          return `type _${pc} = ${type(def, pc)}`
-        })
-        return [rootTypeDef, ...otherTypeDefs].join('\n\n')
-      })()
+    ? [
+        `type _${rootName} = ${type(plan.root, rootName)}`,
+        renderDefinitions(plan, toName, (def, name) => `type _${name} = ${type(def, name)}`),
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     : ''
 
   // A recursive declaration needs an explicit annotation, since the schema is
@@ -72,19 +52,14 @@ export function schemaToEffect(
   // the decoded `Type` — which is what `_X` describes and what the exported
   // type reads — while `Schema.Codec<T>` would also pin `Encoded` to `T` and
   // reject any field carrying a decoding default or other transformation.
-  const schemaDefsCode = nonRootDefs
-    .map((name) => {
-      const def = definitions[name]
-      if (!def) return `// ⚠️ missing definition for ${name}`
-      const pc = toName(name)
-      return `const ${pc}: Schema.Schema<_${pc}> = ${effect(def, pc, true, genOptions)}`
-    })
-    .join('\n\n')
+  const schemaDefsCode = renderDefinitions(
+    plan,
+    toName,
+    (def, name) =>
+      `const ${name}: Schema.Schema<_${name}> = ${effect(def, name, true, emitOptions)}`,
+  )
 
-  const rootSchema = rootInDefs
-    ? effect(rootDefinition, rootName, true, genOptions)
-    : effect(schema, rootName, true, genOptions)
-
+  const rootSchema = effect(plan.root, rootName, true, emitOptions)
   const rootExport = needsTypeDef
     ? `export const ${rootName}: Schema.Schema<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`

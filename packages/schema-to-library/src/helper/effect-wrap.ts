@@ -1,8 +1,10 @@
+import { isNullable } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
 import { readCodeExtension } from './code-extensions.js'
 import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
+import { examplesOf } from './schema.js'
 import { jsLiteral } from './value.js'
 
 /**
@@ -26,12 +28,9 @@ export function effectWrap(
   schema: JSONSchema,
   options?: CodeExtensionOptions,
 ): string {
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   // `Schema.NullOr` wraps a schema, so it goes inside the decoding default:
   // `withDecodingDefault` composes onto whatever schema it is piped from.
-  const withNullable = isNullable ? `Schema.NullOr(${effectStr})` : effectStr
+  const withNullable = isNullable(schema) ? `Schema.NullOr(${effectStr})` : effectStr
   const brand = schema['x-brand']
   const withBrand =
     typeof brand === 'string' ? `${withNullable}.pipe(Schema.brand("${brand}"))` : withNullable
@@ -50,7 +49,7 @@ export function effectWrap(
     ? `${withCodeExts}.pipe(Schema.withDecodingDefault(Effect.succeed(${jsLiteral(defaultResult.value)})))`
     : withCodeExts
 
-  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = examplesOf(schema)
   const ann: Record<string, unknown> = {}
   if (schema.description !== undefined) ann.description = schema.description
   // v4 types `examples` as `ReadonlyArray<T>`. OpenAPI examples are

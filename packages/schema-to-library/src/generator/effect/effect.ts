@@ -1,20 +1,24 @@
+import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
 import {
-  effectWrap as _effectWrap,
+  hasFixedItemCount,
   isDeepLocalPointer,
   isDefaultOnlyMember,
+  isNullable,
   isNullTypeMember,
+  isRootRef,
+  isSchemaObject,
   isShapelessMember,
-  jsLiteral,
-} from '../../helper/index.js'
-import type { CodeExtensionOptions } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
+  isStringWireLocation,
+} from '../../guard/index.js'
 import {
-  effectError,
-  normalizeTypes,
-  resolveOpenAPIRef,
-  toIdentifierPascalCase,
-  toPascalCase,
-} from '../../utils/index.js'
+  effectWrap as _effectWrap,
+  itemsSchemaOf,
+  jsLiteral,
+  schemaNamer,
+} from '../../helper/index.js'
+import type { CodeExtensionOptions, EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { effectError, normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
@@ -34,6 +38,20 @@ const BOOLEAN_FROM_STRING =
   `Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,` +
   `SchemaTransformation.transform({decode:(input)=>input==="true",` +
   `encode:(input)=>input?"true":"false"})))`
+
+/**
+ * The `not` predicates by `type`, as the source of an `(input) => ...` arrow. `input` is
+ * the parameter name every predicate shares, so their bodies can be joined with `&&`.
+ */
+const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
+  string: `(input) => typeof input !== 'string'`,
+  number: `(input) => typeof input !== 'number'`,
+  integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
+  boolean: `(input) => typeof input !== 'boolean'`,
+  array: '(input) => !Array.isArray(input)',
+  object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
+  null: '(input) => input !== null',
+}
 
 /**
  * True when a generated expression is a `Schema.Struct({...})`, optionally
@@ -87,24 +105,18 @@ export function wholeValueMessage(inner: string, message: string): string {
  */
 export function effect(
   schema: JSONSchema,
-  rootName = 'Schema',
+  rootName: string = DEFAULT_ROOT_NAME,
   isEffect = false,
-  options?: {
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
+  options?: EmitOptions,
 ): string {
-  const isStringWireParam =
-    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const isStringWireParam = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const effectWrap = (effectStr: string, s: JSONSchema): string =>
     _effectWrap(effectStr, s, codeExtOpts)
   if (schema.$ref) {
     const ref = (s: JSONSchema): string => {
-      if (s.$ref === '#' || s.$ref === '') {
+      if (isRootRef(s.$ref)) {
         return effectWrap(`Schema.suspend(() => ${rootName})`, s)
       }
       if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
@@ -117,9 +129,8 @@ export function effect(
           return effectWrap(isEffect ? `Schema.suspend(() => ${resolved})` : resolved, s)
         }
       }
-      const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
-      const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
-      for (const prefix of REF_PREFIXES) {
+      const toName = schemaNamer(options?.openapi)
+      for (const prefix of DEFINITION_REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) {
           const pascalCaseName = toName(s.$ref.slice(prefix.length))
           if (pascalCaseName === rootName) {
@@ -127,7 +138,7 @@ export function effect(
           }
           const refExpr = isEffect
             ? `Schema.suspend(() => ${pascalCaseName})`
-            : rootName === 'Schema'
+            : rootName === DEFAULT_ROOT_NAME
               ? `${pascalCaseName}Schema`
               : `Schema.suspend(() => ${pascalCaseName})`
           return effectWrap(refExpr, s)
@@ -139,7 +150,7 @@ export function effect(
         const pascalCaseName = toName(refName)
         return isEffect
           ? `Schema.suspend(() => ${pascalCaseName})`
-          : rootName === 'Schema'
+          : rootName === DEFAULT_ROOT_NAME
             ? `${pascalCaseName}Schema`
             : `Schema.suspend(() => ${pascalCaseName})`
       }
@@ -150,8 +161,9 @@ export function effect(
       }
       return 'Schema.Unknown'
     }
-    if (schema.type === 'array' && schema.items?.$ref) {
-      return `Schema.Array(${effectWrap(ref(schema.items), schema.items)})`
+    const items = itemsSchemaOf(schema.items)
+    if (schema.type === 'array' && items?.$ref) {
+      return `Schema.Array(${effectWrap(ref(items), items)})`
     }
     return effectWrap(ref(schema), schema)
   }
@@ -180,10 +192,7 @@ export function effect(
 
   if (schema.allOf) {
     if (schema.allOf.length === 0) return effectWrap('Schema.Unknown', schema)
-    const nullable =
-      schema.nullable === true ||
-      (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullTypeMember)
+    const nullable = isNullable(schema) || schema.allOf.some(isNullTypeMember)
     const defaultValue = schema.allOf.find(isDefaultOnlyMember)?.default
     const schemas = schema.allOf
       .filter((s) => !isShapelessMember(s))
@@ -207,28 +216,16 @@ export function effect(
     const filterOpts = notMessage ? `,${effectError(notMessage)}` : ''
     const filtered = (predicate: string) =>
       effectWrap(`Schema.Unknown.check(Schema.makeFilter(${predicate}${filterOpts}))`, schema)
-    const typePredicates: { readonly [k: string]: string } = {
-      string: `(input) => typeof input !== 'string'`,
-      number: `(input) => typeof input !== 'number'`,
-      integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
-      boolean: `(input) => typeof input !== 'boolean'`,
-      array: '(input) => !Array.isArray(input)',
-      object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
-      null: '(input) => input !== null',
-    }
     if ('const' in inner) return filtered(`(input) => input !== ${JSON.stringify(inner.const)}`)
     if (typeof inner.type === 'string') {
-      const predicate = typePredicates[inner.type]
+      const predicate = NOT_TYPE_PREDICATES[inner.type]
       if (predicate) return filtered(predicate)
     }
-    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
-    // recovered here rather than indexing the table with `any`.
-    const innerTypes = inner.type
-    if (Array.isArray(innerTypes)) {
-      const bodies = normalizeTypes(innerTypes)
-        .map((t) => typePredicates[t])
+    if (Array.isArray(inner.type)) {
+      const bodies = normalizeTypes(inner.type)
+        .map((t) => NOT_TYPE_PREDICATES[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(input\) => /, '')})`)
+        .map((p) => `(${p.replace(/^\(input\) => /u, '')})`)
       if (bodies.length > 0) return filtered(`(input) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
@@ -282,26 +279,21 @@ export function effect(
       // extras); a schema → `Schema.TupleWithRest(tuple, [rest])`.
       const u = schema.unevaluatedItems
       const tuple = `Schema.Tuple([${items.join(',')}])`
-      const tupleExpr =
-        u !== undefined && u !== true && typeof u === 'object'
-          ? `Schema.TupleWithRest(${tuple},[${effect(u, rootName, isEffect, options)}])`
-          : tuple
+      const tupleExpr = isSchemaObject(u)
+        ? `Schema.TupleWithRest(${tuple},[${effect(u, rootName, isEffect, options)}])`
+        : tuple
       const prefixItemsMessage = schema['x-prefixItems-message']
       const wrapped = prefixItemsMessage
         ? elementMessageWrap(tupleExpr, prefixItemsMessage)
         : tupleExpr
       return effectWrap(wrapped, schema)
     }
-    const items = schema.items
-      ? effect(schema.items, rootName, isEffect, options)
-      : 'Schema.Unknown'
+    const itemSchema = itemsSchemaOf(schema.items)
+    const items = itemSchema ? effect(itemSchema, rootName, isEffect, options) : 'Schema.Unknown'
     const itemsMessage = schema['x-items-message']
     const arrayBase = `Schema.Array(${items})`
     const base = itemsMessage ? elementMessageWrap(arrayBase, itemsMessage) : arrayBase
-    const isFixedLength =
-      typeof schema.minItems === 'number' &&
-      typeof schema.maxItems === 'number' &&
-      schema.minItems === schema.maxItems
+    const isFixedLength = hasFixedItemCount(schema)
     // Per-keyword array messages
     const lengthMessage = schema['x-length-message']
     const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage

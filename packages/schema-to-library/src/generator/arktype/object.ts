@@ -1,10 +1,8 @@
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
+import { hasCombinator, isQuoted } from '../../guard/index.js'
+import type { EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
-
-function isQuoted(s: string): boolean {
-  return s.startsWith('"') && s.endsWith('"')
-}
 
 function composeNarrows(base: string, narrows: readonly string[]): string {
   return narrows.length === 0 ? base : narrows.reduce((acc, n) => `${acc}.narrow(${n})`, base)
@@ -39,11 +37,9 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isArktype: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: EmitOptions,
 ) {
-  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
-    return arktype(schema, rootName, isArktype, options)
-  }
+  if (hasCombinator(schema)) return arktype(schema, rootName, isArktype, options)
 
   const errorMessage = schema['x-error-message']
   const minimumMessage = schema['x-minProperties-message']
@@ -107,12 +103,12 @@ export function object(
       : schema.additionalProperties === false
         ? 'reject'
         : undefined
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = arktype(propSchema, rootName, isArktype, options)
       if (!parsed) return null
-      const isRequired = required.includes(key)
+      const isRequired = required.has(key)
       const baseSafeKey = makeSafeKey(key)
       const safeKey = isRequired
         ? baseSafeKey

@@ -1,3 +1,4 @@
+import { hasFixedLength } from '../../guard/index.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { zodBaseError, zodError } from '../../utils/index.js'
@@ -34,6 +35,7 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
 
 const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
   html5: 'z.regexes.html5Email',
+  rfc5322: 'z.regexes.rfc5322Email',
   browser: 'z.regexes.browserEmail',
   unicode: 'z.regexes.unicodeEmail',
 }
@@ -154,15 +156,12 @@ export function string(schema: JSONSchema) {
   const base =
     hash ??
     (format
-      ? `z.${format.replace(/\(\)$/, `(${baseCallArg})`)}`
+      ? `z.${format.replace(/\(\)$/u, `(${baseCallArg})`)}`
       : `z.${coercePrefix}string(${baseCallArg})`)
   const pattern = schema.pattern
     ? `.regex(${regexLiteral(schema.pattern)}${patternErrorPart})`
     : undefined
-  const isFixedLength =
-    schema.minLength !== undefined &&
-    schema.maxLength !== undefined &&
-    schema.minLength === schema.maxLength
+  const isFixedLength = hasFixedLength(schema)
   const trim = schema['x-trim'] === true ? '.trim()' : undefined
   const toLowerCase = schema['x-toLowerCase'] === true ? '.toLowerCase()' : undefined
   const toUpperCase = schema['x-toUpperCase'] === true ? '.toUpperCase()' : undefined

@@ -1,26 +1,43 @@
 import {
-  arktypeWrap as _arktypeWrap,
+  DEFAULT_ROOT_NAME,
+  DEFINITION_REF_PREFIXES,
+  QUOTE_OR_BACKSLASH_PATTERN,
+} from '../../constants/index.js'
+import {
+  hasFixedItemCount,
   isArktypeDefinition,
   isDeepLocalPointer,
+  isNullable,
   isNullTypeMember,
+  isQuoted,
+  isRootRef,
+  isSchemaObject,
   isShapelessMember,
-} from '../../helper/index.js'
-import type { ArktypeWrapOptions } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import {
-  normalizeTypes,
-  resolveOpenAPIRef,
-  toIdentifierPascalCase,
-  toPascalCase,
-} from '../../utils/index.js'
+  isStringWireLocation,
+} from '../../guard/index.js'
+import { arktypeWrap as _arktypeWrap, itemsSchemaOf, schemaNamer } from '../../helper/index.js'
+import type { ArktypeWrapOptions, EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { integer } from './integer.js'
 import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
-function isQuoted(s: string): boolean {
-  return s.startsWith('"') && s.endsWith('"')
+/**
+ * The `not` predicates by `type`, as the source of a `(data: unknown) => ...` arrow.
+ * `data` is the parameter name every predicate shares, so their bodies can be joined
+ * with `&&`.
+ */
+const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
+  string: `(data: unknown) => typeof data !== 'string'`,
+  number: `(data: unknown) => typeof data !== 'number'`,
+  integer: `(data: unknown) => typeof data !== 'number' || !Number.isInteger(data)`,
+  boolean: `(data: unknown) => typeof data !== 'boolean'`,
+  array: '(data: unknown) => !Array.isArray(data)',
+  object: `(data: unknown) => typeof data !== 'object' || data === null || Array.isArray(data)`,
+  null: '(data: unknown) => data !== null',
 }
 
 /**
@@ -49,6 +66,11 @@ function intersectionStr(schemas: string[], inScope = false): string {
     : schemas.reduce(combine('&', inScope))
 }
 
+/** An ArkType expression that carries methods: a quoted definition is wrapped in `type(...)`. */
+function asRuntime(source: string): string {
+  return isQuoted(source) ? `type(${source})` : source
+}
+
 function formatConst(value: unknown): string {
   if (typeof value === 'string') return `"'${value}'"`
   if (typeof value === 'number' || typeof value === 'boolean') return `"${String(value)}"`
@@ -58,14 +80,9 @@ function formatConst(value: unknown): string {
 
 export function arktype(
   schema: JSONSchema,
-  rootName = 'Schema',
+  rootName: string = DEFAULT_ROOT_NAME,
   isArktype = false,
-  options?: {
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
+  options?: EmitOptions,
 ): string {
   const codeExtOpts: ArktypeWrapOptions = {
     ...(options?.unsafeCodeExtensions === true && { unsafeCodeExtensions: true }),
@@ -82,15 +99,14 @@ export function arktype(
     // const being defined would hit a TDZ; recursion is only expressible in scope mode.
     const emitRef = (name: string): string => (!isArktype && name !== rootName ? name : `"${name}"`)
     const ref = (s: JSONSchema): string => {
-      if (s.$ref === '#' || s.$ref === '') return `"${rootName}"`
+      if (isRootRef(s.$ref)) return `"${rootName}"`
       if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return '"unknown"'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
         if (resolved) return emitRef(resolved)
       }
-      const toName = options?.openapi ? toIdentifierPascalCase : toPascalCase
-      const REF_PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
-      for (const prefix of REF_PREFIXES) {
+      const toName = schemaNamer(options?.openapi)
+      for (const prefix of DEFINITION_REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) return emitRef(toName(s.$ref.slice(prefix.length)))
       }
       if (s.$ref?.startsWith('#')) {
@@ -99,8 +115,9 @@ export function arktype(
       }
       return '"unknown"'
     }
-    if (schema.type === 'array' && schema.items?.$ref) {
-      return arktypeWrap(`${ref(schema.items)}.array()`, schema)
+    const items = itemsSchemaOf(schema.items)
+    if (schema.type === 'array' && items?.$ref) {
+      return arktypeWrap(`${ref(items)}.array()`, schema)
     }
     return arktypeWrap(ref(schema), schema)
   }
@@ -130,10 +147,7 @@ export function arktype(
 
   if (schema.allOf) {
     if (schema.allOf.length === 0) return arktypeWrap('"unknown"', schema)
-    const nullable =
-      schema.nullable === true ||
-      (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null') ||
-      schema.allOf.some(isNullTypeMember)
+    const nullable = isNullable(schema) || schema.allOf.some(isNullTypeMember)
     const schemas = schema.allOf
       .filter((s) => !isShapelessMember(s))
       .map((s) => arktype(s, rootName, isArktype, options))
@@ -151,30 +165,18 @@ export function arktype(
       const expr = notMessage ? `${base}.describe(${JSON.stringify(notMessage)})` : base
       return arktypeWrap(expr, schema)
     }
-    const typePredicates: { readonly [k: string]: string } = {
-      string: `(data: unknown) => typeof data !== 'string'`,
-      number: `(data: unknown) => typeof data !== 'number'`,
-      integer: `(data: unknown) => typeof data !== 'number' || !Number.isInteger(data)`,
-      boolean: `(data: unknown) => typeof data !== 'boolean'`,
-      array: '(data: unknown) => !Array.isArray(data)',
-      object: `(data: unknown) => typeof data !== 'object' || data === null || Array.isArray(data)`,
-      null: '(data: unknown) => data !== null',
-    }
     if ('const' in inner) {
       return narrow(`(data: unknown) => data !== ${JSON.stringify(inner.const)}`)
     }
     if (typeof inner.type === 'string') {
-      const predicate = typePredicates[inner.type]
+      const predicate = NOT_TYPE_PREDICATES[inner.type]
       if (predicate) return narrow(predicate)
     }
-    // `Array.isArray` widens a `readonly T[]` to `any[]`, so the element type is
-    // recovered here rather than indexing the table with `any`.
-    const innerTypes = inner.type
-    if (Array.isArray(innerTypes)) {
-      const bodies = normalizeTypes(innerTypes)
-        .map((t) => typePredicates[t])
+    if (Array.isArray(inner.type)) {
+      const bodies = normalizeTypes(inner.type)
+        .map((t) => NOT_TYPE_PREDICATES[t])
         .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(data: unknown\) => /, '')})`)
+        .map((p) => `(${p.replace(/^\(data: unknown\) => /u, '')})`)
       if (bodies.length > 0) return narrow(`(data: unknown) => ${bodies.join(' && ')}`)
     }
     if (Array.isArray(inner.enum)) {
@@ -188,7 +190,7 @@ export function arktype(
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     // A quote or backslash in the value breaks both the arktype string DSL
     // literal and the surrounding JS string; such consts use the runtime unit form.
-    if (typeof schema.const === 'string' && /['"\\]/.test(schema.const)) {
+    if (typeof schema.const === 'string' && QUOTE_OR_BACKSLASH_PATTERN.test(schema.const)) {
       const unit = `type.unit(${JSON.stringify(schema.const)})`
       return arktypeWrap(
         constMessage ? `${unit}.describe(${JSON.stringify(constMessage)})` : unit,
@@ -207,8 +209,7 @@ export function arktype(
   }
 
   const types = normalizeTypes(schema.type)
-  const isStringWireParam =
-    (options?.paramIn === 'query' || options?.paramIn === 'path') && schema['x-coerce'] !== false
+  const isStringWireParam = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
   if (types.includes('string')) return arktypeWrap(string(schema), schema)
   if (types.includes('number')) {
     if (isStringWireParam) {
@@ -242,15 +243,13 @@ export function arktype(
       // prefixItems. ArkType tuples reject extras by default; `unevaluatedItems`
       // as a schema is represented as a trailing variadic `...rest[]`.
       const u = schema.unevaluatedItems
-      const tupleExpr =
-        u !== undefined && u !== true && typeof u === 'object'
-          ? (() => {
-              const rest = arktype(u, rootName, isArktype, options)
-              const restInner =
-                rest.startsWith('"') && rest.endsWith('"') ? rest.slice(1, -1) : rest
-              return `type([${items.join(',')},"...","${restInner}[]"])`
-            })()
-          : `type([${items.join(',')}])`
+      const tupleExpr = isSchemaObject(u)
+        ? (() => {
+            const rest = arktype(u, rootName, isArktype, options)
+            const restInner = isQuoted(rest) ? rest.slice(1, -1) : rest
+            return `type([${items.join(',')},"...","${restInner}[]"])`
+          })()
+        : `type([${items.join(',')}])`
       const baseTuple = arktypeWrap(
         describeWithMessage(tupleExpr, schema['x-prefixItems-message']),
         schema,
@@ -260,13 +259,13 @@ export function arktype(
         ? `${baseTuple}.describe(${JSON.stringify(unevalItemsMessage)})`
         : baseTuple
     }
-    const items = schema.items ? arktype(schema.items, rootName, isArktype, options) : '"unknown"'
+    const itemSchema = itemsSchemaOf(schema.items)
+    const items = itemSchema ? arktype(itemSchema, rootName, isArktype, options) : '"unknown"'
     if (!isQuoted(items)) return arktypeWrap(`type(${items}).array()`, schema)
     const inner = items.slice(1, -1)
     const base = `"${inner}[]"`
     const { minItems, maxItems } = schema
-    const isFixedLength =
-      typeof minItems === 'number' && typeof maxItems === 'number' && minItems === maxItems
+    const isFixedLength = hasFixedItemCount(schema)
     // Per-keyword array messages via .narrow() with ctx.mustBe.
     const lengthMessage = schema['x-length-message']
     const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
@@ -334,11 +333,9 @@ export function arktype(
             `(data: unknown[], ctx) => new Set(data).size === data.length${uniqueItemsMessage ? ` || ctx.mustBe(${JSON.stringify(uniqueItemsMessage)})` : ''}`,
           )
         : lengthExpr
-    const wrap = (s: string) => (isQuoted(s) ? `type(${s})` : s)
     const containsNarrows = ((): readonly string[] => {
       if (!schema.contains) return []
-      const containsSchema = arktype(schema.contains, rootName, isArktype, options)
-      const containsRt = isQuoted(containsSchema) ? `type(${containsSchema})` : containsSchema
+      const containsRt = asRuntime(arktype(schema.contains, rootName, isArktype, options))
       const minC = schema.minContains
       const maxC = schema.maxContains
       if (minC === undefined && maxC === undefined) {
@@ -360,7 +357,10 @@ export function arktype(
     })()
     // unevaluatedItems is handled in the prefixItems branch; with `items` alone,
     // JSON Schema 2020-12 §11.3 makes the keyword redundant.
-    const arrayExpr = containsNarrows.reduce((acc, narrow) => `${wrap(acc)}${narrow}`, uniqueExpr)
+    const arrayExpr = containsNarrows.reduce(
+      (acc, narrow) => `${asRuntime(acc)}${narrow}`,
+      uniqueExpr,
+    )
     return arktypeWrap(describeWithMessage(arrayExpr, schema['x-items-message']), schema)
   }
 

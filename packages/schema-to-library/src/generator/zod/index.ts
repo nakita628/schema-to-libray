@@ -1,109 +1,48 @@
+import { UNSAFE_GENERATED_MARKER } from '../../constants/index.js'
 import {
+  emitOptionsOf,
   findCodeExtensionKeysInSchema,
-  isRecord,
-  resolveSchemaDependenciesFromSchema,
-  UNSAFE_GENERATED_MARKER,
+  hasRootSelfReference,
+  planDocument,
+  renderDefinitions,
+  rootNameOf,
+  schemaNamer,
 } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import type { GenerateOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { type } from './type.js'
 import { zod } from './zod.js'
 
-function hasSelfReference(schema: JSONSchema): boolean {
-  const stack: unknown[] = Object.entries(schema)
-    .filter(([key]) => key !== 'definitions' && key !== '$defs')
-    .map(([, value]) => value)
-
-  while (stack.length > 0) {
-    const node = stack.pop()
-    if (!isRecord(node)) continue
-    if ('$ref' in node && node.$ref === '#') return true
-    for (const [key, value] of Object.entries(node)) {
-      if (key === 'definitions' || key === '$defs') continue
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          if (isRecord(item)) stack.push(item)
-        }
-      } else if (isRecord(value)) {
-        stack.push(value)
-      }
-    }
-  }
-
-  return false
-}
-
-export function schemaToZod(
-  schema: JSONSchema,
-  options?: {
-    exportType?: boolean
-    openapi?: boolean
-    readonly?: boolean
-    unsafeCodeExtensions?: boolean
-    paramIn?: ParamIn
-  },
-): string {
-  const {
-    exportType = true,
-    openapi = false,
-    readonly: readonlyMode = false,
-    unsafeCodeExtensions = false,
-    paramIn,
-  } = options ?? {}
-  const genOptions = {
-    openapi,
-    readonly: readonlyMode,
-    unsafeCodeExtensions,
-    ...(paramIn !== undefined && { paramIn }),
-  }
+/**
+ * A whole JSON Schema document as a Zod module: imports, `$defs` in dependency order,
+ * the root export, and the inferred type.
+ */
+export function schemaToZod(schema: JSONSchema, options?: GenerateOptions): string {
+  const exportType = options?.exportType ?? true
+  const emitOptions = emitOptionsOf(options)
   const codeExtensionsPresent =
-    unsafeCodeExtensions && findCodeExtensionKeysInSchema(schema).length > 0
-  const toName = openapi ? toIdentifierPascalCase : toPascalCase
-  const rootName = schema.title ? toName(schema.title) : 'Schema'
-
-  const definitions = {
-    ...schema.definitions,
-    ...schema.$defs,
-  } as const
-
-  const hasDefinitions = Object.keys(definitions).length > 0
-  const needsTypeDef = hasDefinitions || hasSelfReference(schema)
-
-  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
-
-  const rootInDefs = definitions[rootName] !== undefined
-  const rootDefinition = definitions[rootName]
-
-  const nonRootDefs = rootInDefs
-    ? orderedSchemas.filter((name) => name !== rootName)
-    : orderedSchemas
+    emitOptions.unsafeCodeExtensions === true && findCodeExtensionKeysInSchema(schema).length > 0
+  const toName = schemaNamer(emitOptions.openapi)
+  const plan = planDocument(schema, rootNameOf(schema, toName))
+  const { rootName } = plan
+  const needsTypeDef = plan.hasDefinitions || hasRootSelfReference(schema)
 
   const typeDefsCode = needsTypeDef
-    ? (() => {
-        const rootTypeDef = `type _${rootName} = ${type(rootDefinition ?? schema, rootName)}`
-        const otherTypeDefs = nonRootDefs.map((name) => {
-          const def = definitions[name]
-          if (!def) return `// ⚠️ missing definition for ${name}`
-          const pc = toName(name)
-          return `type _${pc} = ${type(def, pc)}`
-        })
-        return [rootTypeDef, ...otherTypeDefs].join('\n\n')
-      })()
+    ? [
+        `type _${rootName} = ${type(plan.root, rootName)}`,
+        renderDefinitions(plan, toName, (def, name) => `type _${name} = ${type(def, name)}`),
+      ]
+        .filter(Boolean)
+        .join('\n\n')
     : ''
 
-  const schemaDefsCode = nonRootDefs
-    .map((name) => {
-      const def = definitions[name]
-      if (!def) return `// ⚠️ missing definition for ${name}`
-      const pc = toName(name)
-      return `const ${pc}: z.ZodType<_${pc}> = ${zod(def, pc, true, genOptions)}`
-    })
-    .join('\n\n')
+  const schemaDefsCode = renderDefinitions(
+    plan,
+    toName,
+    (def, name) => `const ${name}: z.ZodType<_${name}> = ${zod(def, name, true, emitOptions)}`,
+  )
 
-  const rootSchema = rootInDefs
-    ? zod(rootDefinition, rootName, true, genOptions)
-    : zod(schema, rootName, true, genOptions)
-
+  const rootSchema = zod(plan.root, rootName, true, emitOptions)
   const rootExport = needsTypeDef
     ? `export const ${rootName}: z.ZodType<_${rootName}> = ${rootSchema}`
     : `export const ${rootName} = ${rootSchema}`

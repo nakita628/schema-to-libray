@@ -1,3 +1,4 @@
+import { hasFixedLength } from '../../guard/index.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
@@ -51,10 +52,7 @@ export function string(schema: JSONSchema) {
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
-  const isFixedLength =
-    schema.minLength !== undefined &&
-    schema.maxLength !== undefined &&
-    schema.minLength === schema.maxLength
+  const isFixedLength = hasFixedLength(schema)
   const startsWith =
     typeof schema['x-startsWith'] === 'string'
       ? `Schema.isStartsWith(${JSON.stringify(schema['x-startsWith'])})`

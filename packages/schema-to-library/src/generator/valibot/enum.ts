@@ -1,3 +1,4 @@
+import { hasType } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
 
@@ -25,8 +26,6 @@ function lit(v: unknown): string {
  */
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'v.any()'
-  const ht = (t: string): boolean =>
-    schema.type === t || (Array.isArray(schema.type) && schema.type.some((x: unknown) => x === t))
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
@@ -47,12 +46,12 @@ export function _enum(schema: JSONSchema) {
     `v.tuple([${arr.map(innerLit).join(',')}])`
   const outerTuple = (arr: readonly unknown[]): string =>
     `v.tuple([${arr.map(innerLit).join(',')}]${errorArg})`
-  if (ht('number') || ht('integer') || ht('boolean')) {
+  if (hasType(schema, 'number') || hasType(schema, 'integer') || hasType(schema, 'boolean')) {
     return schema.enum.length > 1
       ? `v.union([${schema.enum.map(innerLit).join(',')}]${errorArg})`
       : outerLit(schema.enum[0])
   }
-  if (ht('array')) {
+  if (hasType(schema, 'array')) {
     if (schema.enum.length === 1 && Array.isArray(schema.enum[0])) {
       return outerTuple(schema.enum[0])
     }
