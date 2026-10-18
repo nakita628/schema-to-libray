@@ -1,4 +1,6 @@
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
+import { hasCombinator, hasConditional } from '../../guard/index.js'
+import type { EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
 import { effectError, makeSafeKey } from '../../utils/index.js'
 import { effect, wholeValueMessage } from './effect.js'
 
@@ -15,11 +17,9 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isEffect: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: EmitOptions,
 ) {
-  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
-    return effect(schema, rootName, isEffect, options)
-  }
+  if (hasCombinator(schema)) return effect(schema, rootName, isEffect, options)
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${effectError(errorMessage)}` : ''
@@ -79,13 +79,13 @@ export function object(
     return 'Schema.Struct({})'
   }
 
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = effect(propSchema, rootName, isEffect, options)
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
-      const isRequired = required.includes(key)
+      const isRequired = required.has(key)
       // `Schema.withDecodingDefault` already makes the encoded key optional, so
       // a defaulted property must not be wrapped again.
       const hasDecodingDefault = parsed.includes('Schema.withDecodingDefault(')
@@ -98,8 +98,7 @@ export function object(
   // `if`/`then`/`else` sub-schemas may name keys the struct does not declare,
   // so the object has to keep unknown keys. v4 spells an index signature as
   // `Schema.StructWithRest(struct, [record])`.
-  const conditionalKeysReferenced =
-    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
+  const conditionalKeysReferenced = hasConditional(schema)
   const struct = `Schema.Struct({${props.join(',')}})`
   const rawBase = conditionalKeysReferenced
     ? `Schema.StructWithRest(${struct},[Schema.Record(Schema.String,Schema.Unknown)])`

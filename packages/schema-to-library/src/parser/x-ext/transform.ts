@@ -1,3 +1,5 @@
+import type { JSONValue } from '../json.js'
+
 /**
  * B 層: 振る舞い・transform 系 vendor extensions.
  *
@@ -44,18 +46,18 @@ export type XExtTransform = {
         readonly error?: string
       }
   /** Zod-only: `.prefault(value)` — apply default to input before parse */
-  readonly 'x-prefault'?: unknown
+  readonly 'x-prefault'?: JSONValue
   /** Zod-only: `.catch(value)` — fall back to value on parse failure */
-  readonly 'x-catch'?: unknown
+  readonly 'x-catch'?: JSONValue
 
   // ── Fallback (Valibot-only) ──────────────────────────────────────
   /** Valibot-only: `v.fallback(schema, value)` — fall back to value on parse failure */
-  readonly 'x-fallback'?: unknown
+  readonly 'x-fallback'?: JSONValue
 
   // ── Format-option (Zod-only) ─────────────────────────────────────
   // No-op on validators without an equivalent format API.
   /** Zod-only: select the email regex preset for `format: email` */
-  readonly 'x-emailPattern'?: 'html5' | 'browser' | 'unicode'
+  readonly 'x-emailPattern'?: 'html5' | 'rfc5322' | 'browser' | 'unicode'
   /** Zod-only: custom email regex source for `format: email` */
   readonly 'x-emailRegex'?: string
   /** Zod-only: restrict UUID version on `format: uuid` */

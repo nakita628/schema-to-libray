@@ -1,8 +1,6 @@
+import { QUOTE_OR_BACKSLASH_PATTERN } from '../../constants/index.js'
+import { isComposite } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-
-function isComposite(v: unknown): boolean {
-  return v !== null && typeof v === 'object'
-}
 
 function lit(v: unknown): string {
   if (v === null) return 'null'
@@ -26,7 +24,9 @@ export function _enum(schema: JSONSchema) {
 
   // A quote or backslash in a member breaks both the arktype string DSL literal
   // and the surrounding JS string; such enums use the runtime enumerated form.
-  const hasUnsafeString = schema.enum.some((v) => typeof v === 'string' && /['"\\]/.test(v))
+  const hasUnsafeString = schema.enum.some(
+    (v) => typeof v === 'string' && QUOTE_OR_BACKSLASH_PATTERN.test(v),
+  )
   if (hasUnsafeString) {
     const expr = `type.enumerated(${schema.enum.map((v) => JSON.stringify(v)).join(',')})`
     if (errorMessage) return `${expr}${describe}`

@@ -1,21 +1,19 @@
+import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
+import { isRootRef, isShapelessMember } from '../../guard/index.js'
+import { itemsSchemaOf } from '../../helper/schema.js'
+import { jsLiteral } from '../../helper/value.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 
-export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
+export function type(schema: JSONSchema | undefined, rootName: string = DEFAULT_ROOT_NAME): string {
   if (schema === undefined) return ''
 
   if (schema.$ref) {
-    if (schema.$ref === '#' || schema.$ref === '') {
+    if (isRootRef(schema.$ref)) {
       return `v.InferOutput<typeof ${rootName}>`
     }
 
-    const TABLE = [
-      ['#/components/schemas/', 'Schema'],
-      ['#/definitions/', 'Schema'],
-      ['#/$defs/', 'Schema'],
-    ] as const
-
-    for (const [prefix] of TABLE) {
+    for (const prefix of DEFINITION_REF_PREFIXES) {
       if (schema.$ref?.startsWith(prefix)) {
         const name = schema.$ref.slice(prefix.length)
         return `_${toPascalCase(name)}`
@@ -36,20 +34,12 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
   if (schema.allOf) return intersection(schema.allOf, rootName)
   if (schema.not) return 'unknown'
 
-  if (schema.const !== undefined) {
-    if (typeof schema.const === 'string') return `"${schema.const}"`
-    if (typeof schema.const === 'number' || typeof schema.const === 'boolean') {
-      return String(schema.const)
-    }
-    return JSON.stringify(schema.const) ?? 'null'
-  }
+  // A JSON value spelled as a literal is also its own TypeScript literal type.
+  if (schema.const !== undefined) return jsLiteral(schema.const)
 
   if (schema.enum) {
-    if (schema.enum.length === 1) {
-      const v = schema.enum[0]
-      return typeof v === 'string' ? `"${v}"` : String(v)
-    }
-    return `(${schema.enum.map((v: unknown) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
+    if (schema.enum.length === 1) return jsLiteral(schema.enum[0])
+    return `(${schema.enum.map(jsLiteral).join(' | ')})`
   }
 
   if (schema.properties) return object(schema, rootName)
@@ -72,16 +62,7 @@ function union(schemas: readonly JSONSchema[], rootName: string): string {
 }
 
 function intersection(schemas: readonly JSONSchema[], rootName: string): string {
-  const types = schemas
-    .filter((s) => {
-      if (s.type === 'null') return false
-      if (s.nullable === true && Object.keys(s).length === 1) return false
-      if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined)) {
-        return false
-      }
-      return true
-    })
-    .map((s) => type(s, rootName))
+  const types = schemas.filter((s) => !isShapelessMember(s)).map((s) => type(s, rootName))
 
   if (types.length === 0) return 'unknown'
   if (types.length === 1) return types[0]
@@ -89,8 +70,8 @@ function intersection(schemas: readonly JSONSchema[], rootName: string): string 
 }
 
 function array(schema: JSONSchema, rootName: string): string {
-  if (schema.items) return `${type(schema.items, rootName)}[]`
-  return 'unknown[]'
+  const items = itemsSchemaOf(schema.items)
+  return items ? `${type(items, rootName)}[]` : 'unknown[]'
 }
 
 function object(schema: JSONSchema, rootName: string): string {
@@ -106,10 +87,10 @@ function object(schema: JSONSchema, rootName: string): string {
     return '{ [key: string]: unknown }'
   }
 
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const properties = Object.entries(schema.properties).map(([key, propSchema]) => {
     const propType = type(propSchema, rootName)
-    const isRequired = required.includes(key)
+    const isRequired = required.has(key)
     const safeKey = makeSafeKey(key)
     return isRequired ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
   })

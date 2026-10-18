@@ -1,3 +1,4 @@
+import { isComposite } from '../../guard/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
@@ -6,10 +7,6 @@ function lit(v: unknown): string {
   if (typeof v === 'string') return JSON.stringify(v)
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v) ?? 'null'
-}
-
-function isComposite(v: unknown): boolean {
-  return v !== null && typeof v === 'object'
 }
 
 export function _enum(schema: JSONSchema, ref?: string) {

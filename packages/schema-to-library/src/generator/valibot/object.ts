@@ -1,5 +1,7 @@
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { makeSafeKey, valibotError } from '../../utils/index.js'
+import { hasCombinator, hasConditional } from '../../guard/index.js'
+import type { EmitOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { issueMessageExpression, makeSafeKey, valibotError } from '../../utils/index.js'
 import { valibot } from './valibot.js'
 
 /**
@@ -19,11 +21,9 @@ export function object(
   schema: JSONSchema,
   rootName: string,
   isValibot: boolean,
-  options?: { openapi?: boolean; readonly?: boolean; paramIn?: ParamIn },
+  options?: EmitOptions,
 ) {
-  if (schema.oneOf || schema.anyOf || schema.allOf || schema.not) {
-    return valibot(schema, rootName, isValibot, options)
-  }
+  if (hasCombinator(schema)) return valibot(schema, rootName, isValibot, options)
 
   const errorMessage = schema['x-error-message']
   const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
@@ -83,8 +83,7 @@ export function object(
     return 'v.object({})'
   }
 
-  const conditionalKeysReferenced =
-    schema.if !== undefined || schema.then !== undefined || schema.else !== undefined
+  const conditionalKeysReferenced = hasConditional(schema)
   const objectKind =
     schema.additionalProperties === true
       ? 'looseObject'
@@ -93,13 +92,13 @@ export function object(
         : conditionalKeysReferenced
           ? 'looseObject'
           : 'object'
-  const required = Array.isArray(schema.required) ? schema.required : []
+  const required = new Set(schema.required)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = valibot(propSchema, rootName, isValibot, options)
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
-      const isRequired = required.includes(key)
+      const isRequired = required.has(key)
       return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:v.optional(${parsed})`
     })
     .filter((p) => p !== null)
@@ -110,16 +109,15 @@ export function object(
       ? `,${valibotError(strictExtrasMessage)}`
       : ''
   const rawBase =
-    required.length === 0 && props.every((p) => p.includes('v.optional('))
+    required.size === 0 && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
-          .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/, '$1:$2'))
+          .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/u, '$1:$2'))
           .join(',')}}${strictMessageArg}))`
       : `v.${objectKind}({${props.join(',')}}${strictMessageArg})`
   const propsMessage = schema['x-properties-message']
   const partialBase = propsMessage
     ? (() => {
-        const isArrow = /^\s*\(.*?\)\s*=>/.test(propsMessage)
-        const msgExpr = isArrow ? `(${propsMessage})(issue)` : JSON.stringify(propsMessage)
+        const msgExpr = issueMessageExpression(propsMessage)
         return `v.pipe(v.unknown(),v.rawCheck(({dataset,addIssue})=>{if(!dataset.typed)return;const result=v.safeParse(${rawBase},dataset.value);if(!result.success){for(const issue of result.issues){if(issue.path&&issue.path.length>0){addIssue({message:${msgExpr},path:issue.path})}else{addIssue(issue)}}}}))`
       })()
     : rawBase

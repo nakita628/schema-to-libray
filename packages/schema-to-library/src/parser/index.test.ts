@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import { runGenerator, runGeneratorError } from '../testing/index.js'
+import type { JSONSchema } from './index.js'
 import { parseSchemaFile } from './index.js'
 
 const tmpDir = path.join(import.meta.dirname, '__test_tmp__')
@@ -79,5 +80,41 @@ describe('parseSchemaFile', () => {
   it('fails with a message for a missing deep path', async () => {
     const error = await runGeneratorError(parseSchemaFile('/non/existent/path/deep/file.json'))
     expect(error.message).toContain('Failed to parse schema:')
+  })
+})
+
+describe('JSONSchema type', () => {
+  it('names every keyword, so a misspelled one does not compile', () => {
+    // @ts-expect-error -- `minimumLength` is not a keyword, and no index signature hides that
+    const schema: JSONSchema = { type: 'string', minimumLength: 3 }
+    expect(schema).toBeDefined()
+  })
+
+  it('types $ref as a document reference, so a bare definition name does not compile', () => {
+    // @ts-expect-error -- `User` is neither a pointer nor a file: it wanted `#/$defs/User`
+    const schema: JSONSchema = { $ref: 'User' }
+    expect(schema.$ref).toBe('User')
+  })
+
+  it('types format as the known vocabulary', () => {
+    // @ts-expect-error -- `e-mail` is not a format any target knows
+    const schema: JSONSchema = { type: 'string', format: 'e-mail' }
+    expect(schema.format).toBe('e-mail')
+  })
+
+  it('accepts every keyword form the generators read', () => {
+    const schema: JSONSchema = {
+      $ref: '#/$defs/User',
+      type: ['string', 'null'],
+      format: 'uuidv7',
+      items: [{ type: 'string' }, { type: 'number' }],
+      additionalItems: false,
+      enum: ['a', 1, null, { nested: [true] }],
+      const: { deep: { value: [1, 'two'] } },
+      contentEncoding: 'base64',
+      discriminator: { propertyName: 'kind', defaultMapping: 'Other' },
+      'x-emailPattern': 'rfc5322',
+    }
+    expect(schema.type).toStrictEqual(['string', 'null'])
   })
 })

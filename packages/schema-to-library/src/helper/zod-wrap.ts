@@ -1,8 +1,10 @@
+import { isNullable } from '../guard/index.js'
 import type { JSONSchema } from '../parser/index.js'
 import { coerceDefault } from '../utils/index.js'
 import { readCodeExtension } from './code-extensions.js'
 import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
+import { examplesOf } from './schema.js'
 
 /**
  * Wraps a Zod schema string with `.default()`, `.nullable()`, `.brand<...>()`
@@ -33,14 +35,11 @@ export function zodWrap(
     }
     return JSON.stringify(value)
   }
-  const isNullable =
-    schema.nullable === true ||
-    (Array.isArray(schema.type) ? schema.type.includes('null') : schema.type === 'null')
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
   // `.nullable()` must precede `.default()` so a `default: null` is valid against
   // the nullable type; for non-null defaults the order is behaviourally identical.
-  const withNullable = isNullable ? `${zodStr}.nullable()` : zodStr
+  const withNullable = isNullable(schema) ? `${zodStr}.nullable()` : zodStr
   const withDefault = defaultResult?.keep
     ? `${withNullable}.default(${formatLiteral(defaultResult.value)})`
     : withNullable
@@ -63,7 +62,7 @@ export function zodWrap(
   const withTransform = transform ? `${withRefine}${transform}` : withRefine
   const withPipe = pipe ? `${withTransform}${pipe}` : withTransform
 
-  const examples = schema.examples ?? (schema.example !== undefined ? [schema.example] : undefined)
+  const examples = examplesOf(schema)
   const metaObj: Record<string, unknown> = {}
   if (schema.description !== undefined) metaObj.description = schema.description
   if (examples !== undefined) metaObj.examples = examples

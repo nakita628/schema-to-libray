@@ -1,55 +1,38 @@
 import type { JSONSchema } from '../parser/index.js'
-import { isRecord } from './value.js'
+import { localDefinitionName } from './cyclic.js'
+import { collectDefinitions } from './schema.js'
+import { walkSchema } from './walk.js'
 
-function collectRefs(definition: JSONSchema): string[] {
+/** The definition name the fragment of an external `$ref` points at, if it names one. */
+function fragmentDefinitionName(fragment: string): string | undefined {
+  return (
+    /^\/(?:definitions|\$defs)\/(?<name>[^/]+)$/u.exec(fragment)?.groups?.name ??
+    /^\/(?<name>[^/]+)$/u.exec(fragment)?.groups?.name
+  )
+}
+
+/** A node that is a reference into a document: what it points at is the whole of what it says. */
+function isPointerNode(node: { readonly [k: string]: unknown }): boolean {
+  return typeof node.$ref === 'string' && node.$ref.includes('#')
+}
+
+/**
+ * The definition names a definition refers to, sorted. A reference node is not descended
+ * into, so a sibling keyword beside a `$ref` adds no edge.
+ */
+function collectRefs(definition: JSONSchema): readonly string[] {
   const refs = new Set<string>()
-  const stack = [definition]
-
-  while (stack.length > 0) {
-    const node = stack.pop()
-    if (!isRecord(node)) continue
-
-    if ('$ref' in node && typeof node.$ref === 'string') {
-      const ref = node.$ref
-      if (ref === '#') continue
-
-      const match = ref.match(/^#\/(?:definitions|\$defs)\/([^/]+)$/)
-      if (match) {
-        refs.add(match[1])
-      }
-
-      const relativeMatch = ref.match(/^#([^/]+)$/)
-      if (relativeMatch) {
-        refs.add(relativeMatch[1])
-      }
-
-      if (ref.includes('#')) {
-        const [, fragment] = ref.split('#')
-        if (fragment) {
-          const fragmentMatch = fragment.match(/^\/(?:definitions|\$defs)\/([^/]+)$/)
-          if (fragmentMatch) {
-            refs.add(fragmentMatch[1])
-          }
-          const simpleMatch = fragment.match(/^\/([^/]+)$/)
-          if (simpleMatch) {
-            refs.add(simpleMatch[1])
-          }
-        }
-        continue
-      }
-    }
-
-    for (const value of Object.values(node)) {
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          if (isRecord(item)) stack.push(item)
-        }
-      } else if (isRecord(value)) {
-        stack.push(value)
-      }
-    }
+  for (const node of walkSchema(definition, { prune: isPointerNode })) {
+    const ref = node.$ref
+    if (typeof ref !== 'string' || ref === '#') continue
+    const local = localDefinitionName(ref)
+    if (local !== undefined) refs.add(local)
+    if (!ref.includes('#')) continue
+    const [, fragment] = ref.split('#')
+    if (!fragment) continue
+    const external = fragmentDefinitionName(fragment)
+    if (external !== undefined) refs.add(external)
   }
-
   return [...refs].toSorted()
 }
 
@@ -70,31 +53,25 @@ function collectRefs(definition: JSONSchema): string[] {
  * ```
  */
 export function resolveSchemaDependenciesFromSchema(schema: JSONSchema): string[] {
-  const definitions: { [k: string]: JSONSchema } = {
-    ...schema.definitions,
-    ...schema.$defs,
-  }
+  const definitions = collectDefinitions(schema)
 
   const sorted: string[] = []
-  const perm = new Set<string>()
-  const temp = new Set<string>()
+  const done = new Set<string>()
+  const visiting = new Set<string>()
 
   const visit = (name: string): void => {
-    if (perm.has(name)) return
-    if (temp.has(name)) {
-      return
-    }
+    if (done.has(name) || visiting.has(name)) return
 
     const definition = definitions[name]
     if (!definition) return
 
-    temp.add(name)
+    visiting.add(name)
     for (const ref of collectRefs(definition)) {
       if (ref in definitions) visit(ref)
     }
-    temp.delete(name)
+    visiting.delete(name)
 
-    perm.add(name)
+    done.add(name)
     sorted.push(name)
   }
 

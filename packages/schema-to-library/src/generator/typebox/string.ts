@@ -1,3 +1,4 @@
+import { hasFixedLength } from '../../guard/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
 import type { JSONSchema } from '../../parser/index.js'
 
@@ -43,10 +44,7 @@ export function string(schema: JSONSchema, ref?: string) {
           errorMessage ? `,_:${JSON.stringify(errorMessage)}` : ''
         }}`
 
-  const isFixedLength =
-    schema.minLength !== undefined &&
-    schema.maxLength !== undefined &&
-    schema.minLength === schema.maxLength
+  const isFixedLength = hasFixedLength(schema)
 
   // Content-check extensions emit as `pattern` annotation (ajv runtime check).
   // When the schema's own `pattern` is set, that wins (existing behavior);

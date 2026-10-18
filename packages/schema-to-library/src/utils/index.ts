@@ -1,3 +1,12 @@
+import {
+  DEFAULT_ROOT_NAME,
+  NON_IDENTIFIER_CHARACTER_PATTERN,
+  OPENAPI_COMPONENT_SUFFIX_MAP,
+} from '../constants/index.js'
+import { isArrowExpression, isValidIdentifier } from '../guard/index.js'
+
+export { OPENAPI_COMPONENT_SUFFIX_MAP } from '../constants/index.js'
+
 /**
  * Convert string to PascalCase (first character uppercase).
  *
@@ -15,7 +24,7 @@
  * ```
  */
 export function toPascalCase(name: string) {
-  if (/[^A-Za-z0-9_-]/.test(name)) return toIdentifierPascalCase(name)
+  if (NON_IDENTIFIER_CHARACTER_PATTERN.test(name)) return toIdentifierPascalCase(name)
   return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
@@ -60,13 +69,13 @@ export function encodeNonAscii(name: string) {
  */
 export function toIdentifierPascalCase(name: string) {
   const parts = encodeNonAscii(name)
-    .split(/[^a-zA-Z0-9]+/)
+    .split(/[^a-zA-Z0-9]+/u)
     .filter(Boolean)
-  if (parts.length === 0) return 'Schema'
+  if (parts.length === 0) return DEFAULT_ROOT_NAME
   const result = parts.map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join('')
-  if (/^[0-9]/.test(result)) {
+  if (/^[0-9]/u.test(result)) {
     const prefixed = `_${result}`
-    return prefixed.replace(/([0-9])([a-z])/, (_, d, c: string) => `${d}${c.toUpperCase()}`)
+    return prefixed.replace(/([0-9])([a-z])/u, (_, d, c: string) => `${d}${c.toUpperCase()}`)
   }
   return result
 }
@@ -132,14 +141,17 @@ export function coerceDefault(
 }
 
 /**
- * Whether a configured message is source text for an arrow function rather than a
- * literal sentence.
+ * A message as the expression an emitted check evaluates for each issue: an arrow source
+ * is applied to the issue, a sentence becomes a string literal.
  *
- * The `x-*-message` extensions accept either, and a library that takes a callback
- * (Zod's `error`, Valibot's message argument) gets the source through unquoted.
+ * @example
+ * ```ts
+ * issueMessageExpression('Invalid')                  // '"Invalid"'
+ * issueMessageExpression('(issue) => issue.path[0]') // '((issue) => issue.path[0])(issue)'
+ * ```
  */
-function isArrowExpression(source: string): boolean {
-  return /^\s*\(.*?\)\s*=>/.test(source)
+export function issueMessageExpression(message: string): string {
+  return isArrowExpression(message) ? `(${message})(issue)` : JSON.stringify(message)
 }
 
 /**
@@ -214,30 +226,6 @@ export function effectMessage(message: string) {
 }
 
 /**
- * OpenAPI component suffix map
- *
- * Maps OpenAPI component path prefixes to their variable name suffixes.
- *
- * @see {@link https://swagger.io/docs/specification/v3_0/components/|OpenAPI Components}
- */
-export const OPENAPI_COMPONENT_SUFFIX_MAP: readonly {
-  readonly prefix: string
-  readonly suffix: string
-}[] = [
-  { prefix: '#/components/schemas/', suffix: 'Schema' },
-  { prefix: '#/components/parameters/', suffix: 'ParamsSchema' },
-  { prefix: '#/components/headers/', suffix: 'HeaderSchema' },
-  { prefix: '#/components/securitySchemes/', suffix: 'SecurityScheme' },
-  { prefix: '#/components/requestBodies/', suffix: 'RequestBody' },
-  { prefix: '#/components/responses/', suffix: 'Response' },
-  { prefix: '#/components/examples/', suffix: 'Example' },
-  { prefix: '#/components/links/', suffix: 'Link' },
-  { prefix: '#/components/callbacks/', suffix: 'Callback' },
-  { prefix: '#/components/pathItems/', suffix: 'PathItem' },
-  { prefix: '#/components/mediaTypes/', suffix: 'MediaTypeSchema' },
-]
-
-/**
  * Resolve an OpenAPI $ref string to a variable name with the appropriate suffix
  *
  * @example
@@ -269,5 +257,5 @@ export function resolveOpenAPIRef($ref: string) {
  * ```
  */
 export function makeSafeKey(key: string): string {
-  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
+  return isValidIdentifier(key) ? key : JSON.stringify(key)
 }

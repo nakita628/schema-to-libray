@@ -1,3 +1,5 @@
+import { UNICODE_ESCAPE_PATTERN } from '../constants/index.js'
+
 /**
  * Build a JavaScript regular-expression literal from a JSON Schema `pattern`.
  *
@@ -15,7 +17,7 @@
  * ```
  */
 export function regexLiteral(pattern: string): string {
-  const body = pattern.replaceAll(/(?<!\\)\//g, '\\/')
-  const unicodeFlag = /\\[pP]\{|\\u\{/.test(pattern) ? 'u' : ''
+  const body = pattern.replaceAll(/(?<!\\)\//gu, '\\/')
+  const unicodeFlag = UNICODE_ESCAPE_PATTERN.test(pattern) ? 'u' : ''
   return `/${body}/${unicodeFlag}`
 }

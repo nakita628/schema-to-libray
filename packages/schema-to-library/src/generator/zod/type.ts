@@ -1,15 +1,18 @@
+import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
+import { isRootRef, isShapelessMember } from '../../guard/index.js'
+import { itemsSchemaOf } from '../../helper/schema.js'
+import { jsLiteral } from '../../helper/value.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
 
-export function type(schema: JSONSchema | undefined, rootName = 'Schema'): string {
+export function type(schema: JSONSchema | undefined, rootName: string = DEFAULT_ROOT_NAME): string {
   if (schema === undefined) return ''
 
   if (schema.$ref) {
-    if (schema.$ref === '#' || schema.$ref === '') {
+    if (isRootRef(schema.$ref)) {
       return `z.infer<typeof ${rootName}>`
     }
-    const PREFIXES = ['#/components/schemas/', '#/definitions/', '#/$defs/'] as const
-    for (const prefix of PREFIXES) {
+    for (const prefix of DEFINITION_REF_PREFIXES) {
       if (schema.$ref.startsWith(prefix)) {
         return `_${toPascalCase(schema.$ref.slice(prefix.length))}`
       }
@@ -28,16 +31,7 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
   }
 
   if (schema.allOf) {
-    const members = schema.allOf
-      .filter((s) => {
-        if (s.type === 'null') return false
-        if (s.nullable === true && Object.keys(s).length === 1) return false
-        if (Object.keys(s).length === 1 && (s.default !== undefined || s.const !== undefined)) {
-          return false
-        }
-        return true
-      })
-      .map((s) => type(s, rootName))
+    const members = schema.allOf.filter((s) => !isShapelessMember(s)).map((s) => type(s, rootName))
     if (members.length === 0) return 'unknown'
     if (members.length === 1) return members[0]
     return `(${members.join(' & ')})`
@@ -45,28 +39,20 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
 
   if (schema.not) return 'unknown'
 
-  if (schema.const !== undefined) {
-    if (typeof schema.const === 'string') return `"${schema.const}"`
-    if (typeof schema.const === 'number' || typeof schema.const === 'boolean') {
-      return String(schema.const)
-    }
-    return JSON.stringify(schema.const) ?? 'null'
-  }
+  // A JSON value spelled as a literal is also its own TypeScript literal type.
+  if (schema.const !== undefined) return jsLiteral(schema.const)
 
   if (schema.enum) {
-    if (schema.enum.length === 1) {
-      const v = schema.enum[0]
-      return typeof v === 'string' ? `"${v}"` : String(v)
-    }
-    return `(${schema.enum.map((v: unknown) => (typeof v === 'string' ? `"${v}"` : String(v))).join(' | ')})`
+    if (schema.enum.length === 1) return jsLiteral(schema.enum[0])
+    return `(${schema.enum.map(jsLiteral).join(' | ')})`
   }
 
   if (schema.properties) {
-    const required = Array.isArray(schema.required) ? schema.required : []
+    const required = new Set(schema.required)
     const properties = Object.entries(schema.properties).map(([key, propSchema]) => {
       const propType = type(propSchema, rootName)
       const safeKey = makeSafeKey(key)
-      return required.includes(key) ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
+      return required.has(key) ? `${safeKey}: ${propType}` : `${safeKey}?: ${propType}`
     })
     return `{${properties.join('; ')}}`
   }
@@ -78,7 +64,8 @@ export function type(schema: JSONSchema | undefined, rootName = 'Schema'): strin
   if (t.includes('integer')) return 'number'
   if (t.includes('boolean')) return 'boolean'
   if (t.includes('array')) {
-    return schema.items ? `${type(schema.items, rootName)}[]` : 'unknown[]'
+    const items = itemsSchemaOf(schema.items)
+    return items ? `${type(items, rootName)}[]` : 'unknown[]'
   }
   if (t.includes('object')) {
     if (schema.additionalProperties) {

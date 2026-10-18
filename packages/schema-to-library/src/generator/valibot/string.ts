@@ -1,3 +1,4 @@
+import { hasFixedLength } from '../../guard/index.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
@@ -41,10 +42,7 @@ export function string(schema: JSONSchema) {
       ? format.replace(/\(\)$/, `(${baseErrorArg})`)
       : format
     : undefined
-  const isFixedLength =
-    schema.minLength !== undefined &&
-    schema.maxLength !== undefined &&
-    schema.minLength === schema.maxLength
+  const isFixedLength = hasFixedLength(schema)
   const trim = schema['x-trim'] === true ? 'v.trim()' : undefined
   const toLowerCase = schema['x-toLowerCase'] === true ? 'v.toLowerCase()' : undefined
   const toUpperCase = schema['x-toUpperCase'] === true ? 'v.toUpperCase()' : undefined

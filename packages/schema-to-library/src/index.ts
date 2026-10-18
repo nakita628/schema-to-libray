@@ -1,3 +1,4 @@
+export * from './constants/index.js'
 export * from './format/index.js'
 // Expression-level functions for composing with external wrappers (e.g., openapi-hono)
 export * from './generator/ajv/ajv.js'
@@ -14,5 +15,6 @@ export * from './generator/yup/index.js'
 export * from './generator/yup/yup.js'
 export * from './generator/zod/index.js'
 export * from './generator/zod/zod.js'
+export type { EmitOptions, GenerateOptions } from './helper/document.js'
 export * from './parser/index.js'
 export * from './utils/index.js'

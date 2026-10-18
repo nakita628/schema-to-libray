@@ -1,3 +1,4 @@
+import { hasFixedLength } from '../../guard/index.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 
@@ -70,10 +71,7 @@ export function string(schema: JSONSchema) {
     return finalize(`type(${base}).and(${regexLiteral(schema.pattern)})`)
   }
 
-  const isFixedLength =
-    schema.minLength !== undefined &&
-    schema.maxLength !== undefined &&
-    schema.minLength === schema.maxLength
+  const isFixedLength = hasFixedLength(schema)
 
   if (isFixedLength) {
     if (lengthMessage) {

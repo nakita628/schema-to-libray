@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../parser/index.js'
 import {
   ALL_CODE_EXTENSION_KEYS,
   ARKTYPE_CODE_EXTENSION_KEYS,
   EFFECT_CODE_EXTENSION_KEYS,
-  findCodeExtensionKeysInSchema,
-  hasIfThenElse,
   IF_THEN_ELSE_UNSUPPORTED_MARKER,
-  isSafeCodeExtension,
-  readCodeExtension,
   UNSAFE_GENERATED_MARKER,
   VALIBOT_CODE_EXTENSION_KEYS,
   ZOD_CODE_EXTENSION_KEYS,
+} from '../constants/index.js'
+import type { JSONSchema } from '../parser/index.js'
+import {
+  findCodeExtensionKeysInSchema,
+  isSafeCodeExtension,
+  readCodeExtension,
 } from './code-extensions.js'
+import { hasIfThenElse } from './walk.js'
 
 describe('code-extensions', () => {
   describe('ZOD_CODE_EXTENSION_KEYS', () => {
@@ -92,9 +94,9 @@ describe('code-extensions', () => {
     })
 
     it('rejects non-string values', () => {
-      expect(isSafeCodeExtension(123 as unknown as string)).toBe(false)
-      expect(isSafeCodeExtension(undefined as unknown as string)).toBe(false)
-      expect(isSafeCodeExtension(null as unknown as string)).toBe(false)
+      expect(isSafeCodeExtension(123)).toBe(false)
+      expect(isSafeCodeExtension(undefined)).toBe(false)
+      expect(isSafeCodeExtension(null)).toBe(false)
     })
   })
 

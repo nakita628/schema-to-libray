@@ -1,63 +1,57 @@
+import { NOT_KEYWORD_UNSUPPORTED_MARKER } from '../../constants/index.js'
+import { isRootRef } from '../../guard/index.js'
 import {
   cyclicDefinitionNames,
   hasNotKeyword,
   hasRootSelfReference,
-  NOT_KEYWORD_UNSUPPORTED_MARKER,
-  resolveSchemaDependenciesFromSchema,
+  missingDefinitionComment,
+  planDocument,
+  renderDefinitions,
+  rootNameOf,
+  schemaNamer,
 } from '../../helper/index.js'
-import type { JSONSchema, ParamIn } from '../../parser/index.js'
-import { resolveOpenAPIRef, toIdentifierPascalCase, toPascalCase } from '../../utils/index.js'
+import type { GenerateOptions } from '../../helper/index.js'
+import type { JSONSchema } from '../../parser/index.js'
+import { resolveOpenAPIRef } from '../../utils/index.js'
 import { typebox } from './typebox.js'
+import type { TypeboxOptions } from './typebox.js'
 
-export function schemaToTypebox(
-  schema: JSONSchema,
-  options?: {
-    exportType?: boolean
-    openapi?: boolean
-    readonly?: boolean
-    paramIn?: ParamIn
-    /**
-     * Host `$ref` name for OpenAPI component registration. TypeBox has no
-     * post-construction `.meta()`, so this lands in the outermost builder's
-     * options (`Type.String({ref})`, `Type.Object({…},{ref})`, or the third
-     * argument of `Type.Cyclic`). Named `$defs` members are not given this
-     * value. Omit it and the emit is unchanged.
-     */
-    ref?: string
-  },
-): string {
-  const {
-    exportType = true,
-    openapi = false,
-    readonly: readonlyMode = false,
-    paramIn,
-    ref: hostRef,
-  } = options ?? {}
-  const genOptions = {
+/** The options of `schemaToTypebox`: the common ones, plus a host `$ref` name. */
+export type TypeboxGenerateOptions = Omit<GenerateOptions, 'unsafeCodeExtensions'> & {
+  /**
+   * Host `$ref` name for OpenAPI component registration. TypeBox has no
+   * post-construction `.meta()`, so this lands in the outermost builder's
+   * options (`Type.String({ref})`, `Type.Object({…},{ref})`, or the third
+   * argument of `Type.Cyclic`). Named `$defs` members are not given this
+   * value. Omit it and the emit is unchanged.
+   */
+  readonly ref?: string
+}
+
+/** The import line, carrying `Codec` only when the emitted source calls it. */
+function importLine(emitted: string): string {
+  return `import { ${emitted.includes('Codec(') ? 'Codec, ' : ''}Type, type Static } from 'typebox'`
+}
+
+/**
+ * A whole JSON Schema document as a TypeBox module. A `$ref` cycle cannot be expressed
+ * with plain `const` declarations, so a cyclic document becomes one
+ * `Type.Cyclic($defs, root)` map instead.
+ */
+export function schemaToTypebox(schema: JSONSchema, options?: TypeboxGenerateOptions): string {
+  const exportType = options?.exportType ?? true
+  const openapi = options?.openapi ?? false
+  const hostRef = options?.ref
+  const genOptions: TypeboxOptions = {
     openapi,
-    readonly: readonlyMode,
-    ...(paramIn !== undefined && { paramIn }),
+    readonly: options?.readonly ?? false,
+    ...(options?.paramIn !== undefined && { paramIn: options.paramIn }),
   }
   const rootOptions = hostRef === undefined ? genOptions : { ...genOptions, ref: hostRef }
   const notKeywordPresent = hasNotKeyword(schema)
-  const toName = openapi ? toIdentifierPascalCase : toPascalCase
-  const rootName = schema.title ? toName(schema.title) : 'Schema'
-
-  const definitions: { [k: string]: JSONSchema } = {
-    ...schema.definitions,
-    ...schema.$defs,
-  }
-
-  const hasDefinitions = Object.keys(definitions).length > 0
-
-  const orderedSchemas = hasDefinitions ? resolveSchemaDependenciesFromSchema(schema) : []
-
-  const rootInDefs = definitions[rootName] !== undefined
-  const rootDefinition = definitions[rootName]
-
-  const nonRootDefs = rootInDefs
-    ? orderedSchemas.filter((name) => name !== rootName)
-    : orderedSchemas
+  const toName = schemaNamer(openapi)
+  const plan = planDocument(schema, rootNameOf(schema, toName))
+  const { rootName } = plan
 
   // A `$ref` cycle cannot be expressed with plain `const` declarations: the
   // first one would reference a peer declared later. TypeBox v1 answers this
@@ -66,24 +60,23 @@ export function schemaToTypebox(
   // that one map, so a non-cyclic definition referencing a cyclic one still
   // resolves.
   const rootSelfReferential = hasRootSelfReference(
-    rootInDefs ? rootDefinition : schema,
-    (ref) => ref === '#' || ref === '' || (openapi && resolveOpenAPIRef(ref) === rootName),
+    plan.root,
+    (ref) => isRootRef(ref) || (openapi && resolveOpenAPIRef(ref) === rootName),
   )
-  const cyclicDefs = cyclicDefinitionNames(schema)
-  const isCyclic = rootSelfReferential || cyclicDefs.size > 0
+  const isCyclic = rootSelfReferential || cyclicDefinitionNames(schema).size > 0
 
   if (isCyclic) {
-    const cyclicRefs = new Set([...orderedSchemas.map(toName), rootName])
+    const cyclicRefs = new Set([...plan.orderedNames.map(toName), rootName])
     const cyclicOptions = { ...genOptions, cyclicRefs }
     const members = [
-      ...nonRootDefs.map((name) => {
-        const def = definitions[name]
+      ...plan.nonRootNames.map((name) => {
+        const def = plan.definitions[name]
         const pc = toName(name)
         return def
           ? `${pc}: ${typebox(def, pc, true, cyclicOptions)}`
-          : `// ⚠️ missing definition for ${name}`
+          : missingDefinitionComment(name)
       }),
-      `${rootName}: ${typebox(rootInDefs ? rootDefinition : schema, rootName, true, cyclicOptions)}`,
+      `${rootName}: ${typebox(plan.root, rootName, true, cyclicOptions)}`,
     ].join(',\n')
 
     const cyclicRefOpt = hostRef === undefined ? '' : `,{ref:${JSON.stringify(hostRef)}}`
@@ -91,7 +84,7 @@ export function schemaToTypebox(
 
     return [
       ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
-      `import { ${cyclicExport.includes('Codec(') ? 'Codec, ' : ''}Type, type Static } from 'typebox'`,
+      importLine(cyclicExport),
       cyclicExport,
       ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),
     ]
@@ -99,28 +92,19 @@ export function schemaToTypebox(
       .join('\n\n')
   }
 
-  const schemaDefsCode = nonRootDefs
-    .map((name) => {
-      const def = definitions[name]
-      if (!def) return `// ⚠️ missing definition for ${name}`
-      const pc = toName(name)
-      return `const ${pc} = ${typebox(def, pc, true, genOptions)}`
-    })
-    .join('\n\n')
+  const schemaDefsCode = renderDefinitions(
+    plan,
+    toName,
+    (def, name) => `const ${name} = ${typebox(def, name, true, genOptions)}`,
+  )
 
-  const rootSchema = rootInDefs
-    ? typebox(rootDefinition, rootName, true, rootOptions)
-    : typebox(schema, rootName, true, rootOptions)
-
-  const rootExport = `export const ${rootName} = ${rootSchema}`
+  const rootExport = `export const ${rootName} = ${typebox(plan.root, rootName, true, rootOptions)}`
 
   // `Codec(...)` (string-wire coercion / transform) is a separate named export
   // from `typebox`; import it only when the generated code emitted one.
-  const usesCodec = `${schemaDefsCode}\n${rootExport}`.includes('Codec(')
-
   return [
     ...(notKeywordPresent ? [NOT_KEYWORD_UNSUPPORTED_MARKER] : []),
-    `import { ${usesCodec ? 'Codec, ' : ''}Type, type Static } from 'typebox'`,
+    importLine(`${schemaDefsCode}\n${rootExport}`),
     schemaDefsCode,
     rootExport,
     ...(exportType ? [`export type ${rootName} = Static<typeof ${rootName}>`] : []),
