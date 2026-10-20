@@ -1,8 +1,20 @@
-import { hasCombinator, hasConditional } from '../../guard/index.js'
+import {
+  hasCombinator,
+  hasConditional,
+  isObjectPrototypeProperty,
+  isStringWireLocation,
+} from '../../guard/index.js'
 import type { EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { issueMessageExpression, makeSafeKey, zodError } from '../../utils/index.js'
 import { zod } from './zod.js'
+
+/**
+ * A parameter object answers an `Object.prototype` name it was not sent with the inherited
+ * member. Copied onto a null-prototype object, it holds only what the request carried.
+ */
+const OWN_PROPERTIES_PREPROCESS =
+  '(val)=>(typeof val==="object"&&val!==null&&!Array.isArray(val)?Object.assign(Object.create(null),val):val)'
 
 /**
  * Generate a Zod object schema for a JSON Schema object node.
@@ -171,5 +183,9 @@ export function object(
     return parts.join('')
   })()
 
-  return `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}${ifThenElse}`
+  const objectExpr = `${partialBase}${minProperties}${maxProperties}${propertyNames}${patternProperties}${dependentRequired}${dependentSchemas}${ifThenElse}`
+  const hasInheritedName = Object.keys(schema.properties).some(isObjectPrototypeProperty)
+  return isStringWireLocation(options?.paramIn) && hasInheritedName
+    ? `z.preprocess(${OWN_PROPERTIES_PREPROCESS},${objectExpr})`
+    : objectExpr
 }

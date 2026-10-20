@@ -1,5 +1,10 @@
 import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
 import {
+  canBeNull,
+  canBeString,
+  hasCombinator,
+  hasNumericKeyword,
+  hasStringKeyword,
   isDeepLocalPointer,
   isDefaultOnlyMember,
   isNullable,
@@ -20,9 +25,10 @@ import {
   zodError,
 } from '../../utils/index.js'
 import { _enum } from './enum.js'
-import { integer } from './integer.js'
+import { int64Input, integer, isInt64 } from './integer.js'
 import { number } from './number.js'
 import { object } from './object.js'
+import { parameter, hasParameterSerialization, withoutParameterSerialization } from './parameter.js'
 import { string } from './string.js'
 
 /**
@@ -57,6 +63,37 @@ const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
   null: '(val) => val !== null',
 }
 
+/** A wire array sent once arrives as its one element: wrapped, it is an array of one. */
+const WIRE_ARRAY_PREPROCESS = '(val)=>(val===undefined||Array.isArray(val)?val:[val])'
+
+/** The text `null` on the wire, read as the `null` a nullable non-string schema takes. */
+const WIRE_NULL_PREPROCESS = `(val)=>(val==='null'?null:val)`
+
+/** The `type` values a value on the wire is coerced to, in the order a union tries them. */
+const WIRE_PRIMITIVE_ORDER = ['integer', 'number', 'boolean', 'string'] as const
+
+/**
+ * The `not` predicate of an inner schema, as the source of a `(val) => ...` arrow, or
+ * `undefined` when the inner schema has none this generator can express.
+ */
+function notPredicate(inner: JSONSchema): string | undefined {
+  if (inner.$ref) return undefined
+  if ('const' in inner) return `(val) => val !== ${JSON.stringify(inner.const)}`
+  if (typeof inner.type === 'string') return NOT_TYPE_PREDICATES[inner.type]
+  if (Array.isArray(inner.type)) {
+    const bodies = normalizeTypes(inner.type)
+      .map((t) => NOT_TYPE_PREDICATES[t])
+      .filter((p) => p !== undefined)
+      .map((p) => `(${p.replace(/^\(val\) => /u, '')})`)
+    if (bodies.length > 0) return `(val) => ${bodies.join(' && ')}`
+  }
+  if (Array.isArray(inner.enum)) return `(val) => !${JSON.stringify(inner.enum)}.includes(val)`
+  if (inner.oneOf || inner.anyOf || inner.allOf) {
+    return `(val) => !${zod(inner)}.safeParse(val).success`
+  }
+  return undefined
+}
+
 function elementMessageWrap(inner: string, msg: string) {
   const msgExpr = issueMessageExpression(msg)
   return `(()=>{const Schema=${inner};return z.unknown().check((ctx)=>{const result=Schema.safeParse(ctx.value);if(!result.success){for(const issue of result.error.issues){if(issue.path.length>0){ctx.issues.push({...issue,message:${msgExpr}})}else{ctx.issues.push(issue)}}}}).pipe(Schema)})()`
@@ -76,13 +113,48 @@ export function zod(
   isZod = false,
   options?: EmitOptions,
 ): string {
+  // The parameter's serialization reads the root's text; the nodes under it see none.
+  if (hasParameterSerialization(options)) {
+    const inner = zod(schema, rootName, isZod, withoutParameterSerialization(options))
+    return parameter(schema, inner, options)
+  }
+  const expression = node(schema, rootName, isZod, options)
+  const isWireCoerced = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
+  if (!isWireCoerced || !canBeNull(schema) || canBeString(schema)) return expression
+  // A combinator's members coerce `null` to `0` or `false` before a `null` member is
+  // tried, so the null is matched ahead of them; the other nodes already match it first.
+  const isNullMatchedFirst =
+    isNullable(schema) || schema.const === null || schema.enum?.includes(null) === true
+  const nullFirst = isNullMatchedFirst ? expression : `${expression}.nullable()`
+  return `z.preprocess(${WIRE_NULL_PREPROCESS},${nullFirst})`
+}
+
+function node(
+  schema: JSONSchema,
+  rootName: string,
+  isZod: boolean,
+  options: EmitOptions | undefined,
+): string {
   const isStringWireParam = isStringWireLocation(options?.paramIn)
+  const isWireCoerced = isStringWireParam && schema['x-coerce'] !== false
   const withForcedCoerce = (s: JSONSchema): JSONSchema =>
     isStringWireParam && s['x-coerce'] !== false ? { ...s, 'x-coerce': true } : s
   const codeExtOpts: CodeExtensionOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
   const zodWrap = (zodStr: string, s: JSONSchema): string => _zodWrap(zodStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
+  const wireArray = (v: string) =>
+    isStringWireParam ? `z.preprocess(${WIRE_ARRAY_PREPROCESS},${v})` : v
+  // What reads a literal's input into the literal's type: on the wire the text is coerced,
+  // and a 64-bit integer is a bigint wherever it comes from.
+  const literalInput = (values: readonly unknown[]): string | undefined => {
+    if (values.every((v) => typeof v === 'number')) {
+      if (isInt64(schema)) return int64Input(isWireCoerced)
+      if (isWireCoerced) return 'z.coerce.number()'
+    }
+    if (isWireCoerced && values.every((v) => typeof v === 'boolean')) return 'z.stringbool()'
+    return undefined
+  }
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
     if (isRootRef(s.$ref)) {
       return zodWrap(`z.lazy(() => ${rn})`, s)
@@ -136,6 +208,22 @@ export function zod(
     return zodWrap(ref(schema, rootName, isZod), schema)
   }
 
+  // On the wire a value is text whatever its schema, so a typeless constraint says which
+  // type to read the text as.
+  if (
+    isWireCoerced &&
+    schema.type === undefined &&
+    !hasCombinator(schema) &&
+    schema.const === undefined &&
+    schema.enum === undefined &&
+    schema.properties === undefined
+  ) {
+    const isNumeric = hasNumericKeyword(schema)
+    const isString = hasStringKeyword(schema)
+    if (isNumeric && !isString) return node({ ...schema, type: 'number' }, rootName, isZod, options)
+    if (isString && !isNumeric) return node({ ...schema, type: 'string' }, rootName, isZod, options)
+  }
+
   if (schema.oneOf) {
     if (schema.oneOf.length === 0) return zodWrap('z.any()', schema)
     const schemas = schema.oneOf.map((s) => zod(s, rootName, isZod, options))
@@ -145,10 +233,14 @@ export function zod(
     // ZodIntersection (from allOf) is not compatible with discriminatedUnion, so
     // fall back to xor when oneOf contains a $ref or allOf member.
     const hasRefOrAllOf = schema.oneOf.some((s) => s.$ref !== undefined || s.allOf !== undefined)
+    // The text `1` is both a number and a stringbool once coerced, so on the wire the
+    // first member that reads it wins rather than every match failing the other.
     const z =
       discriminator && !hasRefOrAllOf
         ? `z.discriminatedUnion('${discriminator}',[${schemas.join(',')}]${errorPart})`
-        : `z.xor([${schemas.join(',')}]${errorPart})`
+        : isWireCoerced
+          ? `z.union([${schemas.join(',')}]${errorPart})`
+          : `z.xor([${schemas.join(',')}]${errorPart})`
     return zodWrap(z, schema)
   }
 
@@ -195,29 +287,17 @@ export function zod(
   if (schema.not) {
     const notMessage = schema['x-not-message']
     const errorPart = notMessage ? `,${zodError(notMessage)}` : ''
-    const refine = (predicate: string) =>
-      zodWrap(`z.any().refine(${predicate}${errorPart})`, schema)
-    const inner = schema.not
+    const { not: inner, ...withoutNot } = schema
     if (typeof inner !== 'object' || inner === null) return zodWrap('z.any()', schema)
-    if (inner.$ref) return refine(`(val) => !${ref(inner, '', false)}.safeParse(val).success`)
-    if ('const' in inner) return refine(`(val) => val !== ${JSON.stringify(inner.const)}`)
-    if (typeof inner.type === 'string') {
-      const predicate = NOT_TYPE_PREDICATES[inner.type]
-      if (predicate) return refine(predicate)
+    const predicate = inner.$ref
+      ? `(val) => !${ref(inner, '', false)}.safeParse(val).success`
+      : notPredicate(inner)
+    // A `type` beside `not` still holds: the predicate narrows that type, not any value.
+    if (withoutNot.type !== undefined) {
+      const base = zod(withoutNot, rootName, isZod, options)
+      return predicate ? `${base}.refine(${predicate}${errorPart})` : base
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = normalizeTypes(inner.type)
-        .map((t) => NOT_TYPE_PREDICATES[t])
-        .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(val\) => /u, '')})`)
-      if (bodies.length > 0) return refine(`(val) => ${bodies.join(' && ')}`)
-    }
-    if (Array.isArray(inner.enum)) {
-      return refine(`(val) => !${JSON.stringify(inner.enum)}.includes(val)`)
-    }
-    if (inner.oneOf || inner.anyOf || inner.allOf) {
-      return refine(`(val) => !${zod(inner)}.safeParse(val).success`)
-    }
+    if (predicate) return zodWrap(`z.any().refine(${predicate}${errorPart})`, schema)
     return zodWrap('z.any()', schema)
   }
 
@@ -226,31 +306,57 @@ export function zod(
     // v3.0: x-const-message overrides x-error-message for `const` mismatch.
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
     const errorPart = constMessage ? `,${zodError(constMessage)}` : ''
-    return zodWrap(
-      isPrimitive(value)
-        ? `z.literal(${JSON.stringify(value)}${errorPart})`
-        : `z.custom<${JSON.stringify(value)}>()`,
-      schema,
-    )
+    const literal =
+      typeof value === 'number' && isInt64(schema)
+        ? `z.literal(${value}n${errorPart})`
+        : isPrimitive(value)
+          ? `z.literal(${JSON.stringify(value)}${errorPart})`
+          : `z.custom<${JSON.stringify(value)}>()`
+    const input = literalInput([value])
+    return zodWrap(input ? `${input}.pipe(${literal})` : literal, schema)
   }
-  if (schema.enum) return zodWrap(_enum(schema), schema)
+  if (schema.enum) {
+    const values = schema.enum.filter((value) => value !== null)
+    const input = values.length > 0 ? literalInput(values) : undefined
+    if (input === undefined) return zodWrap(_enum(schema), schema)
+    // `null` is matched ahead of the coercion, which would read it as `0` or `false`.
+    const hasNull = values.length < schema.enum.length
+    const piped = `${input}.pipe(${_enum({ ...schema, enum: values })})`
+    return zodWrap(hasNull && !isNullable(schema) ? `${piped}.nullable()` : piped, schema)
+  }
   if (schema.properties) return readonly(zodWrap(object(schema, rootName, isZod, options), schema))
 
   const types = normalizeTypes(schema.type)
-  if (types.includes('string')) return zodWrap(string(schema), schema)
-  if (types.includes('number')) return zodWrap(number(withForcedCoerce(schema)), schema)
-  if (types.includes('integer')) return zodWrap(integer(withForcedCoerce(schema)), schema)
-  if (types.includes('boolean')) {
+  const primitive = (t: string): string | undefined => {
+    if (t === 'string') return string(schema)
+    if (t === 'number') return number(withForcedCoerce(schema))
+    if (t === 'integer') return integer(withForcedCoerce(schema))
+    if (t !== 'boolean') return undefined
     const errorMessage = schema['x-error-message']
     const errorArg = errorMessage ? zodError(errorMessage) : ''
     if (isStringWireParam) {
-      return zodWrap(
-        `z.stringbool(${errorArg ? `{error:${errorArg.replaceAll(/^{error:|}$/g, '')}}` : ''})`,
-        schema,
-      )
+      return `z.stringbool(${errorArg ? `{error:${errorArg.replaceAll(/^{error:|}$/g, '')}}` : ''})`
     }
     const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
-    return zodWrap(`z.${coercePrefix}boolean(${errorArg})`, schema)
+    return `z.${coercePrefix}boolean(${errorArg})`
+  }
+  // `number` already takes every integer, so the two together are one member. On the
+  // wire every member reads text, so the string member is tried last.
+  const primitiveTypes = (
+    isWireCoerced ? WIRE_PRIMITIVE_ORDER.filter((t) => types.includes(t)) : types
+  ).filter(
+    (t) =>
+      (t === 'string' || t === 'number' || t === 'boolean' || t === 'integer') &&
+      !(t === 'integer' && types.includes('number')),
+  )
+  if (primitiveTypes.length > 1 && !types.includes('array') && !types.includes('object')) {
+    const members = primitiveTypes.map(primitive).filter((m) => m !== undefined)
+    return zodWrap(`z.union([${members.join(',')}])`, schema)
+  }
+  for (const t of ['string', 'number', 'integer', 'boolean']) {
+    if (!types.includes(t)) continue
+    const expression = primitive(t)
+    if (expression !== undefined) return zodWrap(expression, schema)
   }
 
   if (types.includes('array')) {
@@ -283,7 +389,7 @@ export function zod(
       const wrapped = prefixItemsMessage
         ? elementMessageWrap(tupleExpr, prefixItemsMessage)
         : tupleExpr
-      return readonly(zodWrap(wrapped, schema))
+      return readonly(zodWrap(wireArray(wrapped), schema))
     }
     // Draft-04 spelled a tuple as `items: [schema, ...]`; its first member stands for all.
     const itemSchema = itemsSchemaOf(schema.items)
@@ -343,7 +449,7 @@ export function zod(
           : typeof maxItems === 'number'
             ? `${base}.max(${maxItems}${maxError})${unique}${containsChain}`
             : `${base}${unique}${containsChain}`
-    return readonly(zodWrap(arrayExpr, schema))
+    return readonly(zodWrap(wireArray(arrayExpr), schema))
   }
 
   if (types.includes('object')) {

@@ -1,5 +1,5 @@
 import { DEFAULT_ROOT_NAME, MISSING_DEFINITION_PREFIX } from '../constants/index.js'
-import type { JSONSchema, ParamIn } from '../parser/index.js'
+import type { JSONSchema, ParamIn, ParamStyle } from '../parser/index.js'
 import { toIdentifierPascalCase, toPascalCase } from '../utils/index.js'
 import { resolveSchemaDependenciesFromSchema } from './resolve-schema-dependencies-from-schema.js'
 import { collectDefinitions } from './schema.js'
@@ -14,20 +14,40 @@ export type GenerateOptions = {
   readonly readonly?: boolean
   /** Honour the code-emitting `x-*` extensions. Unsafe: see `helper/code-extensions.ts`. */
   readonly unsafeCodeExtensions?: boolean
-  /** The OpenAPI parameter location the schema is emitted for; `query` / `path` coerce. */
+  /** The OpenAPI parameter location the schema is emitted for; its values are coerced from text. */
   readonly paramIn?: ParamIn
+  /**
+   * Zod-only: the parameter's `style`, which decides how its text is split into an array or
+   * an object (`form` with `explode: false` reads `1,2,3`, `deepObject` gathers `deep[key]`).
+   * Defaults to `form` for `query` / `cookie` / `formData` and `simple` for `path` / `header`.
+   * Applies to the root schema only.
+   */
+  readonly style?: ParamStyle
+  /** Zod-only: the parameter's `explode`. Defaults to `true` for `style: form`, else `false`. */
+  readonly explode?: boolean
+  /** Zod-only: the parameter's `allowEmptyValue` — an empty value reads as an absent one. */
+  readonly allowEmptyValue?: boolean
+  /**
+   * Zod-only: the media type of the parameter's `content`. A JSON one (`application/json`,
+   * `*+json`) reads the text as a JSON document and validates it without coercion.
+   */
+  readonly contentType?: string
 }
 
 /** The options threaded through every node emitter: `GenerateOptions` without `exportType`. */
 export type EmitOptions = Omit<GenerateOptions, 'exportType'>
 
-/** The node options of a document generation, with an unset `paramIn` left out. */
+/** The node options of a document generation, with the unset parameter options left out. */
 export function emitOptionsOf(options: GenerateOptions | undefined): EmitOptions {
   return {
     openapi: options?.openapi ?? false,
     readonly: options?.readonly ?? false,
     unsafeCodeExtensions: options?.unsafeCodeExtensions ?? false,
     ...(options?.paramIn !== undefined && { paramIn: options.paramIn }),
+    ...(options?.style !== undefined && { style: options.style }),
+    ...(options?.explode !== undefined && { explode: options.explode }),
+    ...(options?.allowEmptyValue !== undefined && { allowEmptyValue: options.allowEmptyValue }),
+    ...(options?.contentType !== undefined && { contentType: options.contentType }),
   }
 }
 

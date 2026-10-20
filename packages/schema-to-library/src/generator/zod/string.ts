@@ -1,15 +1,25 @@
+import { ISO_4217_CURRENCY_CODES } from '../../constants/index.js'
 import { hasFixedLength } from '../../guard/index.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { zodBaseError, zodError } from '../../utils/index.js'
 
+/** The formats Zod checks with a top-level validator, keyed by the lower-cased format. */
 const FORMAT_STRING: { readonly [k: string]: string } = {
   email: 'email()',
+  guid: 'guid()',
   uuid: 'uuid()',
   uuidv4: 'uuidv4()',
   uuidv6: 'uuidv6()',
   uuidv7: 'uuidv7()',
   uri: 'url()',
+  url: 'url()',
+  httpurl: 'httpUrl()',
+  hostname: 'hostname()',
+  hex: 'hex()',
+  e164: 'e164()',
+  ksuid: 'ksuid()',
+  xid: 'xid()',
   emoji: 'emoji()',
   base64: 'base64()',
   base64url: 'base64url()',
@@ -23,14 +33,68 @@ const FORMAT_STRING: { readonly [k: string]: string } = {
   cidrv4: 'cidrv4()',
   cidrv6: 'cidrv6()',
   date: 'iso.date()',
-  time: 'iso.time()',
   'date-time': 'iso.datetime()',
   duration: 'iso.duration()',
   binary: 'file()',
-  toLowerCase: 'toLowerCase()',
-  toUpperCase: 'toUpperCase()',
-  trim: 'trim()',
   jwt: 'jwt()',
+}
+
+/** The formats that normalise the value rather than check it, keyed by the lower-cased format. */
+const TRANSFORM_FORMATS: { readonly [k: string]: string } = {
+  trim: '.trim()',
+  tolowercase: '.toLowerCase()',
+  touppercase: '.toUpperCase()',
+}
+
+/**
+ * RFC 3339 `full-time` with the seconds and the offset optional, which `z.iso.time()` cannot
+ * express: it has no offset option. `precision` follows `z.iso.time`'s: `-1` minutes only,
+ * `0` whole seconds, `n` exactly `n` fraction digits.
+ */
+function timePattern(precision: number | undefined): string {
+  const seconds =
+    precision === undefined
+      ? String.raw`(?::[0-5]\d(?:\.\d+)?)?`
+      : precision === -1
+        ? ''
+        : precision === 0
+          ? String.raw`:[0-5]\d`
+          : String.raw`:[0-5]\d\.\d{${precision}}`
+  return String.raw`/^(?:[01]\d|2[0-3]):[0-5]\d${seconds}(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/`
+}
+
+const LUHN_CHECK = `(val)=>{let sum=0;for(let i=0;i<val.length;i++){let digit=Number(val[val.length-1-i]);if(i%2===1){digit*=2;if(digit>9)digit-=9}sum+=digit}return sum%10===0}`
+
+const IBAN_CHECK = `(val)=>{let rest=0;for(const char of val.slice(4)+val.slice(0,4)){const n=Number.parseInt(char,36);rest=(n>9?rest*100+n:rest*10+n)%97}return rest===1}`
+
+/**
+ * The checks chained onto `z.string()` for a format Zod has no validator of its own for,
+ * or `undefined` when the format is not one of them.
+ */
+function formatChecks(schema: JSONSchema, format: string): string | undefined {
+  const errorMessage = schema['x-error-message']
+  const errorPart = errorMessage ? `,${zodError(errorMessage)}` : ''
+  if (format === 'time' && schema['x-isoOffset'] !== false) {
+    const precision = schema['x-isoPrecision']
+    return `.regex(${timePattern(typeof precision === 'number' ? precision : undefined)}${errorPart})`
+  }
+  if (format === 'creditcard') {
+    return `${String.raw`.regex(/^\d{12,19}$/${errorPart})`}.refine(${LUHN_CHECK}${errorPart})`
+  }
+  if (format === 'iban') {
+    return `${String.raw`.regex(/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/${errorPart})`}.refine(${IBAN_CHECK}${errorPart})`
+  }
+  if (format === 'currencycode') {
+    return `.regex(/^(?:${ISO_4217_CURRENCY_CODES.join('|')})$/${errorPart})`
+  }
+  return undefined
+}
+
+/** The Zod format call of a node, as `z.` would be followed by, or `undefined`. */
+function formatCall(schema: JSONSchema, format: string): string | undefined {
+  // `z.iso.time()` rejects an offset; it is only the right check once offsets are ruled out.
+  if (format === 'time') return schema['x-isoOffset'] === false ? 'iso.time()' : undefined
+  return FORMAT_STRING[format]
 }
 
 const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
@@ -40,8 +104,7 @@ const EMAIL_PATTERN_MAP: { readonly [k: string]: string } = {
   unicode: 'z.regexes.unicodeEmail',
 }
 
-function buildFormatOptions(schema: JSONSchema): readonly string[] {
-  const format = schema.format
+function buildFormatOptions(schema: JSONSchema, format: string): readonly string[] {
   const parts: string[] = []
   if (format === 'email') {
     const emailPattern = schema['x-emailPattern']
@@ -58,7 +121,7 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
     if (typeof uuidVersion === 'string') parts.push(`version:${JSON.stringify(uuidVersion)}`)
     return parts
   }
-  if (format === 'uri') {
+  if (format === 'uri' || format === 'url' || format === 'httpurl') {
     const urlProtocol = schema['x-urlProtocol']
     if (typeof urlProtocol === 'string') parts.push(`protocol:${regexLiteral(urlProtocol)}`)
     const urlHostname = schema['x-urlHostname']
@@ -70,10 +133,16 @@ function buildFormatOptions(schema: JSONSchema): readonly string[] {
   if (format === 'date-time') {
     const precision = schema['x-isoPrecision']
     if (typeof precision === 'number') parts.push(`precision:${precision}`)
+    // RFC 3339 `date-time` carries an offset, so one is accepted unless ruled out.
     const offset = schema['x-isoOffset']
-    if (typeof offset === 'boolean') parts.push(`offset:${offset}`)
+    if (offset !== false) parts.push('offset:true')
     const local = schema['x-isoLocal']
     if (typeof local === 'boolean') parts.push(`local:${local}`)
+    return parts
+  }
+  if (format === 'time') {
+    const precision = schema['x-isoPrecision']
+    if (typeof precision === 'number') parts.push(`precision:${precision}`)
     return parts
   }
   if (format === 'jwt') {
@@ -149,22 +218,29 @@ export function string(schema: JSONSchema) {
   const fixedLengthMessage = minLengthMessage ?? maxLengthMessage
   const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
   const hash = hashBase(schema, baseErrorArg)
-  const format = schema.format && FORMAT_STRING[schema.format]
-  const coercePrefix = coerce && !format ? 'coerce.' : ''
-  const formatOptions = format ? buildFormatOptions(schema) : []
+  const formatName = schema.format?.toLowerCase()
+  const format = formatName !== undefined ? formatCall(schema, formatName) : undefined
+  const checks = formatName !== undefined ? formatChecks(schema, formatName) : undefined
+  const transformFormat = formatName !== undefined ? TRANSFORM_FORMATS[formatName] : undefined
+  const coercePrefix = coerce && !format && !hash ? 'coerce.' : ''
+  const formatOptions =
+    format && formatName !== undefined ? buildFormatOptions(schema, formatName) : []
   const baseCallArg = format ? mergeOptions(formatOptions, baseErrorArg) : baseErrorArg
-  const base =
-    hash ??
-    (format
-      ? `z.${format.replace(/\(\)$/u, `(${baseCallArg})`)}`
-      : `z.${coercePrefix}string(${baseCallArg})`)
+  const formatBase =
+    hash ?? (format ? `z.${format.replace(/\(\)$/u, `(${baseCallArg})`)}` : undefined)
   const pattern = schema.pattern
     ? `.regex(${regexLiteral(schema.pattern)}${patternErrorPart})`
     : undefined
   const isFixedLength = hasFixedLength(schema)
-  const trim = schema['x-trim'] === true ? '.trim()' : undefined
-  const toLowerCase = schema['x-toLowerCase'] === true ? '.toLowerCase()' : undefined
-  const toUpperCase = schema['x-toUpperCase'] === true ? '.toUpperCase()' : undefined
+  const trim = schema['x-trim'] === true || transformFormat === '.trim()' ? '.trim()' : undefined
+  const toLowerCase =
+    schema['x-toLowerCase'] === true || transformFormat === '.toLowerCase()'
+      ? '.toLowerCase()'
+      : undefined
+  const toUpperCase =
+    schema['x-toUpperCase'] === true || transformFormat === '.toUpperCase()'
+      ? '.toUpperCase()'
+      : undefined
   const normalize =
     typeof schema['x-normalize'] === 'string'
       ? `.normalize(${JSON.stringify(schema['x-normalize'])})`
@@ -183,12 +259,11 @@ export function string(schema: JSONSchema) {
       : undefined
   const lowercaseValidate = schema['x-lowercase'] === true ? '.lowercase()' : undefined
   const uppercaseValidate = schema['x-uppercase'] === true ? '.uppercase()' : undefined
-  return [
-    base,
-    trim,
-    toLowerCase,
-    toUpperCase,
-    normalize,
+  const transforms = [trim, toLowerCase, toUpperCase, normalize]
+    .filter((v) => v !== undefined)
+    .join('')
+  const restChecks = [
+    checks,
     startsWith,
     endsWith,
     includes,
@@ -205,4 +280,13 @@ export function string(schema: JSONSchema) {
   ]
     .filter((v) => v !== undefined)
     .join('')
+  if (formatBase === undefined) {
+    return `z.${coercePrefix}string(${baseCallArg})${transforms}${restChecks}`
+  }
+  // A top-level format validator checks the raw input before any chained transform runs,
+  // so the value is normalised on a plain string first and handed to the format after.
+  if (transforms !== '') {
+    return `z.string(${baseErrorArg})${transforms}.pipe(${formatBase}${restChecks})`
+  }
+  return `${formatBase}${restChecks}`
 }

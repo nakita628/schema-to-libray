@@ -21,7 +21,7 @@ const Member: z.ZodType<_Member> = z
       .enum(['admin', 'member', 'guest'])
       .meta({ description: 'The role of the user in the organization.' }),
     joinedAt: z.iso
-      .datetime()
+      .datetime({ offset: true })
       .meta({ description: 'The timestamp when the user joined the organization.' }),
     invitedBy: z
       .lazy(() => Member)

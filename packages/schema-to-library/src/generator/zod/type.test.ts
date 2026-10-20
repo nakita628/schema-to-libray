@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { JSONSchema } from '../../parser/index.js'
 import { type } from './type.js'
 
 describe('type', () => {
@@ -146,7 +147,19 @@ describe('type', () => {
     })
 
     it('should handle multiple types', () => {
-      expect(type({ type: ['string', 'number'] })).toBe('string')
+      expect(type({ type: ['string', 'number'] })).toBe('(string | number)')
+    })
+
+    it.concurrent.each<[JSONSchema, string]>([
+      [{ type: 'integer', format: 'int64' }, 'bigint'],
+      [{ type: 'integer', format: 'uint64' }, 'bigint'],
+      [{ type: 'integer', format: 'bigint' }, 'bigint'],
+      [{ type: 'integer', format: 'int64', enum: [1, 2] }, '(1n | 2n)'],
+      [{ type: 'integer', format: 'int64', const: 1 }, '1n'],
+      [{ type: ['number', 'boolean'] }, '(number | boolean)'],
+      [{ type: ['integer', 'number'] }, 'number'],
+    ])('type(%o) → %s', (schema, expected) => {
+      expect(type(schema)).toBe(expected)
     })
   })
 

@@ -47,6 +47,8 @@ takibi
 addl
 allof
 codegen
+creditcard
+currencycode
 dirents
 msgpackr
 arities

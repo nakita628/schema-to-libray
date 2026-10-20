@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import type { JSONSchema } from '../parser/index.js'
 import {
+  canBeNull,
+  canBeString,
   hasCombinator,
+  hasNumericKeyword,
+  hasStringKeyword,
   hasConditional,
   hasFixedItemCount,
   hasFixedLength,
@@ -17,6 +21,7 @@ import {
   isJSONSchemaType,
   isNullable,
   isNullTypeMember,
+  isObjectPrototypeProperty,
   isPlainObject,
   isPrimitive,
   isQuoted,
@@ -108,8 +113,9 @@ describe('guard', () => {
     it.concurrent.each<[Parameters<typeof isStringWireLocation>[0], boolean]>([
       ['query', true],
       ['path', true],
-      ['header', false],
-      ['cookie', false],
+      ['header', true],
+      ['cookie', true],
+      ['formData', true],
       [undefined, false],
     ])('isStringWireLocation(%j) → %s', (location, expected) => {
       expect(isStringWireLocation(location)).toBe(expected)
@@ -236,6 +242,56 @@ describe('guard', () => {
     ])('isQuoted / isArktypeDefinition on %s', (source, quoted, definition) => {
       expect(isQuoted(source)).toBe(quoted)
       expect(isArktypeDefinition(source)).toBe(definition)
+    })
+  })
+
+  describe('wire', () => {
+    it.concurrent.each<[JSONSchema, boolean]>([
+      [{ type: 'integer' }, false],
+      [{ type: ['integer', 'null'] }, true],
+      [{ type: 'integer', nullable: true }, true],
+      [{ enum: [1, null] }, true],
+      [{ const: null }, true],
+      [{ oneOf: [{ type: 'integer' }, { type: 'null' }] }, true],
+      [{ anyOf: [{ type: 'integer' }, { type: 'boolean' }] }, false],
+    ])('canBeNull(%o) → %s', (schema, expected) => {
+      expect(canBeNull(schema)).toBe(expected)
+    })
+
+    it.concurrent.each<[JSONSchema, boolean]>([
+      [{ type: 'string' }, true],
+      [{ type: ['integer', 'null'] }, false],
+      [{ enum: [1, 'a'] }, true],
+      [{ enum: [1, null] }, false],
+      [{ const: 'a' }, true],
+      [{ oneOf: [{ type: 'integer' }, { type: 'string' }] }, true],
+      [{ oneOf: [{ type: 'integer' }, { type: 'null' }] }, false],
+      [{}, true],
+      [{ $ref: '#/$defs/A' }, false],
+    ])('canBeString(%o) → %s', (schema, expected) => {
+      expect(canBeString(schema)).toBe(expected)
+    })
+
+    it.concurrent.each<[JSONSchema, boolean, boolean]>([
+      [{ minimum: 1 }, true, false],
+      [{ multipleOf: 2 }, true, false],
+      [{ maxLength: 2 }, false, true],
+      [{ pattern: '^a' }, false, true],
+      [{ description: 'x' }, false, false],
+    ])('hasNumericKeyword / hasStringKeyword(%o) → %s / %s', (schema, numeric, text) => {
+      expect(hasNumericKeyword(schema)).toBe(numeric)
+      expect(hasStringKeyword(schema)).toBe(text)
+    })
+
+    it.concurrent.each<[string, boolean]>([
+      ['constructor', true],
+      ['toString', true],
+      ['__proto__', true],
+      ['hasOwnProperty', true],
+      ['name', false],
+      ['prototype', false],
+    ])('isObjectPrototypeProperty(%j) → %s', (name, expected) => {
+      expect(isObjectPrototypeProperty(name)).toBe(expected)
     })
   })
 })

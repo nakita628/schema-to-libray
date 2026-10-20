@@ -3,7 +3,10 @@ import {
   DEFINITION_KEYWORDS,
   IDENTIFIER_PATTERN,
   JSON_SCHEMA_TYPES,
+  NUMERIC_KEYWORDS,
+  OBJECT_PROTOTYPE_PROPERTIES,
   ROOT_REFS,
+  STRING_KEYWORDS,
   STRING_WIRE_LOCATIONS,
 } from '../constants/index.js'
 import type { JSONSchema, JSONSchemaType, ParamIn } from '../parser/index.js'
@@ -79,6 +82,14 @@ export function isStringWireLocation(
   return STRING_WIRE_LOCATIONS.some((location) => location === paramIn)
 }
 
+/**
+ * Whether a property name is one every plain object inherits (`constructor`, `toString`,
+ * ...), so reading it off a parameter object that never carried it finds a function.
+ */
+export function isObjectPrototypeProperty(name: string): boolean {
+  return OBJECT_PROTOTYPE_PROPERTIES.some((property) => property === name)
+}
+
 // ── References ───────────────────────────────────────────────────────────
 
 /** Whether a `$ref` names the whole document — the schema being emitted refers to itself. */
@@ -131,6 +142,47 @@ export function isSchemaList(
 /** Whether a node admits `null`: OpenAPI 3.0 `nullable`, or `null` among its types. */
 export function isNullable(schema: JSONSchema): boolean {
   return schema.nullable === true || hasType(schema, 'null')
+}
+
+/**
+ * Whether a node takes `null`: a nullable type, a `null` among its `enum`, a `const: null`
+ * or a `oneOf` / `anyOf` member that does.
+ */
+export function canBeNull(schema: JSONSchema): boolean {
+  if (isNullable(schema)) return true
+  if (schema.const === null) return true
+  if (schema.enum?.some((value) => value === null)) return true
+  return [...(schema.oneOf ?? []), ...(schema.anyOf ?? [])].some(canBeNull)
+}
+
+/**
+ * Whether a node may take a string: a `string` type, a string among its `enum` or `const`,
+ * a `oneOf` / `anyOf` member that does, or no constraint on the type at all.
+ */
+export function canBeString(schema: JSONSchema): boolean {
+  if (hasType(schema, 'string')) return true
+  if (typeof schema.const === 'string') return true
+  if (schema.enum !== undefined) return schema.enum.some((value) => typeof value === 'string')
+  const members = [...(schema.oneOf ?? []), ...(schema.anyOf ?? [])]
+  if (members.length > 0) return members.some(canBeString)
+  return (
+    schema.type === undefined &&
+    schema.const === undefined &&
+    schema.$ref === undefined &&
+    schema.allOf === undefined &&
+    schema.not === undefined &&
+    schema.properties === undefined
+  )
+}
+
+/** Whether a node without a `type` carries a keyword that only applies to a number. */
+export function hasNumericKeyword(schema: JSONSchema): boolean {
+  return NUMERIC_KEYWORDS.some((keyword) => schema[keyword] !== undefined)
+}
+
+/** Whether a node without a `type` carries a keyword that only applies to a string. */
+export function hasStringKeyword(schema: JSONSchema): boolean {
+  return STRING_KEYWORDS.some((keyword) => schema[keyword] !== undefined)
 }
 
 /** Whether `type` names `type`, either alone or as one of a list. */

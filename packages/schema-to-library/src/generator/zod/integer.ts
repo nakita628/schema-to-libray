@@ -1,6 +1,22 @@
 import type { JSONSchema } from '../../parser/index.js'
 import { zodBaseError, zodError } from '../../utils/index.js'
 
+/** Whether a node is a 64-bit integer: a value beyond 2^53 that Zod reads as a bigint. */
+export function isInt64(schema: JSONSchema): boolean {
+  return schema.format === 'int64' || schema.format === 'uint64'
+}
+
+/**
+ * What reads a 64-bit integer into a bigint ahead of the check. On the string wire the text
+ * is coerced; in a JSON body the value is a safe-integer number, or the string of digits
+ * that is the only lossless way to carry a larger one, and nothing else.
+ */
+export function int64Input(isWire: boolean, baseErrorArg = ''): string {
+  if (isWire) return `z.coerce.bigint(${baseErrorArg})`
+  const errorPart = baseErrorArg ? `,${baseErrorArg}` : ''
+  return String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]${errorPart}).transform((val)=>BigInt(val))`
+}
+
 /**
  * Generates a Zod schema for integer types (int / int32 / int64 / bigint), with
  * min/max/multipleOf constraints and `x-*-message` vendor extensions translated
@@ -15,23 +31,22 @@ export function integer(schema: JSONSchema) {
   const baseErrorArg = zodBaseError(errorMessage, isCoerce ? undefined : requiredMessage)
   const isBigint = schema.format === 'bigint'
   const isInt32 = schema.format === 'int32'
-  const isInt64 = schema.format === 'int64'
+  const is64 = isInt64(schema)
   const bigintBase = isCoerce && isBigint
-  const bigintPipe = isCoerce && isInt64
   const numberPipe = isCoerce && isInt32
-  const numberChain = isCoerce && !isBigint && !isInt64 && !isInt32
+  const numberChain = isCoerce && !isBigint && !is64 && !isInt32
   const base = bigintBase
     ? `z.coerce.bigint(${baseErrorArg})`
     : isInt32
       ? `z.int32(${baseErrorArg})`
-      : isInt64
-        ? `z.int64(${baseErrorArg})`
+      : is64
+        ? `z.${schema.format === 'uint64' ? 'uint64' : 'int64'}(${baseErrorArg})`
         : isBigint
           ? `z.bigint(${baseErrorArg})`
           : `z.int(${baseErrorArg})`
   const lit = (n: number): string => {
     if (schema.format === 'bigint') return `BigInt(${n})`
-    if (schema.format === 'int64') return `${n}n`
+    if (is64) return `${n}n`
     return `${n}`
   }
   const minimumMessage = schema['x-minimum-message'] ?? errorMessage
@@ -103,6 +118,6 @@ export function integer(schema: JSONSchema) {
     return `z.coerce.number(${baseErrorArg}).int(${intErrorArg})${constraints}`
   }
   if (numberPipe) return `z.coerce.number(${baseErrorArg}).pipe(${innerChain})`
-  if (bigintPipe) return `z.coerce.bigint(${baseErrorArg}).pipe(${innerChain})`
+  if (is64) return `${int64Input(isCoerce, baseErrorArg)}.pipe(${innerChain})`
   return innerChain
 }

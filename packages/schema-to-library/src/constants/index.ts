@@ -82,6 +82,10 @@ export const STRING_FORMATS = [
   'creditCard',
   'iban',
   'currencyCode',
+  // Lower-case spellings of the names above, as some documents write them
+  'httpurl',
+  'creditcard',
+  'currencycode',
   // Transform formats: the value is normalised rather than checked
   'toLowerCase',
   'toUpperCase',
@@ -123,15 +127,63 @@ export const CONTENT_ENCODINGS = [
 ] as const
 
 /**
- * The OpenAPI parameter locations. `query` and `path` are string-wire: a primitive schema
- * emitted under one of them is coerced from a string.
+ * The OpenAPI parameter locations, plus `formData` for the fields of an
+ * `application/x-www-form-urlencoded` or `multipart/form-data` body. Every one of them is
+ * string-wire: a primitive schema emitted under one of them is coerced from a string.
  *
  * @see https://spec.openapis.org/oas/v3.2.0.html#parameter-object
  */
-export const PARAM_LOCATIONS = ['query', 'path', 'header', 'cookie'] as const
+export const PARAM_LOCATIONS = ['query', 'path', 'header', 'cookie', 'formData'] as const
 
 /** The parameter locations whose values arrive as strings and are coerced. */
-export const STRING_WIRE_LOCATIONS = ['query', 'path'] as const
+export const STRING_WIRE_LOCATIONS = ['query', 'path', 'header', 'cookie', 'formData'] as const
+
+/**
+ * The `style` values of an OpenAPI Parameter Object: how the parameter's text maps onto its
+ * schema.
+ *
+ * @see https://spec.openapis.org/oas/v3.2.0.html#style-values
+ */
+export const PARAM_STYLES = [
+  'matrix',
+  'label',
+  'simple',
+  'form',
+  'spaceDelimited',
+  'pipeDelimited',
+  'deepObject',
+] as const
+
+/**
+ * The properties every plain object inherits from `Object.prototype`. A parameter object
+ * read from a request answers these even when the request did not send them.
+ */
+export const OBJECT_PROTOTYPE_PROPERTIES = [
+  '__proto__',
+  '__defineGetter__',
+  '__defineSetter__',
+  '__lookupGetter__',
+  '__lookupSetter__',
+  'constructor',
+  'hasOwnProperty',
+  'isPrototypeOf',
+  'propertyIsEnumerable',
+  'toLocaleString',
+  'toString',
+  'valueOf',
+] as const
+
+/** The keywords that only constrain a number: on their own they imply `type: number`. */
+export const NUMERIC_KEYWORDS = [
+  'minimum',
+  'maximum',
+  'exclusiveMinimum',
+  'exclusiveMaximum',
+  'multipleOf',
+] as const
+
+/** The keywords that only constrain a string: on their own they imply `type: string`. */
+export const STRING_KEYWORDS = ['minLength', 'maxLength', 'pattern'] as const
 
 /**
  * The keywords that hold a document's named definitions: `$defs` since Draft 2019-09, and
@@ -248,3 +300,191 @@ export const DEFINITION_POINTER_PATTERN = /^#\/(?:definitions|\$defs)\/(?<name>[
 
 /** The Draft-04 anchor shorthand for a named definition: `#Name`. */
 export const ANCHOR_REF_PATTERN = /^#(?<name>[^/]+)$/u
+
+/**
+ * The ISO 4217 alphabetic codes in current use, funds and precious-metal codes included:
+ * what `format: currencyCode` accepts.
+ *
+ * @see https://www.iso.org/iso-4217-currency-codes.html
+ */
+export const ISO_4217_CURRENCY_CODES = [
+  'AED',
+  'AFN',
+  'ALL',
+  'AMD',
+  'ANG',
+  'AOA',
+  'ARS',
+  'AUD',
+  'AWG',
+  'AZN',
+  'BAM',
+  'BBD',
+  'BDT',
+  'BGN',
+  'BHD',
+  'BIF',
+  'BMD',
+  'BND',
+  'BOB',
+  'BOV',
+  'BRL',
+  'BSD',
+  'BTN',
+  'BWP',
+  'BYN',
+  'BZD',
+  'CAD',
+  'CDF',
+  'CHE',
+  'CHF',
+  'CHW',
+  'CLF',
+  'CLP',
+  'CNY',
+  'COP',
+  'COU',
+  'CRC',
+  'CUP',
+  'CVE',
+  'CZK',
+  'DJF',
+  'DKK',
+  'DOP',
+  'DZD',
+  'EGP',
+  'ERN',
+  'ETB',
+  'EUR',
+  'FJD',
+  'FKP',
+  'GBP',
+  'GEL',
+  'GHS',
+  'GIP',
+  'GMD',
+  'GNF',
+  'GTQ',
+  'GYD',
+  'HKD',
+  'HNL',
+  'HTG',
+  'HUF',
+  'IDR',
+  'ILS',
+  'INR',
+  'IQD',
+  'IRR',
+  'ISK',
+  'JMD',
+  'JOD',
+  'JPY',
+  'KES',
+  'KGS',
+  'KHR',
+  'KMF',
+  'KPW',
+  'KRW',
+  'KWD',
+  'KYD',
+  'KZT',
+  'LAK',
+  'LBP',
+  'LKR',
+  'LRD',
+  'LSL',
+  'LYD',
+  'MAD',
+  'MDL',
+  'MGA',
+  'MKD',
+  'MMK',
+  'MNT',
+  'MOP',
+  'MRU',
+  'MUR',
+  'MVR',
+  'MWK',
+  'MXN',
+  'MXV',
+  'MYR',
+  'MZN',
+  'NAD',
+  'NGN',
+  'NIO',
+  'NOK',
+  'NPR',
+  'NZD',
+  'OMR',
+  'PAB',
+  'PEN',
+  'PGK',
+  'PHP',
+  'PKR',
+  'PLN',
+  'PYG',
+  'QAR',
+  'RON',
+  'RSD',
+  'RUB',
+  'RWF',
+  'SAR',
+  'SBD',
+  'SCR',
+  'SDG',
+  'SEK',
+  'SGD',
+  'SHP',
+  'SLE',
+  'SOS',
+  'SRD',
+  'SSP',
+  'STN',
+  'SVC',
+  'SYP',
+  'SZL',
+  'THB',
+  'TJS',
+  'TMT',
+  'TND',
+  'TOP',
+  'TRY',
+  'TTD',
+  'TWD',
+  'TZS',
+  'UAH',
+  'UGX',
+  'USD',
+  'USN',
+  'UYI',
+  'UYU',
+  'UYW',
+  'UZS',
+  'VED',
+  'VES',
+  'VND',
+  'VUV',
+  'WST',
+  'XAF',
+  'XAG',
+  'XAU',
+  'XBA',
+  'XBB',
+  'XBC',
+  'XBD',
+  'XCD',
+  'XCG',
+  'XDR',
+  'XOF',
+  'XPD',
+  'XPF',
+  'XPT',
+  'XSU',
+  'XTS',
+  'XUA',
+  'XXX',
+  'YER',
+  'ZAR',
+  'ZMW',
+  'ZWG',
+] as const
