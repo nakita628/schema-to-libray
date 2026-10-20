@@ -16,7 +16,7 @@ export type { JSONValue } from './json.js'
 export type { XExtCode } from './x-ext/code.js'
 export type { XExtMessages } from './x-ext/messages.js'
 export type { XExtTransform } from './x-ext/transform.js'
-export type { ParamIn } from './x-ext/param.js'
+export type { ParamIn, ParamStyle } from './x-ext/param.js'
 
 /** The document could not be bundled as a JSON Schema. */
 export class ParseError extends Data.TaggedError('ParseError')<{

@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vite-plus/test'
 import { User as DefsUser } from '../$defs/output.ts'
 import { Config as AdditionalPropertiesConfig } from '../additional-properties/output.ts'
 import { Combined } from '../allof/output.ts'
+import { Filter as ParamDeepObjectFilter } from '../param-deep-object/output.ts'
+import { Ids as ParamFormNoExplodeIds } from '../param-form-no-explode/output.ts'
+import { Payload as ParamJsonContentPayload } from '../param-json-content/output.ts'
+import { Formats as StringFormats } from '../string-formats/output.ts'
+import { Query as WireQuery } from '../wire-query/output.ts'
 import { Merged } from '../allof-message/output.ts'
 import { StringOrNumber } from '../anyof/output.ts'
 import { BrandedTypes } from '../brand/output.ts'
@@ -680,5 +685,121 @@ describe('zod fixtures: length-message runtime', () => {
         },
       ])
     }
+  })
+})
+
+describe('zod fixtures: wire-query runtime', () => {
+  it('coerces every parameter from its text', () => {
+    expect(
+      WireQuery.parse({
+        page: '2',
+        ids: '1',
+        sort: '-1',
+        active: 'true',
+        limit: 'null',
+        cursor: '18446744073709551615',
+        offset: '0',
+        skip: '3',
+        flag: '1',
+        constructor: '5',
+        email: ' a@b.co ',
+      }),
+    ).toStrictEqual({
+      page: 2,
+      ids: [1],
+      sort: -1,
+      active: true,
+      limit: null,
+      cursor: 18446744073709551615n,
+      offset: 0,
+      skip: 3,
+      flag: 1,
+      constructor: 5,
+      email: 'a@b.co',
+    })
+  })
+
+  it('reads an absent parameter named like an Object.prototype member as absent', () => {
+    expect(WireQuery.parse({})).toStrictEqual({ page: 1 })
+  })
+
+  it('reports a bad array element at its index', () => {
+    const result = WireQuery.safeParse({ ids: ['1', 'x'] })
+    expect(result.error?.issues.map((issue) => issue.path)).toStrictEqual([['ids', 1]])
+  })
+
+  it.each([
+    [{ sort: '2' }, 'sort'],
+    [{ active: 'false' }, 'active'],
+    [{ offset: '-1' }, 'offset'],
+    [{ skip: '0' }, 'skip'],
+    [{ skip: 'abc' }, 'skip'],
+    [{ cursor: '-1' }, 'cursor'],
+  ])('rejects %o at %s', (input, key) => {
+    const result = WireQuery.safeParse(input)
+    expect(result.error?.issues.map((issue) => issue.path)).toStrictEqual([[key]])
+  })
+})
+
+describe('zod fixtures: parameter serialization runtime', () => {
+  it('splits a non-exploded form array', () => {
+    expect(ParamFormNoExplodeIds.parse('1,2,3')).toStrictEqual([1, 2, 3])
+    expect(ParamFormNoExplodeIds.safeParse('').success).toBe(false)
+  })
+
+  it('gathers a deepObject parameter', () => {
+    expect(ParamDeepObjectFilter.parse({ 'deep[age]': '5', 'deep[name]': 'bob' })).toStrictEqual({
+      age: 5,
+      name: 'bob',
+    })
+  })
+
+  it('parses a JSON content parameter without coercing it', () => {
+    expect(ParamJsonContentPayload.parse('{"id":1,"tags":["a"]}')).toStrictEqual({
+      id: 1,
+      tags: ['a'],
+    })
+    expect(ParamJsonContentPayload.safeParse('{"id":"1"}').success).toBe(false)
+  })
+})
+
+describe('zod fixtures: string-formats runtime', () => {
+  it('reads int64 / uint64 from a JSON number or a string of digits', () => {
+    expect(
+      StringFormats.parse({ id: 9007199254740991, size: '18446744073709551615', kind: '2' }),
+    ).toStrictEqual({ id: 9007199254740991n, size: 18446744073709551615n, kind: 2n })
+  })
+
+  it.each([
+    ['at', '2025-01-01T00:00:00+09:00'],
+    ['time', '12:34:56+09:00'],
+    ['guid', '00000000-0000-0000-0000-000000000000'],
+    ['site', 'https://example.com'],
+    ['card', '4111111111111111'],
+    ['iban', 'GB82WEST12345698765432'],
+    ['currency', 'JPY'],
+  ])('accepts %s %j', (key, value) => {
+    expect(StringFormats.safeParse({ [key]: value }).success).toBe(true)
+  })
+
+  it.each([
+    ['id', 1.5],
+    ['id', '1.5'],
+    ['kind', 3],
+    ['time', '25:00'],
+    ['guid', 'a1b2c3d4e5f69a7b0c9d0e1f2a3b4c5d'],
+    ['site', 'ftp://example.com'],
+    ['card', '4111111111111112'],
+    ['iban', 'GB82WEST12345698765433'],
+    ['currency', 'ABC'],
+  ])('rejects %s %j', (key, value) => {
+    expect(StringFormats.safeParse({ [key]: value }).success).toBe(false)
+  })
+
+  it('trims before the format check', () => {
+    expect(StringFormats.parse({ slug: ' a ', email: ' a@b.co ' })).toStrictEqual({
+      slug: 'a',
+      email: 'a@b.co',
+    })
   })
 })

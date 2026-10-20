@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import type { JSONSchema } from '../../parser/index.js'
+import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { zod } from './zod.js'
 
 describe('zod', () => {
@@ -318,8 +318,14 @@ describe('zod', () => {
         ],
         [
           { not: { type: 'string' }, type: ['null'] },
-          "z.any().refine((val) => typeof val !== 'string').nullable()",
+          "z.null().nullable().refine((val) => typeof val !== 'string')",
         ],
+        [{ type: 'integer', not: { const: 0 } }, 'z.int().refine((val) => val !== 0)'],
+        [
+          { type: 'integer', not: { const: 0 }, 'x-not-message': 'not zero' },
+          'z.int().refine((val) => val !== 0,{error:"not zero"})',
+        ],
+        [{ type: 'integer', not: { format: 'int32' } }, 'z.int()'],
         [{ not: { const: 42 } }, 'z.any().refine((val) => val !== 42)'],
         [{ not: { enum: ['a', 'b'] } }, 'z.any().refine((val) => !["a","b"].includes(val))'],
       ])('zod(%o) → %s', (input, expected) => {
@@ -439,13 +445,16 @@ describe('zod', () => {
         [{ type: 'string', format: 'cidrv4' }, 'z.cidrv4()'],
         [{ type: 'string', format: 'cidrv6' }, 'z.cidrv6()'],
         [{ type: 'string', format: 'date' }, 'z.iso.date()'],
-        [{ type: 'string', format: 'time' }, 'z.iso.time()'],
-        [{ type: 'string', format: 'date-time' }, 'z.iso.datetime()'],
+        [
+          { type: 'string', format: 'time' },
+          String.raw`z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+        ],
+        [{ type: 'string', format: 'date-time' }, 'z.iso.datetime({offset:true})'],
         [{ type: 'string', format: 'duration' }, 'z.iso.duration()'],
         [{ type: 'string', format: 'binary' }, 'z.file()'],
-        [{ type: 'string', format: 'toLowerCase' }, 'z.toLowerCase()'],
-        [{ type: 'string', format: 'toUpperCase' }, 'z.toUpperCase()'],
-        [{ type: 'string', format: 'trim' }, 'z.trim()'],
+        [{ type: 'string', format: 'toLowerCase' }, 'z.string().toLowerCase()'],
+        [{ type: 'string', format: 'toUpperCase' }, 'z.string().toUpperCase()'],
+        [{ type: 'string', format: 'trim' }, 'z.string().trim()'],
         [{ type: 'string', format: 'jwt' }, 'z.jwt()'],
       ])('zod(%o) → %s', (input, expected) => {
         expect(zod(input)).toBe(expected)
@@ -590,47 +599,77 @@ describe('zod', () => {
 
         describe('type: integer, format: int64', () => {
           it.concurrent.each<[JSONSchema, string]>([
-            [{ type: 'integer', format: 'int64' }, 'z.int64()'],
-            [{ type: 'integer', format: 'int64', nullable: true }, 'z.int64().nullable()'],
-            [{ type: ['integer', 'null'], format: 'int64' }, 'z.int64().nullable()'],
+            [
+              { type: 'integer', format: 'int64' },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64())`,
+            ],
+            [
+              { type: 'integer', format: 'int64', nullable: true },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).nullable()`,
+            ],
+            [
+              { type: ['integer', 'null'], format: 'int64' },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).nullable()`,
+            ],
             [
               { type: 'integer', format: 'int64', minimum: 0, exclusiveMinimum: true },
-              'z.int64().positive()',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().positive())`,
             ],
             [
               { type: 'integer', format: 'int64', minimum: 0, exclusiveMinimum: false },
-              'z.int64().nonnegative()',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().nonnegative())`,
             ],
             [
               { type: 'integer', format: 'int64', maximum: 0, exclusiveMaximum: true },
-              'z.int64().negative()',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().negative())`,
             ],
             [
               { type: 'integer', format: 'int64', maximum: 0, exclusiveMaximum: false },
-              'z.int64().nonpositive()',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().nonpositive())`,
             ],
-            [{ type: 'integer', format: 'int64', minimum: 100 }, 'z.int64().min(100n)'],
-            [{ type: 'integer', format: 'int64', minimum: 0 }, 'z.int64().min(0n)'],
+            [
+              { type: 'integer', format: 'int64', minimum: 100 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().min(100n))`,
+            ],
+            [
+              { type: 'integer', format: 'int64', minimum: 0 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().min(0n))`,
+            ],
             [
               { type: 'integer', format: 'int64', minimum: 100, exclusiveMinimum: true },
-              'z.int64().gt(100n)',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().gt(100n))`,
             ],
-            [{ type: 'integer', format: 'int64', maximum: 100 }, 'z.int64().max(100n)'],
-            [{ type: 'integer', format: 'int64', maximum: 0 }, 'z.int64().max(0n)'],
+            [
+              { type: 'integer', format: 'int64', maximum: 100 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().max(100n))`,
+            ],
+            [
+              { type: 'integer', format: 'int64', maximum: 0 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().max(0n))`,
+            ],
             [
               { type: 'integer', format: 'int64', maximum: 100, exclusiveMaximum: true },
-              'z.int64().lt(100n)',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().lt(100n))`,
             ],
-            [{ type: 'integer', format: 'int64', exclusiveMaximum: 100 }, 'z.int64().lt(100n)'],
-            [{ type: 'integer', format: 'int64', multipleOf: 2 }, 'z.int64().multipleOf(2n)'],
-            [{ type: 'integer', format: 'int64', default: 100 }, 'z.int64().default(100n)'],
+            [
+              { type: 'integer', format: 'int64', exclusiveMaximum: 100 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().lt(100n))`,
+            ],
+            [
+              { type: 'integer', format: 'int64', multipleOf: 2 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().multipleOf(2n))`,
+            ],
+            [
+              { type: 'integer', format: 'int64', default: 100 },
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).default(100n)`,
+            ],
             [
               { type: 'integer', format: 'int64', default: 100, nullable: true },
-              'z.int64().nullable().default(100n)',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).nullable().default(100n)`,
             ],
             [
               { type: ['integer', 'null'], format: 'int64', default: 100 },
-              'z.int64().nullable().default(100n)',
+              String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).nullable().default(100n)`,
             ],
           ])('zod(%o) → %s', (input, expected) => {
             expect(zod(input)).toBe(expected)
@@ -1240,7 +1279,9 @@ describe('zod', () => {
 
   describe('wrap edge cases', () => {
     it('should handle int64 default format', () => {
-      expect(zod({ type: 'integer', format: 'int64', default: 42 })).toBe('z.int64().default(42n)')
+      expect(zod({ type: 'integer', format: 'int64', default: 42 })).toBe(
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64()).default(42n)`,
+      )
     })
 
     it('should handle bigint default format', () => {
@@ -1741,8 +1782,12 @@ describe('zod', () => {
       expect(zod({ type: 'integer' })).toBe('z.int()')
     })
 
-    it('header: integer → z.int() (no coerce for non query/path)', () => {
-      expect(zod({ type: 'integer' }, 'Schema', false, { paramIn: 'header' })).toBe('z.int()')
+    it.concurrent.each<[ParamIn, JSONSchema, string]>([
+      ['header', { type: 'integer' }, 'z.coerce.number().int()'],
+      ['cookie', { type: 'boolean' }, 'z.stringbool()'],
+      ['formData', { type: 'number' }, 'z.coerce.number()'],
+    ])('%s: %o is coerced from text', (paramIn, schema, expected) => {
+      expect(zod(schema, 'Schema', false, { paramIn })).toBe(expected)
     })
 
     it('nested in object: properties coerced too', () => {
@@ -1763,7 +1808,9 @@ describe('zod', () => {
     it('nested in array: items coerced too', () => {
       expect(
         zod({ type: 'array', items: { type: 'integer' } }, 'Schema', false, { paramIn: 'query' }),
-      ).toBe('z.array(z.coerce.number().int())')
+      ).toBe(
+        'z.preprocess((val)=>(val===undefined||Array.isArray(val)?val:[val]),z.array(z.coerce.number().int()))',
+      )
     })
 
     it('integer with min/max: constraints preserved after coerce', () => {
@@ -1876,5 +1923,233 @@ describe('zod contains / minContains / maxContains', () => {
     ],
   ])('zod(%o) → %s', (input, expected) => {
     expect(zod(input)).toBe(expected)
+  })
+})
+
+const WIRE_ARRAY = '(val)=>(val===undefined||Array.isArray(val)?val:[val])'
+const WIRE_NULL = `(val)=>(val==='null'?null:val)`
+const OWN_PROPERTIES =
+  '(val)=>(typeof val==="object"&&val!==null&&!Array.isArray(val)?Object.assign(Object.create(null),val):val)'
+
+describe('zod string wire', () => {
+  it.concurrent.each<[JSONSchema, string]>([
+    // A wire array sent once arrives as its one element.
+    [
+      { type: 'array', items: { type: 'string' }, minItems: 1 },
+      `z.preprocess(${WIRE_ARRAY},z.array(z.string()).min(1))`,
+    ],
+    [
+      { type: 'array', prefixItems: [{ type: 'integer' }] },
+      `z.preprocess(${WIRE_ARRAY},z.tuple([z.coerce.number().int()]))`,
+    ],
+    // A literal is read through the same coercion as its type.
+    [
+      { type: 'integer', enum: [1, 2, 3] },
+      'z.coerce.number().pipe(z.union([z.literal(1),z.literal(2),z.literal(3)]))',
+    ],
+    [{ type: 'number', const: 1.5 }, 'z.coerce.number().pipe(z.literal(1.5))'],
+    [{ type: 'boolean', enum: [true] }, 'z.stringbool().pipe(z.literal(true))'],
+    [{ type: 'string', enum: ['a', 'b'] }, 'z.enum(["a","b"])'],
+    [
+      { type: 'integer', enum: [1, 2, null] },
+      `z.preprocess(${WIRE_NULL},z.coerce.number().pipe(z.union([z.literal(1),z.literal(2)])).nullable())`,
+    ],
+    [
+      { type: 'integer', format: 'int64', enum: [1, 2] },
+      'z.coerce.bigint().pipe(z.union([z.literal(1n),z.literal(2n)]))',
+    ],
+    [{ type: 'integer', format: 'uint64' }, 'z.coerce.bigint().pipe(z.uint64())'],
+    // The text `null` is null for a schema that takes null and no string.
+    [
+      { type: ['integer', 'null'] },
+      `z.preprocess(${WIRE_NULL},z.coerce.number().int().nullable())`,
+    ],
+    [{ type: ['string', 'null'] }, 'z.string().nullable()'],
+    [
+      { oneOf: [{ type: 'integer' }, { type: 'null' }] },
+      `z.preprocess(${WIRE_NULL},z.union([z.coerce.number().int(),z.preprocess(${WIRE_NULL},z.null().nullable())]).nullable())`,
+    ],
+    // A typeless constraint implies its type.
+    [{ minimum: 1 }, 'z.coerce.number().min(1)'],
+    [{ maxLength: 3 }, 'z.string().max(3)'],
+    [{ minimum: 1, maxLength: 3 }, 'z.any()'],
+    // `not` keeps the declared type.
+    [{ type: 'integer', not: { const: 0 } }, 'z.coerce.number().int().refine((val) => val !== 0)'],
+    // Coerced members both read `1`; the first wins.
+    [
+      { oneOf: [{ type: 'integer' }, { type: 'boolean' }] },
+      'z.union([z.coerce.number().int(),z.stringbool()])',
+    ],
+    [{ type: ['number', 'boolean'] }, 'z.union([z.coerce.number(),z.stringbool()])'],
+    [{ type: ['string', 'integer'] }, 'z.union([z.coerce.number().int(),z.string()])'],
+    // A parameter named like an Object.prototype member is guarded.
+    [
+      {
+        type: 'object',
+        // A `constructor` key in an object literal is checked against Object's own member.
+        properties: Object.fromEntries([
+          ['constructor', { type: 'integer' }],
+          ['id', { type: 'string' }],
+        ]),
+      },
+      `z.preprocess(${OWN_PROPERTIES},z.object({constructor:z.coerce.number().int().exactOptional(),id:z.string().exactOptional()}))`,
+    ],
+    [
+      {
+        type: 'object',
+        properties: Object.fromEntries([['valueOf', { type: 'integer' }]]),
+        required: ['valueOf'],
+      },
+      `z.preprocess(${OWN_PROPERTIES},z.object({valueOf:z.coerce.number().int()}))`,
+    ],
+  ])('zod(%o, query) → %s', (schema, expected) => {
+    expect(zod(schema, 'Schema', false, { paramIn: 'query' })).toBe(expected)
+  })
+
+  it.concurrent.each<[JSONSchema, string]>([
+    [{ type: 'array', items: { type: 'string' } }, 'z.array(z.string())'],
+    [{ type: 'integer', enum: [1, 2] }, 'z.union([z.literal(1),z.literal(2)])'],
+    [{ type: ['integer', 'null'] }, 'z.int().nullable()'],
+    [{ minimum: 1 }, 'z.any()'],
+    [
+      { type: 'object', properties: Object.fromEntries([['constructor', { type: 'integer' }]]) },
+      'z.object({constructor:z.int().exactOptional()})',
+    ],
+    [{ oneOf: [{ type: 'integer' }, { type: 'boolean' }] }, 'z.xor([z.int(),z.boolean()])'],
+    [{ type: ['string', 'number'] }, 'z.union([z.string(),z.number()])'],
+    [
+      { type: 'integer', format: 'int64', const: 1 },
+      String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.literal(1n))`,
+    ],
+  ])('zod(%o) without paramIn → %s', (schema, expected) => {
+    expect(zod(schema)).toBe(expected)
+  })
+
+  it('x-coerce: false keeps a wire literal as JSON', () => {
+    expect(
+      zod({ type: 'integer', enum: [1, 2], 'x-coerce': false }, 'Schema', false, {
+        paramIn: 'query',
+      }),
+    ).toBe('z.union([z.literal(1),z.literal(2)])')
+  })
+})
+
+describe('zod parameter serialization', () => {
+  const integers: JSONSchema = { type: 'array', items: { type: 'integer' } }
+  const strings: JSONSchema = { type: 'array', items: { type: 'string' } }
+  const pair: JSONSchema = {
+    type: 'object',
+    properties: { a: { type: 'integer' }, b: { type: 'string' } },
+  }
+  const wireIntegers = `z.preprocess(${WIRE_ARRAY},z.array(z.coerce.number().int()))`
+  const wireStrings = `z.preprocess(${WIRE_ARRAY},z.array(z.string()))`
+  const pairObject =
+    'z.object({a:z.coerce.number().int().exactOptional(),b:z.string().exactOptional()})'
+  const split = (separator: string, prefix?: string) =>
+    `(val)=>{if(typeof val!=='string')return val;const text=${prefix === undefined ? 'val' : `val.replace(${prefix},'')`};return (text===''?[]:text.split(${JSON.stringify(separator)}))}`
+  const pairs = (prefix?: string) =>
+    `(val)=>{if(typeof val!=='string')return val;const text=${prefix === undefined ? 'val' : `val.replace(${prefix},'')`};return (text===''?[]:text.split(",")).reduce<{[k:string]:string}>((acc,part,i,all)=>i%2===1?{...acc,[all[i-1]??'']:part}:acc,{})}`
+  const entries = (parts: string, prefix?: string) =>
+    `(val)=>{if(typeof val!=='string')return val;const text=${prefix === undefined ? 'val' : `val.replace(${prefix},'')`};return ${parts}.reduce<{[k:string]:string}>((acc,part)=>{const i=part.indexOf('=');return i<0?{...acc,[part]:''}:{...acc,[part.slice(0,i)]:part.slice(i+1)}},{})}`
+  const label = String.raw`/^\./u`
+  const matrix = '/^;[^=]*=?/u'
+
+  it.concurrent.each<[JSONSchema, Parameters<typeof zod>[3], string]>([
+    // An exploded `form` repeats the name: no reading beyond the wire array.
+    [integers, { paramIn: 'query' }, wireIntegers],
+    [integers, { paramIn: 'query', style: 'form' }, wireIntegers],
+    [integers, { paramIn: 'query', explode: false }, `z.preprocess(${split(',')},${wireIntegers})`],
+    [
+      integers,
+      { paramIn: 'query', style: 'pipeDelimited' },
+      `z.preprocess(${split('|')},${wireIntegers})`,
+    ],
+    [
+      integers,
+      { paramIn: 'query', style: 'spaceDelimited' },
+      `z.preprocess(${split(' ')},${wireIntegers})`,
+    ],
+    [strings, { paramIn: 'path', style: 'simple' }, `z.preprocess(${split(',')},${wireStrings})`],
+    [strings, { paramIn: 'header', explode: true }, `z.preprocess(${split(',')},${wireStrings})`],
+    [
+      strings,
+      { paramIn: 'path', style: 'label' },
+      `z.preprocess(${split(',', label)},${wireStrings})`,
+    ],
+    [
+      strings,
+      { paramIn: 'path', style: 'label', explode: true },
+      `z.preprocess(${split('.', label)},${wireStrings})`,
+    ],
+    [
+      strings,
+      { paramIn: 'path', style: 'matrix' },
+      `z.preprocess(${split(',', matrix)},${wireStrings})`,
+    ],
+    [
+      strings,
+      { paramIn: 'path', style: 'matrix', explode: true },
+      `z.preprocess((val)=>{if(typeof val!=='string')return val;const text=val;return text.split(';').filter((part)=>part!=='').map((part)=>part.slice(part.indexOf('=')+1))},${wireStrings})`,
+    ],
+    // Objects.
+    [pair, { paramIn: 'query' }, pairObject],
+    [pair, { paramIn: 'query', explode: false }, `z.preprocess(${pairs()},${pairObject})`],
+    [pair, { paramIn: 'path', style: 'simple' }, `z.preprocess(${pairs()},${pairObject})`],
+    [
+      pair,
+      { paramIn: 'path', style: 'simple', explode: true },
+      `z.preprocess(${entries(`(text===''?[]:text.split(","))`)},${pairObject})`,
+    ],
+    [
+      pair,
+      { paramIn: 'path', style: 'label', explode: true },
+      `z.preprocess(${entries(`(text===''?[]:text.split("."))`, label)},${pairObject})`,
+    ],
+    [pair, { paramIn: 'path', style: 'matrix' }, `z.preprocess(${pairs(matrix)},${pairObject})`],
+    [
+      pair,
+      { paramIn: 'path', style: 'matrix', explode: true },
+      `z.preprocess(${entries(`text.split(';').filter((part)=>part!=='')`)},${pairObject})`,
+    ],
+    [
+      pair,
+      { paramIn: 'query', style: 'deepObject', explode: true },
+      `${String.raw`z.preprocess((val)=>{if(typeof val!=='object'||val===null||Array.isArray(val))return val;const out=Object.entries(val).reduce<{[k:string]:unknown}>((acc,[key,value])=>{const name=/^[^[\]]+\[([^\]]+)\]$/u.exec(key)?.[1];return name===undefined?acc:{...acc,[name]:value}},{});return Object.keys(out).length>0?out:val},`}${pairObject})`,
+    ],
+    // Primitives.
+    [
+      { type: 'string' },
+      { paramIn: 'path', style: 'label' },
+      `z.preprocess((val)=>{if(typeof val!=='string')return val;const text=val.replace(${label},'');return text},z.string())`,
+    ],
+    [
+      { type: 'integer' },
+      { paramIn: 'path', style: 'matrix' },
+      `z.preprocess((val)=>{if(typeof val!=='string')return val;const text=val.replace(${matrix},'');return text},z.coerce.number().int())`,
+    ],
+    [{ type: 'integer' }, { paramIn: 'path', style: 'simple' }, 'z.coerce.number().int()'],
+    // allowEmptyValue and JSON content.
+    [
+      { type: 'integer', default: 1 },
+      { paramIn: 'query', allowEmptyValue: true },
+      `z.preprocess((val)=>(val===''?undefined:val),z.coerce.number().int().default(1))`,
+    ],
+    [
+      { type: 'object', properties: { a: { type: 'integer' } } },
+      { paramIn: 'query', contentType: 'application/json' },
+      `z.preprocess((val)=>{if(typeof val!=='string')return val;try{return JSON.parse(val)}catch{return val}},z.object({a:z.int().exactOptional()}))`,
+    ],
+    [
+      { type: 'integer' },
+      { paramIn: 'query', contentType: 'application/problem+json; charset=utf-8' },
+      `z.preprocess((val)=>{if(typeof val!=='string')return val;try{return JSON.parse(val)}catch{return val}},z.int())`,
+    ],
+    [
+      { type: 'integer' },
+      { paramIn: 'query', contentType: 'text/plain' },
+      'z.coerce.number().int()',
+    ],
+  ])('zod(%o, %o) → %s', (schema, options, expected) => {
+    expect(zod(schema, 'Schema', false, options)).toBe(expected)
   })
 })

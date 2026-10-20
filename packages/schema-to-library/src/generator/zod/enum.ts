@@ -1,6 +1,7 @@
 import { hasType, isComposite, isPlainObject } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, zodError } from '../../utils/index.js'
+import { isInt64 } from './integer.js'
 
 /**
  * Generates a Zod enum schema. String enums map to `z.enum`, number/integer/
@@ -19,14 +20,17 @@ import { makeSafeKey, zodError } from '../../utils/index.js'
  * come from `x-error-message`; finer-grained business rules belong in
  * handler code, not the schema.
  */
-function lit(v: unknown): string {
+function lit(v: unknown, isBigint: boolean): string {
   if (v === null) return 'null'
   if (typeof v === 'string') return `'${v.replaceAll("'", "\\'")}'`
+  if (typeof v === 'number' && isBigint) return `${v}n`
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v) ?? 'null'
 }
 
 export function _enum(schema: JSONSchema) {
+  // The members of an int64 / uint64 enum are bigint literals, as the value they match is.
+  const isBigint = isInt64(schema)
   if (!schema.enum || schema.enum.length === 0) return 'z.any()'
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   // Zod v4 `z.enum` emits a single issue code (`invalid_value`) for both
@@ -44,7 +48,7 @@ export function _enum(schema: JSONSchema) {
       const entries = Object.entries(v)
       return `z.strictObject({${entries.map(([k, val]) => `${makeSafeKey(k)}:${valueSchema(val)}`).join(',')}})`
     }
-    return `z.literal(${lit(v)})`
+    return `z.literal(${lit(v, isBigint)})`
   }
   // Inner literal — used inside a wrapper (z.union / z.tuple) that
   // already carries `errorArg`, so we don't repeat it.
@@ -52,7 +56,7 @@ export function _enum(schema: JSONSchema) {
   // Outer literal — used when the literal is the entire schema output.
   // Composite single values carry no error arg (rare; structural matcher only).
   const outerLit = (v: unknown): string =>
-    isComposite(v) ? valueSchema(v) : `z.literal(${lit(v)}${errorArg})`
+    isComposite(v) ? valueSchema(v) : `z.literal(${lit(v, isBigint)}${errorArg})`
   // Inner tuple — used inside a z.union of multiple tuples; the outer
   // union's errorArg covers this tuple too, so neither the tuple wrapper
   // nor its inner literals receive errorArg.

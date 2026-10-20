@@ -29,13 +29,57 @@ describe('string', () => {
     [{ type: 'string', format: 'cidrv4' }, 'z.cidrv4()'],
     [{ type: 'string', format: 'cidrv6' }, 'z.cidrv6()'],
     [{ type: 'string', format: 'date' }, 'z.iso.date()'],
-    [{ type: 'string', format: 'time' }, 'z.iso.time()'],
-    [{ type: 'string', format: 'date-time' }, 'z.iso.datetime()'],
+    [
+      { type: 'string', format: 'time' },
+      String.raw`z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+    ],
+    [
+      { type: 'string', format: 'time', 'x-isoPrecision': 0 },
+      String.raw`z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+    ],
+    [
+      { type: 'string', format: 'time', 'x-isoPrecision': -1 },
+      String.raw`z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+    ],
+    [
+      { type: 'string', format: 'time', 'x-isoPrecision': 3 },
+      String.raw`z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d\.\d{3}(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+    ],
+    [{ type: 'string', format: 'time', 'x-isoOffset': false }, 'z.iso.time()'],
+    [
+      { type: 'string', format: 'time', 'x-isoOffset': false, 'x-isoPrecision': 0 },
+      'z.iso.time({precision:0})',
+    ],
+    [{ type: 'string', format: 'date-time' }, 'z.iso.datetime({offset:true})'],
+    [{ type: 'string', format: 'date-time', 'x-isoOffset': false }, 'z.iso.datetime()'],
+    [{ type: 'string', format: 'guid' }, 'z.guid()'],
+    [{ type: 'string', format: 'url' }, 'z.url()'],
+    [{ type: 'string', format: 'httpUrl' }, 'z.httpUrl()'],
+    [{ type: 'string', format: 'httpurl' }, 'z.httpUrl()'],
+    [{ type: 'string', format: 'hostname' }, 'z.hostname()'],
+    [{ type: 'string', format: 'hex' }, 'z.hex()'],
+    [{ type: 'string', format: 'e164' }, 'z.e164()'],
+    [{ type: 'string', format: 'ksuid' }, 'z.ksuid()'],
+    [{ type: 'string', format: 'xid' }, 'z.xid()'],
+    [
+      { type: 'string', format: 'creditCard' },
+      String.raw`z.string().regex(/^\d{12,19}$/).refine((val)=>{let sum=0;for(let i=0;i<val.length;i++){let digit=Number(val[val.length-1-i]);if(i%2===1){digit*=2;if(digit>9)digit-=9}sum+=digit}return sum%10===0})`,
+    ],
+    [
+      { type: 'string', format: 'creditcard', 'x-error-message': 'bad card' },
+      String.raw`z.string({error:"bad card"}).regex(/^\d{12,19}$/,{error:"bad card"}).refine((val)=>{let sum=0;for(let i=0;i<val.length;i++){let digit=Number(val[val.length-1-i]);if(i%2===1){digit*=2;if(digit>9)digit-=9}sum+=digit}return sum%10===0},{error:"bad card"})`,
+    ],
+    [
+      { type: 'string', format: 'iban' },
+      String.raw`z.string().regex(/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/).refine((val)=>{let rest=0;for(const char of val.slice(4)+val.slice(0,4)){const n=Number.parseInt(char,36);rest=(n>9?rest*100+n:rest*10+n)%97}return rest===1})`,
+    ],
     [{ type: 'string', format: 'duration' }, 'z.iso.duration()'],
     [{ type: 'string', format: 'binary' }, 'z.file()'],
-    [{ type: 'string', format: 'toLowerCase' }, 'z.toLowerCase()'],
-    [{ type: 'string', format: 'toUpperCase' }, 'z.toUpperCase()'],
-    [{ type: 'string', format: 'trim' }, 'z.trim()'],
+    [{ type: 'string', format: 'toLowerCase' }, 'z.string().toLowerCase()'],
+    [{ type: 'string', format: 'toUpperCase' }, 'z.string().toUpperCase()'],
+    [{ type: 'string', format: 'trim' }, 'z.string().trim()'],
+    [{ type: 'string', format: 'trim', 'x-trim': true }, 'z.string().trim()'],
+    [{ type: 'string', format: 'trim', maxLength: 3 }, 'z.string().trim().max(3)'],
     [{ type: 'string', format: 'jwt' }, 'z.jwt()'],
   ])('string(%o) → %s', (input, expected) => {
     expect(string(input)).toBe(expected)
@@ -151,13 +195,16 @@ describe('string', () => {
       ],
       [
         { type: 'string', format: 'date-time', 'x-isoPrecision': 3 },
-        'z.iso.datetime({precision:3})',
+        'z.iso.datetime({precision:3,offset:true})',
       ],
       [
         { type: 'string', format: 'date-time', 'x-isoOffset': true },
         'z.iso.datetime({offset:true})',
       ],
-      [{ type: 'string', format: 'date-time', 'x-isoLocal': true }, 'z.iso.datetime({local:true})'],
+      [
+        { type: 'string', format: 'date-time', 'x-isoLocal': true },
+        'z.iso.datetime({offset:true,local:true})',
+      ],
       [
         {
           type: 'string',
@@ -229,7 +276,23 @@ describe('string', () => {
         { type: 'string', 'x-trim': true, 'x-toLowerCase': true },
         'z.string().trim().toLowerCase()',
       ],
-      [{ type: 'string', format: 'email', 'x-toLowerCase': true }, 'z.email().toLowerCase()'],
+      [
+        { type: 'string', format: 'email', 'x-toLowerCase': true },
+        'z.string().toLowerCase().pipe(z.email())',
+      ],
+      [{ type: 'string', format: 'email', 'x-trim': true }, 'z.string().trim().pipe(z.email())'],
+      [
+        { type: 'string', format: 'email', 'x-trim': true, maxLength: 64 },
+        'z.string().trim().pipe(z.email().max(64))',
+      ],
+      [
+        { type: 'string', format: 'uuid', 'x-trim': true, 'x-error-message': 'bad id' },
+        'z.string({error:"bad id"}).trim().pipe(z.uuid({error:"bad id"}))',
+      ],
+      [
+        { type: 'string', format: 'time', 'x-trim': true },
+        String.raw`z.string().trim().regex(/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/)`,
+      ],
       [
         { type: 'string', 'x-startsWith': 'https://', 'x-endsWith': '.com' },
         'z.string().startsWith("https://").endsWith(".com")',

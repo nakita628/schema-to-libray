@@ -61,34 +61,58 @@ describe('integer', () => {
 
   describe('type: integer, format: int64', () => {
     it.concurrent.each<[JSONSchema, string]>([
-      [{ type: 'integer', format: 'int64' }, 'z.int64()'],
+      [
+        { type: 'integer', format: 'int64' },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64())`,
+      ],
       [
         { type: 'integer', format: 'int64', minimum: 0, exclusiveMinimum: true },
-        'z.int64().positive()',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().positive())`,
       ],
       [
         { type: 'integer', format: 'int64', minimum: 0, exclusiveMinimum: false },
-        'z.int64().nonnegative()',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().nonnegative())`,
       ],
       [
         { type: 'integer', format: 'int64', maximum: 0, exclusiveMaximum: true },
-        'z.int64().negative()',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().negative())`,
       ],
       [
         { type: 'integer', format: 'int64', maximum: 0, exclusiveMaximum: false },
-        'z.int64().nonpositive()',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().nonpositive())`,
       ],
-      [{ type: 'integer', format: 'int64', minimum: 100 }, 'z.int64().min(100n)'],
+      [
+        { type: 'integer', format: 'int64', minimum: 100 },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().min(100n))`,
+      ],
       [
         { type: 'integer', format: 'int64', minimum: 100, exclusiveMinimum: true },
-        'z.int64().gt(100n)',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().gt(100n))`,
       ],
-      [{ type: 'integer', format: 'int64', maximum: 100 }, 'z.int64().max(100n)'],
+      [
+        { type: 'integer', format: 'int64', maximum: 100 },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().max(100n))`,
+      ],
       [
         { type: 'integer', format: 'int64', maximum: 100, exclusiveMaximum: true },
-        'z.int64().lt(100n)',
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().lt(100n))`,
       ],
-      [{ type: 'integer', format: 'int64', multipleOf: 2 }, 'z.int64().multipleOf(2n)'],
+      [
+        { type: 'integer', format: 'int64', multipleOf: 2 },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.int64().multipleOf(2n))`,
+      ],
+      [
+        { type: 'integer', format: 'uint64' },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.uint64())`,
+      ],
+      [
+        { type: 'integer', format: 'uint64', maximum: 10 },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)]).transform((val)=>BigInt(val)).pipe(z.uint64().max(10n))`,
+      ],
+      [
+        { type: 'integer', format: 'int64', 'x-error-message': 'int64' },
+        String.raw`z.union([z.bigint(),z.number().int(),z.string().regex(/^-?\d+$/)],{error:"int64"}).transform((val)=>BigInt(val)).pipe(z.int64({error:"int64"}))`,
+      ],
     ])('integer(%o) → %s', (input, expected) => {
       expect(integer(input)).toBe(expected)
     })
@@ -147,6 +171,10 @@ describe('integer', () => {
         'z.coerce.number().pipe(z.int32().min(100))',
       ],
       [{ type: 'integer', format: 'int64', 'x-coerce': true }, 'z.coerce.bigint().pipe(z.int64())'],
+      [
+        { type: 'integer', format: 'uint64', 'x-coerce': true },
+        'z.coerce.bigint().pipe(z.uint64())',
+      ],
       [{ type: 'integer', format: 'bigint', 'x-coerce': true }, 'z.coerce.bigint()'],
       [
         { type: 'integer', format: 'bigint', 'x-coerce': true, 'x-error-message': 'bigint only' },

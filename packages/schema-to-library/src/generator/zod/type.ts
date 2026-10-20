@@ -4,6 +4,7 @@ import { itemsSchemaOf } from '../../helper/schema.js'
 import { jsLiteral } from '../../helper/value.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey, normalizeTypes, toPascalCase } from '../../utils/index.js'
+import { isInt64 } from './integer.js'
 
 export function type(schema: JSONSchema | undefined, rootName: string = DEFAULT_ROOT_NAME): string {
   if (schema === undefined) return ''
@@ -39,12 +40,16 @@ export function type(schema: JSONSchema | undefined, rootName: string = DEFAULT_
 
   if (schema.not) return 'unknown'
 
-  // A JSON value spelled as a literal is also its own TypeScript literal type.
-  if (schema.const !== undefined) return jsLiteral(schema.const)
+  // A JSON value spelled as a literal is also its own TypeScript literal type; an int64's
+  // number is a bigint.
+  const literal = (value: unknown): string =>
+    typeof value === 'number' && isInt64(schema) ? `${value}n` : jsLiteral(value)
+
+  if (schema.const !== undefined) return literal(schema.const)
 
   if (schema.enum) {
-    if (schema.enum.length === 1) return jsLiteral(schema.enum[0])
-    return `(${schema.enum.map(jsLiteral).join(' | ')})`
+    if (schema.enum.length === 1) return literal(schema.enum[0])
+    return `(${schema.enum.map(literal).join(' | ')})`
   }
 
   if (schema.properties) {
@@ -59,10 +64,16 @@ export function type(schema: JSONSchema | undefined, rootName: string = DEFAULT_
 
   const t = normalizeTypes(schema.type)
 
-  if (t.includes('string')) return 'string'
-  if (t.includes('number')) return 'number'
-  if (t.includes('integer')) return 'number'
-  if (t.includes('boolean')) return 'boolean'
+  const integerType = isInt64(schema) || schema.format === 'bigint' ? 'bigint' : 'number'
+  const primitives = [
+    t.includes('string') ? 'string' : undefined,
+    t.includes('number') ? 'number' : t.includes('integer') ? integerType : undefined,
+    t.includes('boolean') ? 'boolean' : undefined,
+  ].filter((p) => p !== undefined)
+  if (primitives.length > 1 && !t.includes('array') && !t.includes('object')) {
+    return `(${primitives.join(' | ')})`
+  }
+  if (primitives.length > 0) return primitives[0]
   if (t.includes('array')) {
     const items = itemsSchemaOf(schema.items)
     return items ? `${type(items, rootName)}[]` : 'unknown[]'

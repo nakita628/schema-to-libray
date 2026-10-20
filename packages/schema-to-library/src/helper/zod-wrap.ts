@@ -26,7 +26,7 @@ export function zodWrap(
   const formatLiteral = (value: unknown): string => {
     if (typeof value === 'boolean') return `${value}`
     if (typeof value === 'number') {
-      if (schema.format === 'int64') return `${value}n`
+      if (schema.format === 'int64' || schema.format === 'uint64') return `${value}n`
       if (schema.format === 'bigint') return `BigInt(${value})`
       return `${value}`
     }
