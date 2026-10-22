@@ -1,10 +1,12 @@
 import { hasType } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
+import { isInt64 } from './integer.js'
 
-function lit(v: unknown): string {
+function lit(v: unknown, isBigint: boolean): string {
   if (v === null) return 'null'
   if (typeof v === 'string') return `'${v.replaceAll("'", "\\'")}'`
+  if (typeof v === 'number' && isBigint) return `${v}n`
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v) ?? 'null'
 }
@@ -12,7 +14,8 @@ function lit(v: unknown): string {
 /**
  * Generates a Valibot enum schema. String enums map to `v.picklist`,
  * number/integer/boolean enums to `v.union([v.literal(...), ...])`,
- * array enums to `v.tuple` or `v.union`, single values to `v.literal`.
+ * array enums to `v.tuple` or `v.union`, single values to `v.literal`. The members of
+ * an int64 / uint64 enum are bigint literals, as the value they match is.
  *
  * `x-error-message` (whole-enum) is applied **only to the outermost
  * wrapper**. Inner v.literal entries inside a wrapper never receive a
@@ -26,6 +29,7 @@ function lit(v: unknown): string {
  */
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'v.any()'
+  const isBigint = isInt64(schema)
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
@@ -36,7 +40,7 @@ export function _enum(schema: JSONSchema) {
   const litSchema = (v: unknown, errPart: string): string => {
     if (v === null) return `v.null(${errPart.replace(/^,/, '')})`
     if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
-      return `v.literal(${lit(v)}${errPart})`
+      return `v.literal(${lit(v, isBigint)}${errPart})`
     }
     return `v.custom<${JSON.stringify(v)}>((input) => JSON.stringify(input) === ${JSON.stringify(JSON.stringify(v))}${errPart})`
   }

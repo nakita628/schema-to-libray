@@ -17,19 +17,27 @@ export type GenerateOptions = {
   /** The OpenAPI parameter location the schema is emitted for; its values are coerced from text. */
   readonly paramIn?: ParamIn
   /**
-   * Zod-only: the parameter's `style`, which decides how its text is split into an array or
-   * an object (`form` with `explode: false` reads `1,2,3`, `deepObject` gathers `deep[key]`).
+   * The parameter's `style`, which decides how its text is split into an array or an
+   * object (`form` with `explode: false` reads `1,2,3`, `deepObject` gathers `deep[key]`).
    * Defaults to `form` for `query` / `cookie` / `formData` and `simple` for `path` / `header`.
-   * Applies to the root schema only.
+   * Applies to the root schema only. Honoured by Zod, Valibot, Effect Schema and ArkType; a
+   * no-op for TypeBox, Ajv and Yup.
    */
   readonly style?: ParamStyle
-  /** Zod-only: the parameter's `explode`. Defaults to `true` for `style: form`, else `false`. */
+  /**
+   * The parameter's `explode`. Defaults to `true` for `style: form`, else `false`. Honoured
+   * where `style` is.
+   */
   readonly explode?: boolean
-  /** Zod-only: the parameter's `allowEmptyValue` — an empty value reads as an absent one. */
+  /**
+   * The parameter's `allowEmptyValue` — an empty value reads as an absent one. Honoured
+   * where `style` is.
+   */
   readonly allowEmptyValue?: boolean
   /**
-   * Zod-only: the media type of the parameter's `content`. A JSON one (`application/json`,
-   * `*+json`) reads the text as a JSON document and validates it without coercion.
+   * The media type of the parameter's `content`. A JSON one (`application/json`, `*+json`)
+   * reads the text as a JSON document and validates it without coercion. Honoured where
+   * `style` is.
    */
   readonly contentType?: string
 }

@@ -257,7 +257,7 @@ export type ConstOutput = v.InferOutput<typeof Const>`
     })
     const expected = `import * as v from 'valibot'
 
-export const Format = v.partial(v.object({email:v.pipe(v.string(),v.email()),uuid:v.pipe(v.string(),v.uuid())}))
+export const Format = v.partial(v.object({email:v.pipe(v.string(),v.email()),uuid:v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/))}))
 
 export type FormatOutput = v.InferOutput<typeof Format>`
     expect(result).toBe(expected)
@@ -316,7 +316,7 @@ export type MinMaxOutput = v.InferOutput<typeof MinMax>`
     })
     const expected = `import * as v from 'valibot'
 
-export const Length = v.partial(v.object({name:v.pipe(v.string(),v.minLength(1),v.maxLength(100))}))
+export const Length = v.partial(v.object({name:v.pipe(v.string(),v.check((input)=>[...input].length>=1),v.check((input)=>[...input].length<=100))}))
 
 export type LengthOutput = v.InferOutput<typeof Length>`
     expect(result).toBe(expected)
@@ -449,7 +449,7 @@ export const Schema = v.partial(v.object({name:v.string()}))`
     })
     const expected = `import * as v from 'valibot'
 
-export const WithDefault = v.partial(v.object({status:v.optional(v.string(),"active")}))
+export const WithDefault = v.object({status:v.optional(v.string(),"active")})
 
 export type WithDefaultOutput = v.InferOutput<typeof WithDefault>`
     expect(result).toBe(expected)
@@ -467,7 +467,7 @@ export type WithDefaultOutput = v.InferOutput<typeof WithDefault>`
     })
     const expected = `import * as v from 'valibot'
 
-export const NullDefault = v.partial(v.object({value:v.nullable(v.optional(v.string(),"x"))}))
+export const NullDefault = v.object({value:v.optional(v.nullable(v.string()),"x")})
 
 export type NullDefaultOutput = v.InferOutput<typeof NullDefault>`
     expect(result).toBe(expected)
@@ -552,7 +552,7 @@ export type NullOutput = v.InferOutput<typeof Null>`
     })
     const expected = `import * as v from 'valibot'
 
-export const Def = v.partial(v.object({enabled:v.optional(v.boolean(),true)}))
+export const Def = v.object({enabled:v.optional(v.boolean(),true)})
 
 export type DefOutput = v.InferOutput<typeof Def>`
     expect(result).toBe(expected)
@@ -959,7 +959,7 @@ export const Node: v.GenericSchema<unknown, _Node> = v.object({value:v.string(),
       })
       const expected = `import * as v from 'valibot'
 
-export const User = v.object({id:v.pipe(v.pipe(v.string(),v.uuid()),v.brand("UserId")),name:v.string()})
+export const User = v.object({id:v.pipe(v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/)),v.brand("UserId")),name:v.string()})
 
 export type UserOutput = v.InferOutput<typeof User>`
       expect(result).toBe(expected)
@@ -1059,7 +1059,7 @@ export type ConfigOutput = v.InferOutput<typeof Config>`
       })
       const expected = `import * as v from 'valibot'
 
-export const Username = v.pipe(v.pipe(v.string(),v.minLength(3),v.maxLength(20)),v.brand("Username"))
+export const Username = v.pipe(v.pipe(v.string(),v.check((input)=>[...input].length>=3),v.check((input)=>[...input].length<=20)),v.brand("Username"))
 
 export type UsernameOutput = v.InferOutput<typeof Username>`
       expect(result).toBe(expected)

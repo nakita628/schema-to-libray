@@ -18,7 +18,7 @@ export function int64Input(isWire: boolean, baseErrorArg = ''): string {
 }
 
 /**
- * Generates a Zod schema for integer types (int / int32 / int64 / bigint), with
+ * Generates a Zod schema for integer types (int / int32 / uint32 / int64 / bigint), with
  * min/max/multipleOf constraints and `x-*-message` vendor extensions translated
  * to Zod v4 `{error: "msg"}` parameters.
  */
@@ -30,7 +30,7 @@ export function integer(schema: JSONSchema) {
   // so issue.input === undefined is unreachable — drop x-required-message.
   const baseErrorArg = zodBaseError(errorMessage, isCoerce ? undefined : requiredMessage)
   const isBigint = schema.format === 'bigint'
-  const isInt32 = schema.format === 'int32'
+  const isInt32 = schema.format === 'int32' || schema.format === 'uint32'
   const is64 = isInt64(schema)
   const bigintBase = isCoerce && isBigint
   const numberPipe = isCoerce && isInt32
@@ -38,7 +38,7 @@ export function integer(schema: JSONSchema) {
   const base = bigintBase
     ? `z.coerce.bigint(${baseErrorArg})`
     : isInt32
-      ? `z.int32(${baseErrorArg})`
+      ? `z.${schema.format === 'uint32' ? 'uint32' : 'int32'}(${baseErrorArg})`
       : is64
         ? `z.${schema.format === 'uint64' ? 'uint64' : 'int64'}(${baseErrorArg})`
         : isBigint

@@ -1,10 +1,12 @@
 import { hasType } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
+import { isInt64 } from './integer.js'
 
-function lit(v: unknown): string {
+function literal(v: unknown, isBigint: boolean): string {
   if (v === null) return 'null'
   if (typeof v === 'string') return `"${v}"`
+  if (typeof v === 'number' && isBigint) return `${v}n`
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v) ?? 'null'
 }
@@ -13,7 +15,8 @@ function lit(v: unknown): string {
  * Generates an Effect Schema enum. Multi-value scalar enums map to
  * `Schema.Literals([...])` (v4 dropped the variadic `Schema.Literal(a, b)`
  * overload), array enums to `Schema.Tuple` or `Schema.Union`, single values to
- * `Schema.Literal`.
+ * `Schema.Literal`. The members of an int64 / uint64 enum are bigint literals, as the
+ * value they match is.
  *
  * `x-error-message` (whole-enum) is applied **only to the outermost
  * expression** via `.annotate(...)`. Inner Schema.Literal entries
@@ -27,6 +30,8 @@ function lit(v: unknown): string {
  */
 export function _enum(schema: JSONSchema) {
   if (!schema.enum || schema.enum.length === 0) return 'Schema.Unknown'
+  const isBigint = isInt64(schema)
+  const lit = (v: unknown): string => literal(v, isBigint)
 
   // v3.0: x-enum-message overrides x-error-message for the enum wrapper.
   const enumMessage = schema['x-enum-message']

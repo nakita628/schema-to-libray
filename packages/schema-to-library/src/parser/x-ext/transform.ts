@@ -54,13 +54,13 @@ export type XExtTransform = {
   /** Valibot-only: `v.fallback(schema, value)` — fall back to value on parse failure */
   readonly 'x-fallback'?: JSONValue
 
-  // ── Format-option (Zod-only) ─────────────────────────────────────
+  // ── Format-option (Zod-only unless the comment says otherwise) ──────
   // No-op on validators without an equivalent format API.
   /** Zod-only: select the email regex preset for `format: email` */
   readonly 'x-emailPattern'?: 'html5' | 'rfc5322' | 'browser' | 'unicode'
   /** Zod-only: custom email regex source for `format: email` */
   readonly 'x-emailRegex'?: string
-  /** Zod-only: restrict UUID version on `format: uuid` */
+  /** Restrict UUID version on `format: uuid` (Zod, Valibot, Effect Schema, ArkType) */
   readonly 'x-uuidVersion'?: 'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | 'v8'
   /** Zod-only: restrict URL hostname on `format: uri` / `format: url` */
   readonly 'x-urlHostname'?: string
@@ -68,11 +68,17 @@ export type XExtTransform = {
   readonly 'x-urlProtocol'?: string
   /** Zod-only: enable / disable URL normalization */
   readonly 'x-urlNormalize'?: boolean
-  /** Zod-only: ISO datetime sub-second precision (digits) */
+  /**
+   * ISO `date-time` / `time` sub-second precision: `-1` minutes only, `0` whole seconds, `n`
+   * exactly `n` fraction digits (Zod, Valibot, Effect Schema, ArkType)
+   */
   readonly 'x-isoPrecision'?: number
-  /** Zod-only: require timezone offset on ISO datetime */
+  /**
+   * Whether an ISO `date-time` / `time` accepts a numeric UTC offset; RFC 3339 carries one,
+   * so `false` is what rules it out (Zod, Valibot, Effect Schema, ArkType)
+   */
   readonly 'x-isoOffset'?: boolean
-  /** Zod-only: allow local (offset-less) ISO datetime */
+  /** Allow a local (offset-less) ISO `date-time` (Zod, Valibot, Effect Schema, ArkType) */
   readonly 'x-isoLocal'?: boolean
   /** Zod-only: allowed algorithm(s) for `format: jwt` */
   readonly 'x-jwtAlg'?: string

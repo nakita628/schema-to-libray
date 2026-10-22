@@ -30,10 +30,7 @@ const D: v.GenericSchema<unknown, _D> = v.object({
 const B: v.GenericSchema<unknown, _B> = v.object({
   type: v.literal('B'),
   name: v.string(),
-  detail: v.intersect([
-    v.lazy(() => D),
-    v.partial(v.object({ comment: v.optional(v.string(), 'N/A') })),
-  ]),
+  detail: v.intersect([v.lazy(() => D), v.object({ comment: v.optional(v.string(), 'N/A') })]),
 })
 
 const C: v.GenericSchema<unknown, _C> = v.object({
@@ -42,7 +39,12 @@ const C: v.GenericSchema<unknown, _C> = v.object({
 })
 
 export const A: v.GenericSchema<unknown, _A> = v.object({
-  id: v.pipe(v.string(), v.uuid()),
+  id: v.pipe(
+    v.string(),
+    v.regex(
+      /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/,
+    ),
+  ),
   type: v.picklist(['B', 'C']),
   payload: v.union([v.lazy(() => B), v.lazy(() => C)]),
 })

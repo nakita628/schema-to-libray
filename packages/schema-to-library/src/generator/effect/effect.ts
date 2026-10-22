@@ -11,33 +11,44 @@ import {
   isStringWireLocation,
 } from '../../guard/index.js'
 import {
+  effectPreprocess,
   effectWrap as _effectWrap,
+  hasParameterSerialization,
+  impliedWireType,
+  isNullTextRead,
+  isPrimitiveUnion,
   itemsSchemaOf,
   jsLiteral,
+  parameterReaders,
   schemaNamer,
+  stringboolPattern,
+  stringboolTruthyPattern,
+  unionPrimitiveTypes,
+  wireArrayOnce,
+  withoutParameterSerialization,
 } from '../../helper/index.js'
-import type { CodeExtensionOptions, EmitOptions } from '../../helper/index.js'
+import type { EffectWrapOptions, EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError, normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
 import { _enum } from './enum.js'
-import { integer } from './integer.js'
+import { int64Input, integer, isInt64 } from './integer.js'
 import { number } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
 
-function replaceBase(inner: string, from: string, to: string): string {
-  return inner.replace(from, to)
-}
-
 /**
- * The `"true" | "false"` wire form of a boolean, for query and path
- * parameters. v3 shipped this as `Schema.BooleanFromString`; v4 has no such
- * schema, so the transformation is spelled out.
+ * The boolean spellings of the wire, read into a boolean as `z.stringbool()` reads them:
+ * `true` / `1` / `yes` / `on` / `y` / `enabled` and their opposites, in any case. v3
+ * shipped a `Schema.BooleanFromString` for `true` / `false`; v4 has no such schema, so
+ * the transformation is spelled out.
  */
-const BOOLEAN_FROM_STRING =
-  `Schema.Literals(["true","false"]).pipe(Schema.decodeTo(Schema.Boolean,` +
-  `SchemaTransformation.transform({decode:(input)=>input==="true",` +
-  `encode:(input)=>input?"true":"false"})))`
+function stringbool(): string {
+  return (
+    `Schema.String.check(Schema.isPattern(${stringboolPattern()})).pipe(Schema.decodeTo(Schema.Boolean,` +
+    `SchemaTransformation.transform({decode:(input)=>${stringboolTruthyPattern()}.test(input),` +
+    `encode:(output)=>output?"true":"false"})))`
+  )
+}
 
 /**
  * The `not` predicates by `type`, as the source of an `(input) => ...` arrow. `input` is
@@ -109,39 +120,68 @@ export function effect(
   isEffect = false,
   options?: EmitOptions,
 ): string {
-  const isStringWireParam = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
-  const codeExtOpts: CodeExtensionOptions =
+  // The parameter's serialization reads the root's text; the nodes under it see none.
+  if (hasParameterSerialization(options)) {
+    const inner = effect(schema, rootName, isEffect, withoutParameterSerialization(options))
+    return effectPreprocess(parameterReaders(schema, options, 'input'), inner)
+  }
+  return node(schema, rootName, isEffect, options)
+}
+
+function node(
+  schema: JSONSchema,
+  rootName: string,
+  isEffect: boolean,
+  options: EmitOptions | undefined,
+): string {
+  const isStringWireParam = isStringWireLocation(options?.paramIn)
+  const isWireCoerced = isStringWireParam && schema['x-coerce'] !== false
+  const codeExtOpts: EffectWrapOptions =
     options?.unsafeCodeExtensions === true ? { unsafeCodeExtensions: true } : {}
+  // On the wire every node's encoded side is text, so its default lands on the decoded
+  // side, and the text `null` is read ahead of a node that takes `null` but no string.
+  const wireOptions = (s: JSONSchema): EffectWrapOptions => {
+    if (!isStringWireParam || s['x-coerce'] === false) return {}
+    return { stringWire: true, ...(isNullTextRead(s) && { nullText: true }) }
+  }
   const effectWrap = (effectStr: string, s: JSONSchema): string =>
-    _effectWrap(effectStr, s, codeExtOpts)
+    _effectWrap(effectStr, s, { ...codeExtOpts, ...wireOptions(s) })
+  const wireArray = (v: string) =>
+    isStringWireParam ? effectPreprocess([wireArrayOnce('input')], v) : v
+  // What reads a literal's input into the literal's type: on the wire the text is coerced,
+  // and a 64-bit integer is a bigint wherever it comes from.
+  const literalInput = (values: readonly unknown[]): string | undefined => {
+    if (values.every((v) => typeof v === 'number')) {
+      if (isInt64(schema)) return int64Input(isWireCoerced)
+      if (isWireCoerced) return 'Schema.FiniteFromString'
+    }
+    if (isWireCoerced && values.every((v) => typeof v === 'boolean')) return stringbool()
+    return undefined
+  }
+
   if (schema.$ref) {
+    // The expression a `$ref` names, bare: the caller wraps it once with what the node
+    // itself carries, a `default` or `nullable` beside the `$ref` included.
     const ref = (s: JSONSchema): string => {
-      if (isRootRef(s.$ref)) {
-        return effectWrap(`Schema.suspend(() => ${rootName})`, s)
-      }
-      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
-        return effectWrap('Schema.Unknown', s)
-      }
+      if (isRootRef(s.$ref)) return `Schema.suspend(() => ${rootName})`
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return 'Schema.Unknown'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
         if (resolved) {
-          if (resolved === rootName) return effectWrap(`Schema.suspend(() => ${resolved})`, s)
-          return effectWrap(isEffect ? `Schema.suspend(() => ${resolved})` : resolved, s)
+          if (resolved === rootName) return `Schema.suspend(() => ${resolved})`
+          return isEffect ? `Schema.suspend(() => ${resolved})` : resolved
         }
       }
       const toName = schemaNamer(options?.openapi)
       for (const prefix of DEFINITION_REF_PREFIXES) {
         if (s.$ref?.startsWith(prefix)) {
           const pascalCaseName = toName(s.$ref.slice(prefix.length))
-          if (pascalCaseName === rootName) {
-            return effectWrap(`Schema.suspend(() => ${pascalCaseName})`, s)
-          }
-          const refExpr = isEffect
+          if (pascalCaseName === rootName) return `Schema.suspend(() => ${pascalCaseName})`
+          return isEffect
             ? `Schema.suspend(() => ${pascalCaseName})`
             : rootName === DEFAULT_ROOT_NAME
               ? `${pascalCaseName}Schema`
               : `Schema.suspend(() => ${pascalCaseName})`
-          return effectWrap(refExpr, s)
         }
       }
       if (s.$ref?.startsWith('#')) {
@@ -166,6 +206,13 @@ export function effect(
       return `Schema.Array(${effectWrap(ref(items), items)})`
     }
     return effectWrap(ref(schema), schema)
+  }
+
+  // On the wire a value is text whatever its schema, so a typeless constraint says which
+  // type to read the text as.
+  const impliedType = isWireCoerced ? impliedWireType(schema) : undefined
+  if (impliedType !== undefined) {
+    return node({ ...schema, type: impliedType }, rootName, isEffect, options)
   }
 
   if (schema.oneOf) {
@@ -204,34 +251,46 @@ export function effect(
     if (defaultValue !== undefined) {
       // `Schema.NullOr` wraps a schema, so it stays inside the decoding default.
       const withNullable = nullable ? `Schema.NullOr(${baseResult})` : baseResult
-      return `${withNullable}.pipe(Schema.withDecodingDefault(Effect.succeed(${jsLiteral(defaultValue)})))`
+      const decodingDefault = isWireCoerced
+        ? 'Schema.withDecodingDefaultType'
+        : 'Schema.withDecodingDefault'
+      return `${withNullable}.pipe(${decodingDefault}(Effect.succeed(${jsLiteral(defaultValue)})))`
     }
     return effectWrap(baseResult, { ...schema, nullable })
   }
 
   if (schema.not) {
-    const inner = schema.not
+    const { not: inner, ...withoutNot } = schema
     if (typeof inner !== 'object' || inner === null) return effectWrap('Schema.Unknown', schema)
     const notMessage = schema['x-not-message']
     const filterOpts = notMessage ? `,${effectError(notMessage)}` : ''
-    const filtered = (predicate: string) =>
-      effectWrap(`Schema.Unknown.check(Schema.makeFilter(${predicate}${filterOpts}))`, schema)
-    if ('const' in inner) return filtered(`(input) => input !== ${JSON.stringify(inner.const)}`)
-    if (typeof inner.type === 'string') {
-      const predicate = NOT_TYPE_PREDICATES[inner.type]
-      if (predicate) return filtered(predicate)
+    const predicate = ((): string | undefined => {
+      if ('const' in inner) return `(input) => input !== ${JSON.stringify(inner.const)}`
+      if (typeof inner.type === 'string') return NOT_TYPE_PREDICATES[inner.type]
+      if (Array.isArray(inner.type)) {
+        const bodies = normalizeTypes(inner.type)
+          .map((t) => NOT_TYPE_PREDICATES[t])
+          .filter((p) => p !== undefined)
+          .map((p) => `(${p.replace(/^\(input\) => /u, '')})`)
+        if (bodies.length > 0) return `(input) => ${bodies.join(' && ')}`
+      }
+      if (Array.isArray(inner.enum)) {
+        // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
+        // is `unknown`); compare via `.some(===)` which accepts any operand.
+        return `(input) => !${JSON.stringify(inner.enum)}.some((item) => item === input)`
+      }
+      return undefined
+    })()
+    // A `type` beside `not` still holds: the predicate narrows that type, not any value.
+    if (withoutNot.type !== undefined) {
+      const base = effect(withoutNot, rootName, isEffect, options)
+      return predicate ? `${base}.check(Schema.makeFilter(${predicate}${filterOpts}))` : base
     }
-    if (Array.isArray(inner.type)) {
-      const bodies = normalizeTypes(inner.type)
-        .map((t) => NOT_TYPE_PREDICATES[t])
-        .filter((p) => p !== undefined)
-        .map((p) => `(${p.replace(/^\(input\) => /u, '')})`)
-      if (bodies.length > 0) return filtered(`(input) => ${bodies.join(' && ')}`)
-    }
-    if (Array.isArray(inner.enum)) {
-      // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
-      // is `unknown`); compare via `.some(===)` which accepts any operand.
-      return filtered(`(input) => !${JSON.stringify(inner.enum)}.some((item) => item === input)`)
+    if (predicate) {
+      return effectWrap(
+        `Schema.Unknown.check(Schema.makeFilter(${predicate}${filterOpts}))`,
+        schema,
+      )
     }
     return effectWrap('Schema.Unknown', schema)
   }
@@ -239,35 +298,50 @@ export function effect(
   if (schema.const !== undefined) {
     // v3.0: x-const-message overrides x-error-message for `const` mismatch.
     const constMessage = schema['x-const-message'] ?? schema['x-error-message']
-    const literalCode = `Schema.Literal(${JSON.stringify(schema.const)})`
+    const literalCode =
+      typeof schema.const === 'number' && isInt64(schema)
+        ? `Schema.Literal(${schema.const}n)`
+        : `Schema.Literal(${JSON.stringify(schema.const)})`
     const withMessage = constMessage
       ? `${literalCode}.annotate(${effectError(constMessage)})`
       : literalCode
-    return effectWrap(withMessage, schema)
+    const input = literalInput([schema.const])
+    return effectWrap(
+      input ? `${input}.pipe(Schema.decodeTo(${withMessage}))` : withMessage,
+      schema,
+    )
   }
-  if (schema.enum) return effectWrap(_enum(schema), schema)
+  if (schema.enum) {
+    const values = schema.enum.filter((value) => value !== null)
+    const input = values.length > 0 ? literalInput(values) : undefined
+    if (input === undefined) return effectWrap(_enum(schema), schema)
+    // `null` is matched ahead of the coercion, which would read it as `0` or `false`.
+    const hasNull = values.length < schema.enum.length
+    const piped = `${input}.pipe(Schema.decodeTo(${_enum({ ...schema, enum: values })}))`
+    return effectWrap(hasNull && !isNullable(schema) ? `Schema.NullOr(${piped})` : piped, schema)
+  }
   if (schema.properties) return effectWrap(object(schema, rootName, isEffect, options), schema)
 
   const types = normalizeTypes(schema.type)
-  if (types.includes('string')) return effectWrap(string(schema), schema)
-  if (types.includes('number')) {
-    const base = number(schema)
-    if (isStringWireParam) {
-      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
-    }
-    return effectWrap(base, schema)
+  const primitive = (t: string): string | undefined => {
+    if (t === 'string') return string(schema)
+    if (t === 'number') return number(schema, { wire: isWireCoerced })
+    if (t === 'integer') return integer(schema, { wire: isWireCoerced })
+    if (t !== 'boolean') return undefined
+    const errorMessage = schema['x-error-message']
+    const base = isWireCoerced ? stringbool() : 'Schema.Boolean'
+    return errorMessage ? `${base}.annotate(${effectError(errorMessage)})` : base
   }
-  if (types.includes('integer')) {
-    const base = integer(schema)
-    if (isStringWireParam) {
-      return effectWrap(replaceBase(base, 'Schema.Number', 'Schema.NumberFromString'), schema)
-    }
-    return effectWrap(base, schema)
+  if (isPrimitiveUnion(types, isWireCoerced)) {
+    const members = unionPrimitiveTypes(types, isWireCoerced)
+      .map(primitive)
+      .filter((m) => m !== undefined)
+    return effectWrap(`Schema.Union([${members.join(',')}])`, schema)
   }
-  if (types.includes('boolean')) {
-    // v4 has no `Schema.BooleanFromString`; spell the string wire form out.
-    if (isStringWireParam) return effectWrap(BOOLEAN_FROM_STRING, schema)
-    return effectWrap('Schema.Boolean', schema)
+  for (const t of ['string', 'number', 'integer', 'boolean']) {
+    if (!types.includes(t)) continue
+    const expression = primitive(t)
+    if (expression !== undefined) return effectWrap(expression, schema)
   }
 
   if (types.includes('array')) {
@@ -286,7 +360,7 @@ export function effect(
       const wrapped = prefixItemsMessage
         ? elementMessageWrap(tupleExpr, prefixItemsMessage)
         : tupleExpr
-      return effectWrap(wrapped, schema)
+      return effectWrap(wireArray(wrapped), schema)
     }
     const itemSchema = itemsSchemaOf(schema.items)
     const items = itemSchema ? effect(itemSchema, rootName, isEffect, options) : 'Schema.Unknown'
@@ -354,14 +428,14 @@ export function effect(
       ...containsChecks,
     ].filter((v) => v !== undefined)
     const arrayExpr = checks.length > 0 ? `${base}.check(${checks.join(',')})` : base
-    return effectWrap(arrayExpr, schema)
+    return effectWrap(wireArray(arrayExpr), schema)
   }
 
   if (types.includes('object')) {
     return effectWrap(object(schema, rootName, isEffect, options), schema)
   }
   if (types.includes('date')) {
-    if (isStringWireParam) return effectWrap('Schema.DateFromString', schema)
+    if (isWireCoerced) return effectWrap('Schema.DateFromString', schema)
     return effectWrap('Schema.Date', schema)
   }
   if (types.length === 1 && types[0] === 'null') return effectWrap('Schema.Null', schema)

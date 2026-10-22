@@ -18,6 +18,22 @@ export type ArktypeWrapOptions = CodeExtensionOptions & {
 }
 
 /**
+ * `inner` read after `readers`, each a `(data) => ...` arrow over the raw value: a morph
+ * from `input` that pipes into `inner`, with `.to()` for a bare definition.
+ */
+export function arktypePreprocess(
+  readers: readonly string[],
+  inner: string,
+  input: 'unknown' | 'object' = 'unknown',
+): string {
+  if (readers.length === 0) return inner
+  if (isArktypeDefinition(inner)) {
+    return `type("${input}").pipe(${readers.join(',')}).to(${inner})`
+  }
+  return `type("${input}").pipe(${readers.join(',')},${inner})`
+}
+
+/**
  * Wraps an ArkType schema string with `.or("null")`, `.brand()` and
  * `.describe()` based on the JSON Schema's `nullable` / `x-brand` fields and
  * OpenAPI `description`.

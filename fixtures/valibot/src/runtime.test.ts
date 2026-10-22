@@ -23,11 +23,18 @@ import { Schema as SimpleSchema } from '../simple/output.ts'
 import { Order as SplitNestedOrder } from '../split-nested/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
 import { User as TitleUser } from '../title/output.ts'
+import { Query as WireQuery } from '../wire-query/output.ts'
+import { Formats as StringFormats } from '../string-formats/output.ts'
+import { Ids as ParamFormNoExplodeIds } from '../param-form-no-explode/output.ts'
+import { Filter as ParamDeepObjectFilter } from '../param-deep-object/output.ts'
+import { Payload as ParamJsonContentPayload } from '../param-json-content/output.ts'
 
 // valibot 1.3.x internals exposed in issue objects.
 const NAME_REGEX = /^[a-zA-Z]+$/
 const EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-z]+(?:[.-][\da-z]+)*\.[a-z]{2,}$/iu
-const UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/iu
+// `format: uuid` is checked with the regex Zod uses, so the five targets agree on versions.
+const UUID_REGEX =
+  /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/
 const IS_INTEGER = Number.isInteger
 // valibot 1.3 multipleOf check stores the divisor as the requirement.
 const MULTIPLE_OF_REQUIREMENT = 1
@@ -49,12 +56,12 @@ describe('error-messages: User', () => {
       expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
-          type: 'min_length',
+          type: 'check',
           input: 'a',
-          expected: '>=3',
-          received: '1',
+          expected: null,
+          received: '"a"',
           message: 'Name too short',
-          requirement: 3,
+          requirement: expect.any(Function),
           path: [{ type: 'object', origin: 'value', input, key: 'name', value: 'a' }],
           issues: undefined,
           lang: undefined,
@@ -418,12 +425,12 @@ describe('nested: Order', () => {
         },
         {
           kind: 'validation',
-          type: 'min_length',
+          type: 'check',
           input: '',
-          expected: '>=1',
-          received: '0',
-          message: 'Invalid length: Expected >=1 but received 0',
-          requirement: 1,
+          expected: null,
+          received: '""',
+          message: 'Invalid input: Received ""',
+          requirement: expect.any(Function),
           path: [
             { type: 'object', origin: 'value', input, key: 'customer', value: customer },
             { type: 'object', origin: 'value', input: customer, key: 'name', value: '' },
@@ -473,7 +480,7 @@ describe('nested: Order', () => {
 describe('brand: BrandedTypes', () => {
   it('safeParse valid branded data -> success', () => {
     const input = {
-      userId: '12345678-1234-1234-1234-123456789abc',
+      userId: '12345678-1234-4234-8234-123456789abc',
       email: 'a@b.com',
       price: 10,
       quantity: 2,
@@ -502,11 +509,11 @@ describe('brand: BrandedTypes', () => {
       expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
-          type: 'uuid',
+          type: 'regex',
           input: 'not-uuid',
-          expected: null,
+          expected: String(UUID_REGEX),
           received: '"not-uuid"',
-          message: 'Invalid UUID: Received "not-uuid"',
+          message: `Invalid format: Expected ${String(UUID_REGEX)} but received "not-uuid"`,
           requirement: UUID_REGEX,
           path: [{ type: 'object', origin: 'value', input, key: 'userId', value: 'not-uuid' }],
           issues: undefined,
@@ -1161,12 +1168,12 @@ describe('valibot fixtures: length-message runtime', () => {
       expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
-          type: 'length',
+          type: 'check',
           input: '',
-          expected: '6',
-          received: '0',
+          expected: null,
+          received: '""',
           message: 'Code must be exactly 6 characters',
-          requirement: 6,
+          requirement: expect.any(Function),
           path: [
             {
               type: 'object',
@@ -1208,9 +1215,23 @@ describe('date-time', () => {
     ).toBe(true)
   })
 
-  it.each(['23:20', '23:20:50Z'])('rejects a time that is not hh:mm:ss: %s', (startsAt) => {
+  // RFC 3339 `full-time` carries an offset, and a time may stop at the minutes.
+  it.each(['23:20', '23:20:50Z', '23:20:50+09:00'])('accepts the RFC 3339 time %s', (startsAt) => {
     expect(
       v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00:00Z', startsAt }).success,
+    ).toBe(true)
+  })
+
+  it.each(['25:00:00', '23:60', '23:20:50x'])('rejects the time %s', (startsAt) => {
+    expect(
+      v.safeParse(DateTimeSchema, { createdAt: '2026-09-12T00:00:00Z', startsAt }).success,
+    ).toBe(false)
+  })
+
+  it('rejects a date-time whose day is not in its month', () => {
+    expect(
+      v.safeParse(DateTimeSchema, { createdAt: '2026-02-30T00:00:00Z', startsAt: '23:20:50' })
+        .success,
     ).toBe(false)
   })
 })
@@ -1229,5 +1250,138 @@ describe('if-then-else', () => {
   it('rejects JP country missing postalCode', () => {
     const r = v.safeParse(IfThenElseAddress, { country: 'JP' })
     expect(r.success).toBe(false)
+  })
+})
+
+describe('valibot fixtures: wire-query runtime', () => {
+  it('coerces every parameter from its text', () => {
+    expect(
+      v.parse(WireQuery, {
+        page: '2',
+        ids: '1',
+        sort: '-1',
+        active: 'true',
+        limit: 'null',
+        cursor: '18446744073709551615',
+        offset: '0',
+        skip: '3',
+        flag: '1',
+        constructor: '5',
+        email: ' a@b.co ',
+      }),
+    ).toStrictEqual({
+      page: 2,
+      ids: [1],
+      sort: -1,
+      active: true,
+      limit: null,
+      cursor: 18446744073709551615n,
+      offset: 0,
+      skip: 3,
+      flag: 1,
+      constructor: 5,
+      email: 'a@b.co',
+    })
+  })
+
+  it('reads an absent parameter named like an Object.prototype member as absent', () => {
+    expect(v.parse(WireQuery, {})).toStrictEqual({ page: 1 })
+  })
+
+  it('reads the boolean spellings z.stringbool() reads', () => {
+    expect(v.parse(WireQuery, { page: '1', flag: 'yes' })).toStrictEqual({ page: 1, flag: true })
+    expect(v.parse(WireQuery, { page: '1', active: 'YES' })).toStrictEqual({ page: 1, active: true })
+  })
+
+  it('reads the JavaScript number grammar and refuses what is not finite', () => {
+    expect(v.parse(WireQuery, { page: '1', offset: '1e3' })).toStrictEqual({ page: 1, offset: 1000 })
+    expect(v.safeParse(WireQuery, { page: '1', offset: '1e309' }).success).toBe(false)
+    expect(v.safeParse(WireQuery, { page: '1', skip: '1.5' }).success).toBe(false)
+  })
+
+  it('reports a bad array element at its index', () => {
+    const result = v.safeParse(WireQuery, { ids: ['1', 'x'] })
+    expect(result.issues?.map((issue) => issue.path?.map((item) => item.key))).toStrictEqual([
+      ['ids', 1],
+    ])
+  })
+
+  it.each([
+    [{ sort: '2' }, 'sort'],
+    [{ active: 'false' }, 'active'],
+    [{ offset: '-1' }, 'offset'],
+    [{ skip: '0' }, 'skip'],
+    [{ skip: 'abc' }, 'skip'],
+    [{ cursor: '-1' }, 'cursor'],
+  ])('rejects %o at %s', (input, key) => {
+    const result = v.safeParse(WireQuery, input)
+    expect(result.issues?.map((issue) => issue.path?.map((item) => item.key))).toStrictEqual([
+      [key],
+    ])
+  })
+})
+
+describe('valibot fixtures: parameter serialization runtime', () => {
+  it('splits a non-exploded form array', () => {
+    expect(v.parse(ParamFormNoExplodeIds, '1,2,3')).toStrictEqual([1, 2, 3])
+    expect(v.safeParse(ParamFormNoExplodeIds, '').success).toBe(false)
+  })
+
+  it('gathers a deepObject parameter', () => {
+    expect(
+      v.parse(ParamDeepObjectFilter, { 'deep[age]': '5', 'deep[name]': 'bob' }),
+    ).toStrictEqual({ age: 5, name: 'bob' })
+  })
+
+  it('parses a JSON content parameter without coercing it', () => {
+    expect(v.parse(ParamJsonContentPayload, '{"id":1,"tags":["a"]}')).toStrictEqual({
+      id: 1,
+      tags: ['a'],
+    })
+    expect(v.safeParse(ParamJsonContentPayload, '{"id":"1"}').success).toBe(false)
+  })
+})
+
+describe('valibot fixtures: string-formats runtime', () => {
+  it('reads int64 / uint64 from a JSON number or a string of digits', () => {
+    expect(
+      v.parse(StringFormats, { id: 9007199254740991, size: '18446744073709551615', kind: '2' }),
+    ).toStrictEqual({ id: 9007199254740991n, size: 18446744073709551615n, kind: 2n })
+  })
+
+  it.each([
+    ['at', '2025-01-01T00:00:00+09:00'],
+    ['time', '12:34:56+09:00'],
+    ['guid', '00000000-0000-0000-0000-000000000000'],
+    ['site', 'https://example.com'],
+    ['card', '4111111111111111'],
+  ])('accepts %s %j', (key, value) => {
+    expect(v.safeParse(StringFormats, { [key]: value }).success).toBe(true)
+  })
+
+  it.each([
+    ['id', 1.5],
+    ['id', '1.5'],
+    ['kind', 3],
+    ['time', '25:00'],
+    ['guid', 'a1b2c3d4e5f69a7b0c9d0e1f2a3b4c5d'],
+    ['site', 'ftp://example.com'],
+    ['card', '4111111111111112'],
+  ])('rejects %s %j', (key, value) => {
+    expect(v.safeParse(StringFormats, { [key]: value }).success).toBe(false)
+  })
+
+  it('trims before the format check', () => {
+    expect(v.parse(StringFormats, { slug: ' a ', email: ' a@b.co ' })).toStrictEqual({
+      slug: 'a',
+      email: 'a@b.co',
+    })
+  })
+})
+
+describe('valibot fixtures: string length counts code points', () => {
+  it('counts an astral character once', () => {
+    expect(v.safeParse(LengthMessageCode, { code: '🔥🔥🔥🔥🔥🔥' }).success).toBe(true)
+    expect(v.safeParse(LengthMessageCode, { code: '🔥🔥🔥' }).success).toBe(false)
   })
 })

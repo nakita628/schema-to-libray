@@ -1,4 +1,10 @@
-import { hasCombinator, hasConditional } from '../../guard/index.js'
+import {
+  hasCombinator,
+  hasConditional,
+  isObjectPrototypeProperty,
+  isStringWireLocation,
+} from '../../guard/index.js'
+import { effectPreprocess, ownProperties } from '../../helper/index.js'
 import type { EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError, makeSafeKey } from '../../utils/index.js'
@@ -88,7 +94,7 @@ export function object(
       const isRequired = required.has(key)
       // `Schema.withDecodingDefault` already makes the encoded key optional, so
       // a defaulted property must not be wrapped again.
-      const hasDecodingDefault = parsed.includes('Schema.withDecodingDefault(')
+      const hasDecodingDefault = parsed.includes('Schema.withDecodingDefault')
       return isRequired || hasDecodingDefault
         ? `${safeKey}:${parsed}`
         : `${safeKey}:Schema.optional(${parsed})`
@@ -178,5 +184,9 @@ export function object(
   ].filter((a) => a !== '')
 
   const checked = checks.length > 0 ? `${partialBase}.check(${checks.join(',')})` : partialBase
-  return `${checked}${strictExtrasAnnotation}`
+  const objectExpr = `${checked}${strictExtrasAnnotation}`
+  const hasInheritedName = Object.keys(schema.properties).some(isObjectPrototypeProperty)
+  return isStringWireLocation(options?.paramIn) && hasInheritedName
+    ? effectPreprocess([ownProperties('input')], objectExpr)
+    : objectExpr
 }

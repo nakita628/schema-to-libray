@@ -2,7 +2,10 @@ import { Schema } from 'effect'
 
 export const Code = Schema.Struct({
   code: Schema.String.check(
-    Schema.isLengthBetween(6, 6, { message: 'Code must be exactly 6 characters' }),
+    Schema.makeFilter((input) => [...input].length === 6, {
+      expected: 'a string of 6 characters',
+      message: 'Code must be exactly 6 characters',
+    }),
   ),
 })
 

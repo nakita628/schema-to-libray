@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { typebox } from './typebox.js'
 
@@ -19,10 +20,7 @@ describe('typebox', () => {
         },
         'Type.Array(Tag)',
       ],
-      [
-        { $ref: '#/components/schemas/User', nullable: true },
-        'Type.Union([Type.Union([User,Type.Null()]),Type.Null()])',
-      ],
+      [{ $ref: '#/components/schemas/User', nullable: true }, 'Type.Union([User,Type.Null()])'],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
     })
@@ -215,7 +213,7 @@ describe('typebox', () => {
       [{ type: 'string', default: 'hello' }, 'Type.Optional(Type.String({default:"hello"}))'],
       [
         { type: 'string', default: 'hello', nullable: true },
-        'Type.Union([Type.Optional(Type.String({default:"hello"})),Type.Null()])',
+        'Type.Optional(Type.Union([Type.String({default:"hello"}),Type.Null()]))',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -236,7 +234,7 @@ describe('typebox', () => {
       [{ type: 'number', default: 42 }, 'Type.Optional(Type.Number({default:42}))'],
       [
         { type: 'number', default: 42, nullable: true },
-        'Type.Union([Type.Optional(Type.Number({default:42})),Type.Null()])',
+        'Type.Optional(Type.Union([Type.Number({default:42}),Type.Null()]))',
       ],
     ])('typebox(%o) → %s', (input, expected) => {
       expect(typebox(input)).toBe(expected)
@@ -499,7 +497,7 @@ describe('typebox', () => {
         [
           { $ref: '#/components/schemas/Pet', nullable: true },
           'TestSchema',
-          'Type.Union([Type.Union([PetSchema,Type.Null()]),Type.Null()])',
+          'Type.Union([PetSchema,Type.Null()])',
         ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
@@ -714,6 +712,53 @@ describe('typebox', () => {
       expect(
         typebox({ type: 'string', not: { type: 'number' }, 'x-not-message': 'cannot be number' }),
       ).toBe('Type.Any({errorMessage:"cannot be number"})')
+    })
+  })
+
+  describe('#101: an optional property with a default is wrapped once', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'object', properties: { n: { type: 'integer', default: 1 } } },
+        undefined,
+        'Type.Object({n:Type.Optional(Type.Integer({default:1}))})',
+      ],
+      [
+        { type: 'object', properties: { n: { type: 'integer', default: 1 } }, required: ['n'] },
+        undefined,
+        'Type.Object({n:Type.Optional(Type.Integer({default:1}))})',
+      ],
+      [
+        { type: 'object', properties: { n: { type: 'string', default: 'x', nullable: true } } },
+        undefined,
+        'Type.Object({n:Type.Optional(Type.Union([Type.String({default:"x"}),Type.Null()]))})',
+      ],
+      [
+        { type: 'object', properties: { n: { allOf: [{ type: 'string' }, { default: 'x' }] } } },
+        undefined,
+        'Type.Object({n:Type.Optional(Type.Intersect([Type.String()],{default:"x"}))})',
+      ],
+    ])('typebox(%o, %o) → %s', (schema, options, expected) => {
+      expect(typebox(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#106: a $ref beside a default is wrapped once', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        {
+          type: 'object',
+          properties: { ref_def: { $ref: '#/components/schemas/Count', default: 3 } },
+        },
+        undefined,
+        'Type.Object({ref_def:Type.Optional(Count)})',
+      ],
+      [
+        { $ref: '#/components/schemas/Count', nullable: true },
+        undefined,
+        'Type.Union([Count,Type.Null()])',
+      ],
+    ])('typebox(%o, %o) → %s', (schema, options, expected) => {
+      expect(typebox(schema, 'Schema', false, options)).toBe(expected)
     })
   })
 })

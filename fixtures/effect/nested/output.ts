@@ -3,7 +3,11 @@ import { Schema } from 'effect'
 export const Order = Schema.Struct({
   id: Schema.Number.check(Schema.isInt()),
   customer: Schema.Struct({
-    name: Schema.String.check(Schema.isMinLength(1)),
+    name: Schema.String.check(
+      Schema.makeFilter((input) => [...input].length >= 1, {
+        expected: 'a string of at least 1 character',
+      }),
+    ),
     email: Schema.String.check(
       Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/),
     ),

@@ -1,4 +1,10 @@
-import { hasCombinator, hasConditional } from '../../guard/index.js'
+import {
+  hasCombinator,
+  hasConditional,
+  isObjectPrototypeProperty,
+  isStringWireLocation,
+} from '../../guard/index.js'
+import { isOptionalByDefault, ownProperties } from '../../helper/index.js'
 import type { EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { issueMessageExpression, makeSafeKey, valibotError } from '../../utils/index.js'
@@ -93,13 +99,17 @@ export function object(
           ? 'looseObject'
           : 'object'
   const required = new Set(schema.required)
+  // A property with a default is already `v.optional(..., default)` from its own emitter;
+  // wrapped in a second `v.optional()` the default would never be reached.
+  const hasOwnDefault = Object.values(schema.properties).some(isOptionalByDefault)
   const props = Object.entries(schema.properties)
     .map(([key, propSchema]) => {
       const parsed = valibot(propSchema, rootName, isValibot, options)
       if (!parsed) return null
       const safeKey = makeSafeKey(key)
-      const isRequired = required.has(key)
-      return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:v.optional(${parsed})`
+      return required.has(key) || isOptionalByDefault(propSchema)
+        ? `${safeKey}:${parsed}`
+        : `${safeKey}:v.optional(${parsed})`
     })
     .filter((p) => p !== null)
 
@@ -109,7 +119,7 @@ export function object(
       ? `,${valibotError(strictExtrasMessage)}`
       : ''
   const rawBase =
-    required.size === 0 && props.every((p) => p.includes('v.optional('))
+    required.size === 0 && !hasOwnDefault && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
           .map((p) => p.replace(/^(.+?):v\.optional\((.+)\)$/u, '$1:$2'))
           .join(',')}}${strictMessageArg}))`
@@ -183,5 +193,10 @@ export function object(
     ...ifThenElseChecks,
   ].filter((a) => a !== '')
 
-  return actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase
+  const objectExpr =
+    actions.length > 0 ? `v.pipe(${partialBase},${actions.join(',')})` : partialBase
+  const hasInheritedName = Object.keys(schema.properties).some(isObjectPrototypeProperty)
+  return isStringWireLocation(options?.paramIn) && hasInheritedName
+    ? `v.pipe(v.unknown(),v.transform(${ownProperties('input')}),${objectExpr})`
+    : objectExpr
 }

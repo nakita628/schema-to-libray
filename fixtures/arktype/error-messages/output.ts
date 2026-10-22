@@ -6,6 +6,8 @@ export const User = type({
       (data, ctx) =>
         new RegExp('^[a-zA-Z]+$').test(data) || ctx.mustBe('Only alphabetic characters'),
     )
+    .narrow((data, ctx) => [...data].length >= 3 || ctx.mustBe('Name too short'))
+    .narrow((data, ctx) => [...data].length <= 20 || ctx.mustBe('Name too long'))
     .describe('Invalid name'),
   age: type('number.integer')
     .narrow((data, ctx) => data >= 0 || ctx.mustBe('Age must be positive'))

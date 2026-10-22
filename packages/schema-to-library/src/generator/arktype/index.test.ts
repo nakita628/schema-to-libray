@@ -143,7 +143,7 @@ export type Required = typeof Required.infer`
     })
     const expected = `import { type } from "arktype"
 
-export const Int = type({count:"number.integer",score:type("number.integer >= 0").and(type("number.integer <= 100"))})
+export const Int = type({count:"number.integer",score:"number.integer >= 0 & number.integer <= 100"})
 
 export type Int = typeof Int.infer`
     expect(result).toBe(expected)
@@ -256,7 +256,7 @@ export type Additional = typeof Additional.infer`
     })
     const expected = `import { type } from "arktype"
 
-export const MinMax = type({"age?":type("number >= 0").and(type("number <= 120"))})
+export const MinMax = type({"age?":"number >= 0 & number <= 120"})
 
 export type MinMax = typeof MinMax.infer`
     expect(result).toBe(expected)
@@ -691,7 +691,7 @@ export type NullableId = typeof NullableId.infer`
       })
       const expected = `import { type } from "arktype"
 
-export const Username = type("3 <= string <= 20").brand("Username")
+export const Username = type("string").narrow((data, ctx) => [...data].length >= 3 || ctx.mustBe("at least 3 characters")).narrow((data, ctx) => [...data].length <= 20 || ctx.mustBe("at most 20 characters")).brand("Username")
 
 export type Username = typeof Username.infer`
       expect(result).toBe(expected)

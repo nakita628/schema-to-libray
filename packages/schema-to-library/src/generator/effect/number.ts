@@ -1,8 +1,13 @@
+import { NUMBER_RANGES } from '../../constants/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { effectError } from '../../utils/index.js'
 
-export function number(schema: JSONSchema) {
-  const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
+/** The bound and `multipleOf` checks of a numeric node. */
+export function numberChecks(
+  schema: JSONSchema,
+  lit: (n: number) => string = (n) => `${n}`,
+  suffix = '',
+): readonly string[] {
   const minimumMessage = schema['x-minimum-message']
   const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maximum-message']
@@ -17,30 +22,52 @@ export function number(schema: JSONSchema) {
   const minimum = (() => {
     if (schema.minimum !== undefined) {
       return schema.exclusiveMinimum === true
-        ? `Schema.isGreaterThan(${schema.minimum}${exMinErrorPart})`
-        : `Schema.isGreaterThanOrEqualTo(${schema.minimum}${minErrorPart})`
+        ? `Schema.isGreaterThan${suffix}(${lit(schema.minimum)}${exMinErrorPart})`
+        : `Schema.isGreaterThanOrEqualTo${suffix}(${lit(schema.minimum)}${minErrorPart})`
     }
     if (typeof schema.exclusiveMinimum === 'number') {
-      return `Schema.isGreaterThan(${schema.exclusiveMinimum}${exMinErrorPart})`
+      return `Schema.isGreaterThan${suffix}(${lit(schema.exclusiveMinimum)}${exMinErrorPart})`
     }
     return undefined
   })()
   const maximum = (() => {
     if (schema.maximum !== undefined) {
       return schema.exclusiveMaximum === true
-        ? `Schema.isLessThan(${schema.maximum}${exMaxErrorPart})`
-        : `Schema.isLessThanOrEqualTo(${schema.maximum}${maxErrorPart})`
+        ? `Schema.isLessThan${suffix}(${lit(schema.maximum)}${exMaxErrorPart})`
+        : `Schema.isLessThanOrEqualTo${suffix}(${lit(schema.maximum)}${maxErrorPart})`
     }
     if (typeof schema.exclusiveMaximum === 'number') {
-      return `Schema.isLessThan(${schema.exclusiveMaximum}${exMaxErrorPart})`
+      return `Schema.isLessThan${suffix}(${lit(schema.exclusiveMaximum)}${exMaxErrorPart})`
     }
     return undefined
   })()
+  // v4 has no `isMultipleOfBigInt`, so a bigint's `multipleOf` is a filter of its own.
   const multipleOf =
-    schema.multipleOf !== undefined
-      ? `Schema.isMultipleOf(${schema.multipleOf}${multipleOfErrorPart})`
-      : undefined
-  const checks = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
-  const base = checks.length > 0 ? `Schema.Number.check(${checks.join(',')})` : 'Schema.Number'
+    schema.multipleOf === undefined
+      ? undefined
+      : suffix === 'BigInt'
+        ? `Schema.makeFilter((input)=>input%${lit(schema.multipleOf)}===0n${multipleOfErrorPart})`
+        : `Schema.isMultipleOf(${lit(schema.multipleOf)}${multipleOfErrorPart})`
+  return [minimum, maximum, multipleOf].filter((v) => v !== undefined)
+}
+
+/** The range check of a fixed-width numeric `format` that has one and no filter of its own. */
+export function rangeCheck(format: string | undefined, suffix = ''): readonly string[] {
+  const range = format === undefined ? undefined : NUMBER_RANGES[format]
+  if (range === undefined) return []
+  return [`Schema.isBetween${suffix}({minimum:${range.minimum},maximum:${range.maximum}})`]
+}
+
+/**
+ * The Effect schema of a number node. On the string wire the text is read with
+ * `Schema.FiniteFromString`, which refuses `NaN` and the infinities as `z.coerce.number()`
+ * does; `float` / `float32` carries its range.
+ */
+export function number(schema: JSONSchema, options?: { readonly wire?: boolean }) {
+  const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
+  const isFloat32 = schema.format === 'float' || schema.format === 'float32'
+  const checks = [...rangeCheck(isFloat32 ? 'float32' : undefined), ...numberChecks(schema)]
+  const input = options?.wire === true ? 'Schema.FiniteFromString' : 'Schema.Number'
+  const base = checks.length > 0 ? `${input}.check(${checks.join(',')})` : input
   return errorMessage ? `${base}.annotate(${effectError(errorMessage)})` : base
 }

@@ -17,7 +17,7 @@ export const A = Type.Cyclic(
       name: Type.String(),
       detail: Type.Intersect([
         Type.Ref('D'),
-        Type.Object({ comment: Type.Optional(Type.Optional(Type.String({ default: 'N/A' }))) }),
+        Type.Object({ comment: Type.Optional(Type.String({ default: 'N/A' })) }),
       ]),
     }),
     C: Type.Object({

@@ -139,6 +139,35 @@ export const PARAM_LOCATIONS = ['query', 'path', 'header', 'cookie', 'formData']
 export const STRING_WIRE_LOCATIONS = ['query', 'path', 'header', 'cookie', 'formData'] as const
 
 /**
+ * The `type` values a value on the wire is coerced to, in the order a union tries them:
+ * the text `1` is an integer before it is a number, and a string last of all.
+ */
+export const WIRE_PRIMITIVE_ORDER = ['integer', 'number', 'boolean', 'string'] as const
+
+/**
+ * The spellings of a boolean on the wire, as Zod's `z.stringbool()` reads them: `true`,
+ * `1`, `yes`, `on`, `y`, `enabled` and their opposites, in any case.
+ */
+export const STRINGBOOL_PATTERN = /^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i
+
+/** The spellings of {@link STRINGBOOL_PATTERN} that read as `true`. */
+export const STRINGBOOL_TRUTHY_PATTERN = /^(?:true|1|yes|on|y|enabled)$/i
+
+/** The text of a 64-bit integer: a sign and digits, which `BigInt` reads losslessly. */
+export const INTEGER_TEXT_PATTERN = /^-?\d+$/
+
+/** The range of each fixed-width numeric format, as the literals the generators emit. */
+export const NUMBER_RANGES: {
+  readonly [k: string]: { readonly minimum: string; readonly maximum: string }
+} = {
+  int32: { minimum: '-2147483648', maximum: '2147483647' },
+  uint32: { minimum: '0', maximum: '4294967295' },
+  int64: { minimum: '-9223372036854775808n', maximum: '9223372036854775807n' },
+  uint64: { minimum: '0n', maximum: '18446744073709551615n' },
+  float32: { minimum: '-3.4028234663852886e38', maximum: '3.4028234663852886e38' },
+}
+
+/**
  * The `style` values of an OpenAPI Parameter Object: how the parameter's text maps onto its
  * schema.
  *
@@ -172,6 +201,49 @@ export const OBJECT_PROTOTYPE_PROPERTIES = [
   'toString',
   'valueOf',
 ] as const
+
+/**
+ * The string formats checked with a regular expression where a target has no validator
+ * of its own, keyed by the lower-cased format. The patterns are Zod's, so every target
+ * accepts and rejects the same text.
+ *
+ * @see https://github.com/colinhacks/zod/blob/main/packages/zod/src/v4/core/regexes.ts
+ */
+export const FORMAT_PATTERNS: { readonly [k: string]: RegExp } = {
+  guid: /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/,
+  cuid: /^[cC][0-9a-z]{6,}$/,
+  cuid2: /^[0-9a-z]+$/,
+  // cspell:disable-next-line -- Crockford base32 leaves out I, L, O and U
+  ulid: /^[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}$/,
+  xid: /^[0-9a-vA-V]{20}$/,
+  ksuid: /^[A-Za-z0-9]{27}$/,
+  nanoid: /^[a-zA-Z0-9_-]{21}$/,
+  duration:
+    /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/,
+  emoji: /^[\p{Extended_Pictographic}\p{Emoji_Component}]+$/u,
+  ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
+  ipv6: /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/,
+  mac: /^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$|^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/,
+  cidrv4:
+    /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/,
+  cidrv6:
+    /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/,
+  base64: /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/,
+  base64url: /^[A-Za-z0-9_-]*$/,
+  hostname:
+    /^(?=.{1,253}\.?$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[-0-9a-zA-Z]{0,61}[0-9a-zA-Z])?)*\.?$/,
+  e164: /^\+[1-9]\d{6,14}$/,
+  hex: /^[0-9a-fA-F]*$/,
+}
+
+/**
+ * The source of an RFC 3339 `full-date` that is a real calendar date: the month decides
+ * the days, and February 29 needs a leap year.
+ */
+export const DATE_PATTERN_SOURCE = String.raw`(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))`
+
+/** The source of a UTC offset: `Z`, or a signed `hh:mm`. */
+export const OFFSET_PATTERN_SOURCE = String.raw`(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)`
 
 /** The keywords that only constrain a number: on their own they imply `type: number`. */
 export const NUMERIC_KEYWORDS = [

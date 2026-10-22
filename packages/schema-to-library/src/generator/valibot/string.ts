@@ -1,22 +1,60 @@
 import { hasFixedLength } from '../../guard/index.js'
+import { formatPattern } from '../../helper/format.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibotError } from '../../utils/index.js'
 
-const FORMAT_PIPE: { readonly [k: string]: string } = {
+/** The formats Valibot checks with an action of its own, keyed by the lower-cased format. */
+const FORMAT_ACTION: { readonly [k: string]: string } = {
   email: 'v.email()',
-  uuid: 'v.uuid()',
-  uri: 'v.url()',
-  ipv4: 'v.ipv4()',
-  ipv6: 'v.ipv6()',
   emoji: 'v.emoji()',
   base64: 'v.base64()',
-  'date-time': 'v.isoTimestamp()',
-  date: 'v.isoDate()',
-  // Valibot has no RFC 3339 full-time action; `isoTimeSecond` is `hh:mm:ss`.
-  time: 'v.isoTimeSecond()',
+  nanoid: 'v.nanoid()',
+  cuid2: 'v.cuid2()',
+  ulid: 'v.ulid()',
+  mac: 'v.mac()',
+  hex: 'v.hexadecimal()',
+  ipv4: 'v.ipv4()',
+  ipv6: 'v.ipv6()',
+  ip: 'v.ip()',
+  uri: 'v.url()',
+  url: 'v.url()',
+  httpurl: 'v.url()',
+  creditcard: 'v.creditCard()',
 }
 
+/** The formats that normalise the value rather than check it, keyed by the lower-cased format. */
+const TRANSFORM_FORMATS: { readonly [k: string]: string } = {
+  trim: 'v.trim()',
+  tolowercase: 'v.toLowerCase()',
+  touppercase: 'v.toUpperCase()',
+}
+
+/** An `http` / `https` URL, which `v.url()` alone does not require. */
+const HTTP_URL_PATTERN = String.raw`/^https?:\/\//`
+
+/**
+ * The actions that check a string `format`: Valibot's own where it has one, otherwise the
+ * regex every target shares. `[]` for a format with neither.
+ */
+function formatActions(schema: JSONSchema, format: string, errorArg: string): readonly string[] {
+  const withError = (action: string) =>
+    errorArg ? action.replace(/\(\)$/u, `(${errorArg})`) : action
+  const action = FORMAT_ACTION[format]
+  if (action !== undefined) {
+    return format === 'httpurl'
+      ? [withError(action), `v.regex(${HTTP_URL_PATTERN}${errorArg ? `,${errorArg}` : ''})`]
+      : [withError(action)]
+  }
+  const pattern = formatPattern(schema, format)
+  return pattern === undefined ? [] : [`v.regex(${pattern}${errorArg ? `,${errorArg}` : ''})`]
+}
+
+/**
+ * The Valibot schema of a string node. `minLength` / `maxLength` count code points, as
+ * JSON Schema does, so a check over `[...input]` stands in for `v.minLength`, which
+ * counts UTF-16 units.
+ */
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
   // v3.0: x-required-message — for valibot, the base v.string(msg) covers both
@@ -28,6 +66,9 @@ export function string(schema: JSONSchema) {
     : requiredMessage
       ? valibotError(requiredMessage)
       : ''
+  const formatName = schema.format?.toLowerCase()
+  // A `binary` string is a file, not text.
+  if (formatName === 'binary') return errorMessage ? `v.file(${baseErrorArg})` : 'v.file()'
   const patternMessage = schema['x-pattern-message']
   const patternErrorPart = patternMessage ? `,${valibotError(patternMessage)}` : ''
   const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
@@ -36,16 +77,21 @@ export function string(schema: JSONSchema) {
   const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
   const maximumMessage = schema['x-maxLength-message']
   const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
-  const format = schema.format && FORMAT_PIPE[schema.format]
-  const formatAction = format
-    ? errorMessage
-      ? format.replace(/\(\)$/, `(${baseErrorArg})`)
-      : format
-    : undefined
+  const format =
+    formatName === undefined
+      ? []
+      : formatActions(schema, formatName, errorMessage ? baseErrorArg : '')
+  const transformFormat = formatName === undefined ? undefined : TRANSFORM_FORMATS[formatName]
   const isFixedLength = hasFixedLength(schema)
-  const trim = schema['x-trim'] === true ? 'v.trim()' : undefined
-  const toLowerCase = schema['x-toLowerCase'] === true ? 'v.toLowerCase()' : undefined
-  const toUpperCase = schema['x-toUpperCase'] === true ? 'v.toUpperCase()' : undefined
+  const trim = schema['x-trim'] === true || transformFormat === 'v.trim()' ? 'v.trim()' : undefined
+  const toLowerCase =
+    schema['x-toLowerCase'] === true || transformFormat === 'v.toLowerCase()'
+      ? 'v.toLowerCase()'
+      : undefined
+  const toUpperCase =
+    schema['x-toUpperCase'] === true || transformFormat === 'v.toUpperCase()'
+      ? 'v.toUpperCase()'
+      : undefined
   const normalize =
     typeof schema['x-normalize'] === 'string'
       ? `v.normalize(${JSON.stringify(schema['x-normalize'])})`
@@ -70,14 +116,16 @@ export function string(schema: JSONSchema) {
     startsWith,
     endsWith,
     includes,
-    formatAction,
+    ...format,
     schema.pattern ? `v.regex(${regexLiteral(schema.pattern)}${patternErrorPart})` : undefined,
-    isFixedLength ? `v.length(${schema.minLength}${lengthErrorPart})` : undefined,
+    isFixedLength
+      ? `v.check((input)=>[...input].length===${schema.minLength}${lengthErrorPart})`
+      : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `v.minLength(${schema.minLength}${minErrorPart})`
+      ? `v.check((input)=>[...input].length>=${schema.minLength}${minErrorPart})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `v.maxLength(${schema.maxLength}${maxErrorPart})`
+      ? `v.check((input)=>[...input].length<=${schema.maxLength}${maxErrorPart})`
       : undefined,
   ].filter((v) => v !== undefined)
   if (actions.length > 0) return `v.pipe(v.string(${baseErrorArg}),${actions.join(',')})`

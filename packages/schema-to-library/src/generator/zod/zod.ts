@@ -1,21 +1,27 @@
 import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
 import {
-  canBeNull,
-  canBeString,
-  hasCombinator,
-  hasNumericKeyword,
-  hasStringKeyword,
   isDeepLocalPointer,
   isDefaultOnlyMember,
-  isNullable,
   isNullTypeMember,
+  isNullable,
   isPrimitive,
   isRootRef,
   isSchemaObject,
   isShapelessMember,
   isStringWireLocation,
 } from '../../guard/index.js'
-import { itemsSchemaOf, schemaNamer, zodWrap as _zodWrap } from '../../helper/index.js'
+import {
+  impliedWireType,
+  isNullMatchedFirst,
+  isNullTextRead,
+  isPrimitiveUnion,
+  itemsSchemaOf,
+  schemaNamer,
+  unionPrimitiveTypes,
+  wireArrayOnce,
+  wireNullText,
+  zodWrap as _zodWrap,
+} from '../../helper/index.js'
 import type { CodeExtensionOptions, EmitOptions } from '../../helper/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
@@ -62,15 +68,6 @@ const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
   object: `(val) => typeof val !== 'object' || val === null || Array.isArray(val)`,
   null: '(val) => val !== null',
 }
-
-/** A wire array sent once arrives as its one element: wrapped, it is an array of one. */
-const WIRE_ARRAY_PREPROCESS = '(val)=>(val===undefined||Array.isArray(val)?val:[val])'
-
-/** The text `null` on the wire, read as the `null` a nullable non-string schema takes. */
-const WIRE_NULL_PREPROCESS = `(val)=>(val==='null'?null:val)`
-
-/** The `type` values a value on the wire is coerced to, in the order a union tries them. */
-const WIRE_PRIMITIVE_ORDER = ['integer', 'number', 'boolean', 'string'] as const
 
 /**
  * The `not` predicate of an inner schema, as the source of a `(val) => ...` arrow, or
@@ -120,13 +117,9 @@ export function zod(
   }
   const expression = node(schema, rootName, isZod, options)
   const isWireCoerced = isStringWireLocation(options?.paramIn) && schema['x-coerce'] !== false
-  if (!isWireCoerced || !canBeNull(schema) || canBeString(schema)) return expression
-  // A combinator's members coerce `null` to `0` or `false` before a `null` member is
-  // tried, so the null is matched ahead of them; the other nodes already match it first.
-  const isNullMatchedFirst =
-    isNullable(schema) || schema.const === null || schema.enum?.includes(null) === true
-  const nullFirst = isNullMatchedFirst ? expression : `${expression}.nullable()`
-  return `z.preprocess(${WIRE_NULL_PREPROCESS},${nullFirst})`
+  if (!isWireCoerced || !isNullTextRead(schema)) return expression
+  const nullFirst = isNullMatchedFirst(schema) ? expression : `${expression}.nullable()`
+  return `z.preprocess(${wireNullText('val')},${nullFirst})`
 }
 
 function node(
@@ -144,7 +137,7 @@ function node(
   const zodWrap = (zodStr: string, s: JSONSchema): string => _zodWrap(zodStr, s, codeExtOpts)
   const readonly = (v: string) => (options?.readonly ? `${v}.readonly()` : v)
   const wireArray = (v: string) =>
-    isStringWireParam ? `z.preprocess(${WIRE_ARRAY_PREPROCESS},${v})` : v
+    isStringWireParam ? `z.preprocess(${wireArrayOnce('val')},${v})` : v
   // What reads a literal's input into the literal's type: on the wire the text is coerced,
   // and a 64-bit integer is a bigint wherever it comes from.
   const literalInput = (values: readonly unknown[]): string | undefined => {
@@ -155,31 +148,28 @@ function node(
     if (isWireCoerced && values.every((v) => typeof v === 'boolean')) return 'z.stringbool()'
     return undefined
   }
+  // The expression a `$ref` names, bare: the caller wraps it once with what the node
+  // itself carries, a `default` or `nullable` beside the `$ref` included.
   const ref = (s: JSONSchema, rn: string, iz: boolean): string => {
-    if (isRootRef(s.$ref)) {
-      return zodWrap(`z.lazy(() => ${rn})`, s)
-    }
-    if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
-      return zodWrap('z.unknown()', s)
-    }
+    if (isRootRef(s.$ref)) return `z.lazy(() => ${rn})`
+    if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return 'z.unknown()'
     if (options?.openapi && s.$ref) {
       const resolved = resolveOpenAPIRef(s.$ref)
       if (resolved) {
-        if (resolved === rn) return zodWrap(`z.lazy(() => ${resolved})`, s)
-        return zodWrap(iz ? `z.lazy(() => ${resolved})` : resolved, s)
+        if (resolved === rn) return `z.lazy(() => ${resolved})`
+        return iz ? `z.lazy(() => ${resolved})` : resolved
       }
     }
     const toName = schemaNamer(options?.openapi)
     for (const prefix of DEFINITION_REF_PREFIXES) {
       if (s.$ref?.startsWith(prefix)) {
         const pascalCaseName = toName(s.$ref.slice(prefix.length))
-        if (pascalCaseName === rn) return zodWrap(`z.lazy(() => ${pascalCaseName})`, s)
-        const refExpr = iz
+        if (pascalCaseName === rn) return `z.lazy(() => ${pascalCaseName})`
+        return iz
           ? `z.lazy(() => ${pascalCaseName})`
           : rn === DEFAULT_ROOT_NAME
             ? `${pascalCaseName}Schema`
             : `z.lazy(() => ${pascalCaseName})`
-        return zodWrap(refExpr, s)
       }
     }
     if (s.$ref?.startsWith('#')) {
@@ -210,18 +200,9 @@ function node(
 
   // On the wire a value is text whatever its schema, so a typeless constraint says which
   // type to read the text as.
-  if (
-    isWireCoerced &&
-    schema.type === undefined &&
-    !hasCombinator(schema) &&
-    schema.const === undefined &&
-    schema.enum === undefined &&
-    schema.properties === undefined
-  ) {
-    const isNumeric = hasNumericKeyword(schema)
-    const isString = hasStringKeyword(schema)
-    if (isNumeric && !isString) return node({ ...schema, type: 'number' }, rootName, isZod, options)
-    if (isString && !isNumeric) return node({ ...schema, type: 'string' }, rootName, isZod, options)
+  const impliedType = isWireCoerced ? impliedWireType(schema) : undefined
+  if (impliedType !== undefined) {
+    return node({ ...schema, type: impliedType }, rootName, isZod, options)
   }
 
   if (schema.oneOf) {
@@ -340,17 +321,10 @@ function node(
     const coercePrefix = schema['x-coerce'] === true ? 'coerce.' : ''
     return `z.${coercePrefix}boolean(${errorArg})`
   }
-  // `number` already takes every integer, so the two together are one member. On the
-  // wire every member reads text, so the string member is tried last.
-  const primitiveTypes = (
-    isWireCoerced ? WIRE_PRIMITIVE_ORDER.filter((t) => types.includes(t)) : types
-  ).filter(
-    (t) =>
-      (t === 'string' || t === 'number' || t === 'boolean' || t === 'integer') &&
-      !(t === 'integer' && types.includes('number')),
-  )
-  if (primitiveTypes.length > 1 && !types.includes('array') && !types.includes('object')) {
-    const members = primitiveTypes.map(primitive).filter((m) => m !== undefined)
+  if (isPrimitiveUnion(types, isWireCoerced)) {
+    const members = unionPrimitiveTypes(types, isWireCoerced)
+      .map(primitive)
+      .filter((m) => m !== undefined)
     return zodWrap(`z.union([${members.join(',')}])`, schema)
   }
   for (const t of ['string', 'number', 'integer', 'boolean']) {
