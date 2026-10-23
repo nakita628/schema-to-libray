@@ -6,7 +6,9 @@ import type { PARAM_LOCATIONS, PARAM_STYLES } from '../../constants/index.js'
  *
  * Every location is string-wire — when a primitive schema is emitted under one of
  * them, generators apply type coercion (e.g. Zod `z.coerce.number()`, Effect
- * `Schema.NumberFromString`).
+ * `Schema.FiniteFromString`), read a literal, an `enum` and the text `null` from the
+ * text, wrap a value sent once into an array of one, and copy an object with an
+ * `Object.prototype`-named property onto a null-prototype object before the check.
  *
  * @see https://spec.openapis.org/oas/v3.2.0.html#parameter-object
  */

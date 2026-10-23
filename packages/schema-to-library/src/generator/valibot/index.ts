@@ -8,7 +8,7 @@ import {
   rootNameOf,
   schemaNamer,
 } from '../../helper/index.js'
-import type { GenerateOptions } from '../../helper/index.js'
+import type { GenerateOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { type } from './type.js'
 import { valibot } from './valibot.js'

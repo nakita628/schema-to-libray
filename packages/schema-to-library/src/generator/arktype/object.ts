@@ -1,5 +1,11 @@
-import { hasCombinator, isQuoted } from '../../guard/index.js'
-import type { EmitOptions } from '../../helper/index.js'
+import {
+  hasCombinator,
+  isObjectPrototypeProperty,
+  isQuoted,
+  isStringWireLocation,
+} from '../../guard/index.js'
+import { arktypePreprocess, ownProperties } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'
@@ -216,7 +222,16 @@ export function object(
         ? innerLiteral
         : `type(${innerLiteral})`
   const propsMessage = schema['x-properties-message']
-  if (typeof propsMessage !== 'string') return baseExpr
-  const wrapped = baseExpr.startsWith('{') ? `type(${baseExpr})` : baseExpr
-  return `${wrapped}.describe(${JSON.stringify(propsMessage)})`
+  const described = (() => {
+    if (typeof propsMessage !== 'string') return baseExpr
+    const wrapped = baseExpr.startsWith('{') ? `type(${baseExpr})` : baseExpr
+    return `${wrapped}.describe(${JSON.stringify(propsMessage)})`
+  })()
+  // A parameter object answers an `Object.prototype` name it was not sent with the
+  // inherited member, so it is copied onto a null-prototype object before the check, and
+  // back onto a plain one after it.
+  const hasInheritedName = Object.keys(schema.properties).some(isObjectPrototypeProperty)
+  return isStringWireLocation(options?.paramIn) && hasInheritedName
+    ? `${arktypePreprocess([ownProperties('data')], described, 'object')}.pipe((data) => ({ ...data }))`
+    : described
 }

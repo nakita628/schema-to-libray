@@ -3,7 +3,7 @@ import * as v from 'valibot'
 export const Order = v.object({
   id: v.pipe(v.number(), v.integer()),
   customer: v.object({
-    name: v.pipe(v.string(), v.minLength(1)),
+    name: v.pipe(v.string(), v.minCodePoints(1)),
     email: v.pipe(v.string(), v.email()),
   }),
   items: v.array(

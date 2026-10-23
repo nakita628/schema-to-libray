@@ -7,7 +7,7 @@ import {
   rootNameOf,
   schemaNamer,
 } from '../../helper/index.js'
-import type { GenerateOptions } from '../../helper/index.js'
+import type { GenerateOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { issueMessageExpression } from '../../utils/index.js'
 import { arktype } from './arktype.js'
@@ -41,10 +41,10 @@ export function schemaToArktype(schema: JSONSchema, options?: GenerateOptions): 
         : defEntries
 
     // Entries may call `type(...)` — `arktypeWrap` reaches for it whenever a
-    // bare definition needs a method such as `.describe()` — so the import has
-    // to carry it alongside `scope`.
+    // bare definition needs a method such as `.describe()` — or read `type.errors`
+    // in a wire union, so the import has to carry it alongside `scope`.
     const scopeBody = `const types = scope({${scopeEntries.join(',')}}).export()`
-    const usesType = /\btype\(/u.test(scopeBody)
+    const usesType = /\btype[(.]/u.test(scopeBody)
 
     return [
       ...prefix,

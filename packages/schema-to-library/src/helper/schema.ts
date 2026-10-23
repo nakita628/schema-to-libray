@@ -1,5 +1,6 @@
-import { isSchemaList, isSchemaObject } from '../guard/index.js'
+import { isDefaultOnlyMember, isSchemaList, isSchemaObject } from '../guard/index.js'
 import type { JSONSchema, JSONValue } from '../parser/index.js'
+import { coerceDefault } from '../utils/index.js'
 
 /** `definitions` and `$defs` read as one map, `$defs` winning on a shared name. */
 export function collectDefinitions(schema: JSONSchema): { readonly [k: string]: JSONSchema } {
@@ -23,4 +24,21 @@ export function itemsSchemaOf(items: JSONSchema['items']): JSONSchema | undefine
 export function examplesOf(schema: JSONSchema): readonly JSONValue[] | undefined {
   if (schema.examples !== undefined) return schema.examples
   return schema.example === undefined ? undefined : [schema.example]
+}
+
+/**
+ * Whether a node carries a `default` the generators keep, so a property holding it may be
+ * left out of the input.
+ */
+export function hasKeptDefault(schema: JSONSchema): boolean {
+  return schema.default !== undefined && coerceDefault(schema, schema.default).keep
+}
+
+/**
+ * Whether a node's own emitter already makes it optional with a default: a kept `default`,
+ * or an `allOf` member that only carries one. An object wrapping such a property again
+ * would hide the default behind the outer wrapper.
+ */
+export function isOptionalByDefault(schema: JSONSchema): boolean {
+  return hasKeptDefault(schema) || schema.allOf?.some(isDefaultOnlyMember) === true
 }

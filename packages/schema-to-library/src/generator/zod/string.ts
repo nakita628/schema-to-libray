@@ -1,8 +1,9 @@
 import { ISO_4217_CURRENCY_CODES } from '../../constants/index.js'
 import { hasFixedLength } from '../../guard/index.js'
+import { timePattern } from '../../helper/format.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { zodBaseError, zodError } from '../../utils/index.js'
+import { zodBaseError, zodErrorPart } from '../../utils/index.js'
 
 /** The formats Zod checks with a top-level validator, keyed by the lower-cased format. */
 const FORMAT_STRING: { readonly [k: string]: string } = {
@@ -46,23 +47,6 @@ const TRANSFORM_FORMATS: { readonly [k: string]: string } = {
   touppercase: '.toUpperCase()',
 }
 
-/**
- * RFC 3339 `full-time` with the seconds and the offset optional, which `z.iso.time()` cannot
- * express: it has no offset option. `precision` follows `z.iso.time`'s: `-1` minutes only,
- * `0` whole seconds, `n` exactly `n` fraction digits.
- */
-function timePattern(precision: number | undefined): string {
-  const seconds =
-    precision === undefined
-      ? String.raw`(?::[0-5]\d(?:\.\d+)?)?`
-      : precision === -1
-        ? ''
-        : precision === 0
-          ? String.raw`:[0-5]\d`
-          : String.raw`:[0-5]\d\.\d{${precision}}`
-  return String.raw`/^(?:[01]\d|2[0-3]):[0-5]\d${seconds}(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/`
-}
-
 const LUHN_CHECK = `(val)=>{let sum=0;for(let i=0;i<val.length;i++){let digit=Number(val[val.length-1-i]);if(i%2===1){digit*=2;if(digit>9)digit-=9}sum+=digit}return sum%10===0}`
 
 const IBAN_CHECK = `(val)=>{let rest=0;for(const char of val.slice(4)+val.slice(0,4)){const n=Number.parseInt(char,36);rest=(n>9?rest*100+n:rest*10+n)%97}return rest===1}`
@@ -73,10 +57,11 @@ const IBAN_CHECK = `(val)=>{let rest=0;for(const char of val.slice(4)+val.slice(
  */
 function formatChecks(schema: JSONSchema, format: string): string | undefined {
   const errorMessage = schema['x-error-message']
-  const errorPart = errorMessage ? `,${zodError(errorMessage)}` : ''
+  const errorPart = zodErrorPart(errorMessage)
+  // RFC 3339 `full-time` carries an offset, which `z.iso.time()` cannot express.
   if (format === 'time' && schema['x-isoOffset'] !== false) {
     const precision = schema['x-isoPrecision']
-    return `.regex(${timePattern(typeof precision === 'number' ? precision : undefined)}${errorPart})`
+    return `.regex(${timePattern(typeof precision === 'number' ? precision : undefined, true)}${errorPart})`
   }
   if (format === 'creditcard') {
     return `${String.raw`.regex(/^\d{12,19}$/${errorPart})`}.refine(${LUHN_CHECK}${errorPart})`
@@ -210,13 +195,13 @@ export function string(schema: JSONSchema) {
   // handler runs, so issue.input === undefined is unreachable — drop x-required-message.
   const baseErrorArg = zodBaseError(errorMessage, coerce ? undefined : requiredMessage)
   const patternMessage = schema['x-pattern-message']
-  const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
+  const patternErrorPart = zodErrorPart(patternMessage)
   const minLengthMessage = schema['x-minLength-message']
-  const minErrorPart = minLengthMessage ? `,${zodError(minLengthMessage)}` : ''
+  const minErrorPart = zodErrorPart(minLengthMessage)
   const maxLengthMessage = schema['x-maxLength-message']
-  const maxErrorPart = maxLengthMessage ? `,${zodError(maxLengthMessage)}` : ''
+  const maxErrorPart = zodErrorPart(maxLengthMessage)
   const fixedLengthMessage = minLengthMessage ?? maxLengthMessage
-  const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
+  const fixedLengthErrorPart = zodErrorPart(fixedLengthMessage)
   const hash = hashBase(schema, baseErrorArg)
   const formatName = schema.format?.toLowerCase()
   const format = formatName !== undefined ? formatCall(schema, formatName) : undefined

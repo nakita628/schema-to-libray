@@ -28,6 +28,11 @@ import { Tuple } from '../prefix-items-unevaluated/output.ts'
 import { Config as ReadonlyConfig } from '../readonly/output.ts'
 import { Organization as ScopeMetadataOrganization } from '../scope-metadata/output.ts'
 import { Schema as SimpleSchema } from '../simple/output.ts'
+import { Query as WireQuery } from '../wire-query/output.ts'
+import { Formats as StringFormats } from '../string-formats/output.ts'
+import { Ids as ParamFormNoExplodeIds } from '../param-form-no-explode/output.ts'
+import { Filter as ParamDeepObjectFilter } from '../param-deep-object/output.ts'
+import { Payload as ParamJsonContentPayload } from '../param-json-content/output.ts'
 import { Order as SplitNestedOrder } from '../split-nested/output.ts'
 import { User as SplitRefsUser } from '../split-refs/output.ts'
 import { User as TitleUser } from '../title/output.ts'
@@ -243,8 +248,8 @@ describe('nested', () => {
       },
       {
         path: ['customer', 'name'],
-        code: 'minLength',
-        message: 'customer.name must be non-empty',
+        code: 'predicate',
+        message: 'customer.name must be at least 1 character (was "")',
       },
       { path: ['id'], code: 'divisor', message: 'id must be an integer (was 1.5)' },
       {
@@ -696,7 +701,7 @@ describe('deep-nested-validation', () => {
     const result = DeepUser({ name: '', email: 'bad', address: { zip: 'x' } })
     expect(issues(result)).toStrictEqual([
       { path: ['email'], code: 'pattern', message: 'email must be an email address (was "bad")' },
-      { path: ['name'], code: 'minLength', message: 'name must be non-empty' },
+      { path: ['name'], code: 'predicate', message: 'name must be at least 1 character (was "")' },
       {
         path: ['address', 'zip'],
         code: 'pattern',
@@ -785,5 +790,134 @@ describe('scope-metadata (descriptions and intersections inside a scope)', () =>
     ).toStrictEqual([
       { path: ['audited', 'userId'], code: 'required', message: "audited.userId must be a string or The user's id. (was missing)" },
     ])
+  })
+})
+
+describe('wire-query', () => {
+  it('coerces every parameter from its text', () => {
+    expect(
+      WireQuery({
+        page: '2',
+        ids: '1',
+        sort: '-1',
+        active: 'true',
+        limit: 'null',
+        cursor: '18446744073709551615',
+        offset: '0',
+        skip: '3',
+        flag: '1',
+        constructor: '5',
+        email: ' a@b.co ',
+      }),
+    ).toStrictEqual({
+      page: 2,
+      ids: [1],
+      sort: -1,
+      active: true,
+      limit: null,
+      cursor: 18446744073709551615n,
+      offset: 0,
+      skip: 3,
+      flag: 1,
+      constructor: 5,
+      email: 'a@b.co',
+    })
+  })
+
+  it('reads an absent parameter named like an Object.prototype member as absent', () => {
+    expect(WireQuery({ page: '1' })).toStrictEqual({ page: 1 })
+  })
+
+  it('reads the boolean spellings z.stringbool() reads', () => {
+    expect(WireQuery({ page: '1', flag: 'yes' })).toStrictEqual({ page: 1, flag: true })
+    expect(WireQuery({ page: '1', active: 'YES' })).toStrictEqual({ page: 1, active: true })
+  })
+
+  it('reads the JavaScript number grammar and refuses what is not finite', () => {
+    expect(WireQuery({ page: '1', offset: '1e3' })).toStrictEqual({ page: 1, offset: 1000 })
+    expect(WireQuery({ page: '007', skip: '1.0' })).toStrictEqual({ page: 7, skip: 1 })
+    expect(WireQuery({ page: '1', offset: '1e309' })).toBeInstanceOf(type.errors)
+    expect(WireQuery({ page: '1', skip: '1.5' })).toBeInstanceOf(type.errors)
+  })
+
+  it('reports a bad array element at its index', () => {
+    expect(issues(WireQuery({ page: '1', ids: ['1', 'x'] })).map((e) => e.path)).toStrictEqual([
+      ['ids', 1],
+    ])
+  })
+
+  it.each([
+    [{ sort: '2' }, ['sort']],
+    [{ active: 'false' }, ['active']],
+    [{ offset: '-1' }, ['offset']],
+    [{ skip: '0' }, ['skip']],
+    [{ skip: 'abc' }, ['skip']],
+    [{ cursor: '-1' }, ['cursor']],
+  ])('rejects %o at %j', (input, path) => {
+    expect(issues(WireQuery({ page: '1', ...input })).map((e) => e.path)).toStrictEqual([path])
+  })
+})
+
+describe('parameter serialization', () => {
+  it('splits a non-exploded form array', () => {
+    expect(ParamFormNoExplodeIds('1,2,3')).toStrictEqual([1, 2, 3])
+    expect(ParamFormNoExplodeIds('')).toBeInstanceOf(type.errors)
+  })
+
+  it('gathers a deepObject parameter', () => {
+    expect(ParamDeepObjectFilter({ 'deep[age]': '5', 'deep[name]': 'bob' })).toStrictEqual({
+      age: 5,
+      name: 'bob',
+    })
+  })
+
+  it('parses a JSON content parameter without coercing it', () => {
+    expect(ParamJsonContentPayload('{"id":1,"tags":["a"]}')).toStrictEqual({ id: 1, tags: ['a'] })
+    expect(ParamJsonContentPayload('{"id":"1"}')).toBeInstanceOf(type.errors)
+  })
+})
+
+describe('string-formats', () => {
+  it('reads int64 / uint64 from a JSON number or a string of digits', () => {
+    expect(
+      StringFormats({ id: 9007199254740991, size: '18446744073709551615', kind: '2' }),
+    ).toStrictEqual({ id: 9007199254740991n, size: 18446744073709551615n, kind: 2n })
+  })
+
+  it.each([
+    ['at', '2025-01-01T00:00:00+09:00'],
+    ['time', '12:34:56+09:00'],
+    ['guid', '00000000-0000-0000-0000-000000000000'],
+    ['site', 'https://example.com'],
+    ['card', '4111111111111111'],
+  ])('accepts %s %j', (key, value) => {
+    expect(StringFormats({ [key]: value })).toStrictEqual({ [key]: value })
+  })
+
+  it.each([
+    ['id', 1.5],
+    ['id', '1.5'],
+    ['kind', 3],
+    ['at', '2020-01-02'],
+    ['time', '25:00'],
+    ['guid', 'a1b2c3d4e5f69a7b0c9d0e1f2a3b4c5d'],
+    ['site', 'ftp://example.com'],
+    ['card', '4111111111111112'],
+  ])('rejects %s %j', (key, value) => {
+    expect(StringFormats({ [key]: value })).toBeInstanceOf(type.errors)
+  })
+
+  it('trims before the format check', () => {
+    expect(StringFormats({ slug: ' a ', email: ' a@b.co ' })).toStrictEqual({
+      slug: 'a',
+      email: 'a@b.co',
+    })
+  })
+})
+
+describe('string length counts code points', () => {
+  it('counts an astral character once', () => {
+    expect(LengthMessageCode({ code: '🔥🔥🔥🔥🔥🔥' })).toStrictEqual({ code: '🔥🔥🔥🔥🔥🔥' })
+    expect(LengthMessageCode({ code: '🔥🔥🔥' })).toBeInstanceOf(type.errors)
   })
 })

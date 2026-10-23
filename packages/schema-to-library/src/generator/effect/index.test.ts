@@ -316,7 +316,7 @@ export type MinMax = typeof MinMax.Type`
     })
     const expected = `import { Schema } from "effect"
 
-export const Length = Schema.Struct({name:Schema.optional(Schema.String.check(Schema.isMinLength(1),Schema.isMaxLength(100)))})
+export const Length = Schema.Struct({name:Schema.optional(Schema.String.check(Schema.makeFilter((input)=>[...input].length>=1,{expected:"a string of at least 1 character"}),Schema.makeFilter((input)=>[...input].length<=100,{expected:"a string of at most 100 characters"})))})
 
 export type Length = typeof Length.Type`
     expect(result).toBe(expected)
@@ -1213,7 +1213,7 @@ export type Config = typeof Config.Type`
       })
       const expected = `import { Schema } from "effect"
 
-export const Username = Schema.String.check(Schema.isMinLength(3),Schema.isMaxLength(20)).pipe(Schema.brand("Username"))
+export const Username = Schema.String.check(Schema.makeFilter((input)=>[...input].length>=3,{expected:"a string of at least 3 characters"}),Schema.makeFilter((input)=>[...input].length<=20,{expected:"a string of at most 20 characters"})).pipe(Schema.brand("Username"))
 
 export type Username = typeof Username.Type`
       expect(result).toBe(expected)

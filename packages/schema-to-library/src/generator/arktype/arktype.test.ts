@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { arktype } from './arktype.js'
 
@@ -145,7 +146,7 @@ describe('arktype', () => {
       ],
       [
         { not: { type: 'string' }, type: ['null'] },
-        `type(type("unknown").narrow((data: unknown) => typeof data !== 'string')).or("null")`,
+        `type("null | null").narrow((data: unknown) => typeof data !== 'string')`,
       ],
       [{ not: { const: 42 } }, `type("unknown").narrow((data: unknown) => data !== 42)`],
       [
@@ -191,14 +192,32 @@ describe('arktype', () => {
       [{ type: 'string', format: 'email' }, '"string.email"'],
       [{ type: 'string', format: 'uuid' }, '"string.uuid"'],
       [{ type: 'string', format: 'uri' }, '"string.url"'],
-      [{ type: 'string', format: 'ipv4' }, '"string.ip"'],
-      [{ type: 'string', format: 'ipv6' }, '"string.ip"'],
-      [{ type: 'string', format: 'date-time' }, '"string.date.iso"'],
-      [{ type: 'string', format: 'date' }, '"string.date"'],
-      [{ type: 'string', minLength: 1 }, 'type("string >= 1")'],
-      [{ type: 'string', maxLength: 100 }, 'type("string <= 100")'],
-      [{ type: 'string', minLength: 3, maxLength: 20 }, 'type("3 <= string <= 20")'],
-      [{ type: 'string', minLength: 5, maxLength: 5 }, 'type("string == 5")'],
+      [{ type: 'string', format: 'ipv4' }, '"string.ip.v4"'],
+      [{ type: 'string', format: 'ipv6' }, '"string.ip.v6"'],
+      [
+        { type: 'string', format: 'date-time' },
+        'type(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$/)',
+      ],
+      [
+        { type: 'string', format: 'date' },
+        'type(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$/)',
+      ],
+      [
+        { type: 'string', minLength: 1 },
+        'type("string").narrow((data, ctx) => [...data].length >= 1 || ctx.mustBe("at least 1 character"))',
+      ],
+      [
+        { type: 'string', maxLength: 100 },
+        'type("string").narrow((data, ctx) => [...data].length <= 100 || ctx.mustBe("at most 100 characters"))',
+      ],
+      [
+        { type: 'string', minLength: 3, maxLength: 20 },
+        'type("string").narrow((data, ctx) => [...data].length >= 3 || ctx.mustBe("at least 3 characters")).narrow((data, ctx) => [...data].length <= 20 || ctx.mustBe("at most 20 characters"))',
+      ],
+      [
+        { type: 'string', minLength: 5, maxLength: 5 },
+        'type("string").narrow((data, ctx) => [...data].length === 5 || ctx.mustBe("exactly 5 characters"))',
+      ],
       [{ type: 'string', pattern: '^\\w+$' }, 'type("string").and(/^\\w+$/)'],
     ])('arktype(%o) → %s', (input, expected) => {
       expect(arktype(input)).toBe(expected)
@@ -212,10 +231,7 @@ describe('arktype', () => {
       [{ type: ['number', 'null'] }, '"number | null"'],
       [{ type: 'number', minimum: 0 }, '"number >= 0"'],
       [{ type: 'number', maximum: 100 }, '"number <= 100"'],
-      [
-        { type: 'number', minimum: 0, maximum: 100 },
-        'type("number >= 0").and(type("number <= 100"))',
-      ],
+      [{ type: 'number', minimum: 0, maximum: 100 }, '"number >= 0 & number <= 100"'],
       [{ type: 'number', exclusiveMinimum: 0 }, '"number > 0"'],
       [{ type: 'number', exclusiveMaximum: 100 }, '"number < 100"'],
       [{ type: 'number', multipleOf: 2 }, '"number % 2"'],
@@ -626,19 +642,19 @@ describe('arktype', () => {
   describe('paramIn coercion', () => {
     it('query: number → "string.numeric.parse"', () => {
       expect(arktype({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        '"string.numeric.parse"',
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") })',
       )
     })
 
     it('query: integer → "string.integer.parse"', () => {
       expect(arktype({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        '"string.integer.parse"',
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })',
       )
     })
 
     it("path: boolean → type(\"'true' | 'false'\").pipe", () => {
       expect(arktype({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        `type("'true' | 'false'").pipe((data) => data === 'true')`,
+        `type(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i).pipe((data) => /^(?:true|1|yes|on|y|enabled)$/i.test(data))`,
       )
     })
 
@@ -656,7 +672,7 @@ describe('arktype', () => {
 
     it('query: integer with minimum → .to() constraint', () => {
       expect(arktype({ type: 'integer', minimum: 1 }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'type("string.integer.parse").to("number.integer >= 1")',
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).to("number.integer >= 1")',
       )
     })
 
@@ -666,13 +682,13 @@ describe('arktype', () => {
           paramIn: 'query',
         }),
       ).toBe(
-        'type("string.integer.parse").to(type("number.integer >= 1").and(type("number.integer <= 100")))',
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).to("number.integer >= 1 & number.integer <= 100")',
       )
     })
 
     it('query: number with minimum → .to() constraint', () => {
       expect(arktype({ type: 'number', minimum: 0 }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'type("string.numeric.parse").to("number >= 0")',
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") }).to("number >= 0")',
       )
     })
   })
@@ -713,6 +729,210 @@ describe('arktype', () => {
           unevaluatedItems: { type: 'integer' },
         }),
       ).toBe('type(["string","boolean","...","number.integer[]"])')
+    })
+  })
+
+  describe('#98: shapes that threw at module load', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        // A `constructor` key in an object literal is checked against Object's own member.
+        { type: 'object', properties: Object.fromEntries([['constructor', { type: 'integer' }]]) },
+        { paramIn: 'query' },
+        'type("object").pipe((data)=>(typeof data==="object"&&data!==null&&!Array.isArray(data)?Object.assign(Object.create(null),data):data),type({"constructor?":type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })})).pipe((data) => ({ ...data }))',
+      ],
+      [
+        { oneOf: [{ type: 'integer' }, { type: 'string' }] },
+        { paramIn: 'path' },
+        'type("unknown").pipe((data, ctx) => { for (const branch of [type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }),type("string")]) { const out = branch(data); if (!(out instanceof type.errors)) return out } return ctx.error("one of the members") })',
+      ],
+      [
+        {
+          allOf: [
+            { type: 'integer', minimum: 1 },
+            { type: 'integer', maximum: 5 },
+          ],
+        },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).to("number.integer >= 1 & number.integer <= 5")',
+      ],
+      [
+        { anyOf: [{ type: 'number' }, { type: 'string' }] },
+        { paramIn: 'query' },
+        'type("unknown").pipe((data, ctx) => { for (const branch of [type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") }),type("string")]) { const out = branch(data); if (!(out instanceof type.errors)) return out } return ctx.error("one of the members") })',
+      ],
+    ])('arktype(%o, %o) → %s', (schema, options, expected) => {
+      expect(arktype(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#103: the wire-parameter coercion of #96, and the JavaScript number grammar', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'number' },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") })',
+      ],
+      [
+        { type: 'integer' },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })',
+      ],
+      [
+        { type: 'integer', minimum: 1, maximum: 100 },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).to("number.integer >= 1 & number.integer <= 100")',
+      ],
+      [
+        { type: 'integer', format: 'int32' },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).to("number.integer >= -2147483648 & number.integer <= 2147483647")',
+      ],
+      [
+        { type: 'number', format: 'float32' },
+        undefined,
+        '"number >= -3.4028234663852886e38 & number <= 3.4028234663852886e38"',
+      ],
+      [
+        { type: 'array', items: { type: 'integer' } },
+        { paramIn: 'query' },
+        'type("unknown").pipe((data)=>(data===undefined||Array.isArray(data)?data:[data]),type(type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })).array())',
+      ],
+      [
+        { type: 'array', items: { type: 'integer' }, minItems: 1 },
+        { paramIn: 'query' },
+        'type("unknown").pipe((data)=>(data===undefined||Array.isArray(data)?data:[data]),type(type(type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })).array()).and(type("unknown[] >= 1")))',
+      ],
+      [
+        { type: 'integer', enum: [1, 2] },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") }).to("1 | 2")',
+      ],
+      [
+        { type: 'boolean', const: true },
+        { paramIn: 'query' },
+        'type(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i).pipe((data) => /^(?:true|1|yes|on|y|enabled)$/i.test(data)).to("true")',
+      ],
+      [
+        { type: 'boolean' },
+        { paramIn: 'query' },
+        'type(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i).pipe((data) => /^(?:true|1|yes|on|y|enabled)$/i.test(data))',
+      ],
+      [
+        { type: 'integer', nullable: true },
+        { paramIn: 'query' },
+        'type("unknown").pipe((data)=>(data===\'null\'?null:data),type(type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })).or("null"))',
+      ],
+      [
+        { minimum: 1 },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isFinite(value) ? value : ctx.error("a number") }).to("number >= 1")',
+      ],
+      [
+        { type: 'integer', not: { const: 0 } },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }).narrow((data: unknown) => data !== 0)',
+      ],
+      [
+        { type: ['integer', 'string'] },
+        { paramIn: 'query' },
+        'type("unknown").pipe((data, ctx) => { for (const branch of [type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") }),type("string")]) { const out = branch(data); if (!(out instanceof type.errors)) return out } return ctx.error("one of the members") })',
+      ],
+      [{ type: ['string', 'number'] }, undefined, '"string | number"'],
+      [
+        { type: 'integer', format: 'int64' },
+        { paramIn: 'query' },
+        'type("string").pipe((data, ctx) => (/^-?\\d+$/.test(data) ? BigInt(data) : ctx.error("an integer"))).narrow((data, ctx) => (data >= -9223372036854775808n && data <= 9223372036854775807n) || ctx.mustBe("an int64"))',
+      ],
+      [
+        { type: 'integer', format: 'uint64' },
+        undefined,
+        'type("bigint | number.integer").or(/^-?\\d+$/).pipe((data) => BigInt(data)).narrow((data, ctx) => (data >= 0n && data <= 18446744073709551615n) || ctx.mustBe("a uint64"))',
+      ],
+      [
+        { type: 'integer', format: 'int64', enum: [1, 2] },
+        undefined,
+        'type("bigint | number.integer").or(/^-?\\d+$/).pipe((data) => BigInt(data)).to("1n | 2n")',
+      ],
+      [
+        { type: 'integer', format: 'bigint', minimum: 0 },
+        undefined,
+        'type("bigint").narrow((data, ctx) => data >= BigInt(0) || ctx.mustBe("at least 0"))',
+      ],
+      [{ type: 'string', format: 'base64' }, undefined, '"string.base64"'],
+      [{ type: 'string', format: 'base64url' }, undefined, '"string.base64.url"'],
+      [{ type: 'string', format: 'hex' }, undefined, '"string.hex"'],
+      [{ type: 'string', format: 'uuidv4' }, undefined, '"string.uuid.v4"'],
+      [{ type: 'string', format: 'uuid', 'x-uuidVersion': 'v7' }, undefined, '"string.uuid.v7"'],
+      [{ type: 'string', format: 'ipv4' }, undefined, '"string.ip.v4"'],
+      [{ type: 'string', format: 'ipv6' }, undefined, '"string.ip.v6"'],
+      [
+        { type: 'string', format: 'date' },
+        undefined,
+        'type(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$/)',
+      ],
+      [
+        { type: 'string', format: 'date-time' },
+        undefined,
+        'type(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$/)',
+      ],
+      [
+        { type: 'string', format: 'time' },
+        undefined,
+        'type(/^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)?$/)',
+      ],
+      [{ type: 'string', format: 'nanoid' }, undefined, 'type(/^[a-zA-Z0-9_-]{21}$/)'],
+      [
+        { type: 'string', format: 'httpUrl' },
+        undefined,
+        'type("string.url").and(/^https?:\\/\\//)',
+      ],
+      [{ type: 'string', format: 'binary' }, undefined, '"File"'],
+      [{ type: 'string', format: 'trim' }, undefined, 'type("string.trim")'],
+      [
+        { type: 'string', format: 'email', 'x-trim': true },
+        undefined,
+        'type("string.trim").to("string.email")',
+      ],
+      [
+        { type: 'string', 'x-trim': true, 'x-toLowerCase': true, pattern: '^[a-z]+$' },
+        undefined,
+        'type("string.trim").to("string.lower").to(/^[a-z]+$/)',
+      ],
+      [{ type: 'string', 'x-normalize': 'NFKC' }, undefined, 'type("string.normalize.NFKC")'],
+      [
+        { type: 'array', items: { type: 'integer' } },
+        { paramIn: 'query', explode: false },
+        'type("unknown").pipe((data)=>{if(typeof data!==\'string\')return data;const text=data;return (text===\'\'?[]:text.split(","))},type("unknown").pipe((data)=>(data===undefined||Array.isArray(data)?data:[data]),type(type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })).array()))',
+      ],
+      [
+        { type: 'object', properties: { age: { type: 'integer' } } },
+        { paramIn: 'query', style: 'deepObject' },
+        'type("unknown").pipe((data)=>{if(typeof data!==\'object\'||data===null||Array.isArray(data))return data;const out=Object.entries(data).reduce<{[k:string]:unknown}>((acc,[key,value])=>{const name=/^[^[\\]]+\\[([^\\]]+)\\]$/u.exec(key)?.[1];return name===undefined?acc:{...acc,[name]:value}},{});return Object.keys(out).length>0?out:data},type({"age?":type("string").pipe((data, ctx) => { const value = Number(data); return Number.isSafeInteger(value) ? value : ctx.error("an integer") })}))',
+      ],
+      [
+        { type: 'object', properties: { id: { type: 'integer' } } },
+        { paramIn: 'query', contentType: 'application/json' },
+        'type("unknown").pipe((data)=>{if(typeof data!==\'string\')return data;try{return JSON.parse(data)}catch{return data}},type({"id?":"number.integer"}))',
+      ],
+    ])('arktype(%o, %o) → %s', (schema, options, expected) => {
+      expect(arktype(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#105: minLength / maxLength count code points', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'string', minLength: 2, maxLength: 4 },
+        undefined,
+        'type("string").narrow((data, ctx) => [...data].length >= 2 || ctx.mustBe("at least 2 characters")).narrow((data, ctx) => [...data].length <= 4 || ctx.mustBe("at most 4 characters"))',
+      ],
+      [
+        { type: 'string', minLength: 1, 'x-minLength-message': 'Name too short' },
+        undefined,
+        'type("string").narrow((data, ctx) => [...data].length >= 1 || ctx.mustBe("Name too short"))',
+      ],
+    ])('arktype(%o, %o) → %s', (schema, options, expected) => {
+      expect(arktype(schema, 'Schema', false, options)).toBe(expected)
     })
   })
 })

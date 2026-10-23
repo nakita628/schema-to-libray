@@ -1,6 +1,6 @@
 {
   "name": "schema-to-library",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Generate Zod/Valibot/Effect/TypeBox/ArkType/Ajv/Yup schemas from JSON or YAML files",
   "keywords": [
     "ajv",
@@ -103,10 +103,10 @@
     "test": "vp test"
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^16.0.1",
-    "@effect/platform-node": "4.0.0-rc.112",
-    "effect": "4.0.0-rc.112",
-    "oxfmt": "^0.68.0"
+    "@apidevtools/json-schema-ref-parser": "^16.0.5",
+    "@effect/platform-node": "4.0.5",
+    "effect": "4.0.5",
+    "oxfmt": "^0.74.0"
   },
   "devDependencies": {
     "@types/node": "26.6.5"

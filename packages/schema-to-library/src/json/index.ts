@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import * as Effect from 'effect/Effect'
 
 /** Parses a JSON string. Failures land in the error channel. */
 export function parseJson(raw: string) {

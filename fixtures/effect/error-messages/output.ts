@@ -3,8 +3,14 @@ import { Schema } from 'effect'
 export const User = Schema.Struct({
   name: Schema.String.check(
     Schema.isPattern(/^[a-zA-Z]+$/, { message: 'Only alphabetic characters' }),
-    Schema.isMinLength(3, { message: 'Name too short' }),
-    Schema.isMaxLength(20, { message: 'Name too long' }),
+    Schema.makeFilter((input) => [...input].length >= 3, {
+      expected: 'a string of at least 3 characters',
+      message: 'Name too short',
+    }),
+    Schema.makeFilter((input) => [...input].length <= 20, {
+      expected: 'a string of at most 20 characters',
+      message: 'Name too long',
+    }),
   ).annotate({ message: 'Invalid name' }),
   age: Schema.Number.check(
     Schema.isInt({ message: 'Invalid age' }),

@@ -11,7 +11,9 @@ const types = scope({
   ],
   Organization: [
     {
-      name: type('string >= 1').describe('The organization name.'),
+      name: type('string')
+        .narrow((data, ctx) => [...data].length >= 1 || ctx.mustBe('at least 1 character'))
+        .describe('The organization name.'),
       'members?': [['Member[]', '&', 'unknown[] >= 1'], '@', 'The members of the organization.'],
       'parent?': ['Organization', '@', 'An optional parent organization.'],
       'audited?': ['Member', '&', { 'note?': 'string' }],

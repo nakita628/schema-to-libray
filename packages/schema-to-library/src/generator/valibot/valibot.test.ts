@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { valibot } from './valibot.js'
 
@@ -314,7 +315,7 @@ describe('valibot', () => {
       ],
       [
         { not: { type: 'string' }, type: ['null'] },
-        "v.nullable(v.custom<unknown>((input) => typeof input !== 'string'))",
+        "v.pipe(v.nullable(v.null()),v.check((input) => typeof input !== 'string'))",
       ],
       [{ not: { const: 42 } }, 'v.custom<unknown>((input) => input !== 42)'],
       [
@@ -419,30 +420,42 @@ describe('valibot', () => {
       [{ type: ['string', 'null'] }, 'v.nullable(v.string())'],
       [
         { type: 'string', minLength: 1, maxLength: 10 },
-        'v.pipe(v.string(),v.minLength(1),v.maxLength(10))',
+        'v.pipe(v.string(),v.minCodePoints(1),v.maxCodePoints(10))',
       ],
       [{ type: 'string', pattern: '^\\w+$' }, 'v.pipe(v.string(),v.regex(/^\\w+$/))'],
       [{ type: 'string', default: 'test' }, 'v.optional(v.string(),"test")'],
       [
         { type: 'string', default: 'test', nullable: true },
-        'v.nullable(v.optional(v.string(),"test"))',
+        'v.optional(v.nullable(v.string()),"test")',
       ],
-      [{ type: ['string', 'null'], default: 'test' }, 'v.nullable(v.optional(v.string(),"test"))'],
+      [{ type: ['string', 'null'], default: 'test' }, 'v.optional(v.nullable(v.string()),"test")'],
       [
         { type: 'string', nullable: true, default: null },
         'v.optional(v.nullable(v.string()),null)',
       ],
       [{ type: ['string', 'null'], default: null }, 'v.optional(v.nullable(v.string()),null)'],
       [{ type: 'string', format: 'email' }, 'v.pipe(v.string(),v.email())'],
-      [{ type: 'string', format: 'uuid' }, 'v.pipe(v.string(),v.uuid())'],
+      [
+        { type: 'string', format: 'uuid' },
+        'v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/))',
+      ],
       [{ type: 'string', format: 'uri' }, 'v.pipe(v.string(),v.url())'],
       [{ type: 'string', format: 'ipv4' }, 'v.pipe(v.string(),v.ipv4())'],
       [{ type: 'string', format: 'ipv6' }, 'v.pipe(v.string(),v.ipv6())'],
-      [{ type: 'string', format: 'date-time' }, 'v.pipe(v.string(),v.isoTimestamp())'],
+      [
+        { type: 'string', format: 'date-time' },
+        'v.pipe(v.string(),v.regex(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$/))',
+      ],
       [{ type: 'string', format: 'base64' }, 'v.pipe(v.string(),v.base64())'],
       [{ type: 'string', format: 'emoji' }, 'v.pipe(v.string(),v.emoji())'],
-      [{ type: 'string', format: 'date' }, 'v.pipe(v.string(),v.isoDate())'],
-      [{ type: 'string', format: 'time' }, 'v.pipe(v.string(),v.isoTimeSecond())'],
+      [
+        { type: 'string', format: 'date' },
+        'v.pipe(v.string(),v.regex(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$/))',
+      ],
+      [
+        { type: 'string', format: 'time' },
+        'v.pipe(v.string(),v.regex(/^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)?$/))',
+      ],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
     })
@@ -464,9 +477,9 @@ describe('valibot', () => {
         [{ type: 'number', default: 100 }, 'v.optional(v.number(),100)'],
         [
           { type: 'number', default: 100, nullable: true },
-          'v.nullable(v.optional(v.number(),100))',
+          'v.optional(v.nullable(v.number()),100)',
         ],
-        [{ type: ['number', 'null'], default: 100 }, 'v.nullable(v.optional(v.number(),100))'],
+        [{ type: ['number', 'null'], default: 100 }, 'v.optional(v.nullable(v.number()),100)'],
       ])('valibot(%o) → %s', (input, expected) => {
         expect(valibot(input)).toBe(expected)
       })
@@ -489,11 +502,11 @@ describe('valibot', () => {
         [{ type: 'integer', default: 100 }, 'v.optional(v.pipe(v.number(),v.integer()),100)'],
         [
           { type: 'integer', default: 100, nullable: true },
-          'v.nullable(v.optional(v.pipe(v.number(),v.integer()),100))',
+          'v.optional(v.nullable(v.pipe(v.number(),v.integer())),100)',
         ],
         [
           { type: ['integer', 'null'], default: 100 },
-          'v.nullable(v.optional(v.pipe(v.number(),v.integer()),100))',
+          'v.optional(v.nullable(v.pipe(v.number(),v.integer())),100)',
         ],
       ])('valibot(%o) → %s', (input, expected) => {
         expect(valibot(input)).toBe(expected)
@@ -754,14 +767,14 @@ describe('valibot', () => {
           nullable: true,
           default: 'test',
         },
-        'v.nullable(v.optional(v.any(),"test"))',
+        'v.optional(v.nullable(v.any()),"test")',
       ],
       [
         {
           type: ['any', 'null'],
           default: 'test',
         },
-        'v.nullable(v.optional(v.any(),"test"))',
+        'v.optional(v.nullable(v.any()),"test")',
       ],
     ])('valibot(%o) → %s', (input, expected) => {
       expect(valibot(input)).toBe(expected)
@@ -839,7 +852,7 @@ describe('valibot', () => {
         [
           { $ref: '#/components/schemas/Pet', nullable: true },
           'TestSchema',
-          'v.nullable(v.nullable(PetSchema))',
+          'v.nullable(PetSchema)',
         ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
@@ -893,7 +906,7 @@ describe('valibot', () => {
 
     it('should handle default with nullable', () => {
       expect(valibot({ type: 'string', nullable: true, default: 'x' })).toBe(
-        'v.nullable(v.optional(v.string(),"x"))',
+        'v.optional(v.nullable(v.string()),"x")',
       )
     })
   })
@@ -1097,19 +1110,19 @@ describe('valibot', () => {
   describe('paramIn coercion', () => {
     it('query: integer → string transform', () => {
       expect(valibot({ type: 'integer' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'v.pipe(v.string(),v.transform(Number),v.number(),v.integer())',
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())',
       )
     })
 
     it('query: number → string transform', () => {
       expect(valibot({ type: 'number' }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'v.pipe(v.string(),v.transform(Number),v.number())',
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.finite())',
       )
     })
 
     it("path: boolean → picklist('true'|'false') transform", () => {
       expect(valibot({ type: 'boolean' }, 'Schema', false, { paramIn: 'path' })).toBe(
-        "v.pipe(v.picklist(['true','false']),v.transform((input)=>input==='true'))",
+        'v.pipe(v.string(),v.regex(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i),v.transform((input)=>/^(?:true|1|yes|on|y|enabled)$/i.test(input)))',
       )
     })
 
@@ -1127,13 +1140,13 @@ describe('valibot', () => {
       expect(
         valibot({ type: 'integer', default: 1, minimum: 1 }, 'Schema', false, { paramIn: 'query' }),
       ).toBe(
-        'v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.integer(),v.minValue(1)),"1")',
+        'v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger(),v.minValue(1)),"1")',
       )
     })
 
     it('query: number with default → default emitted as string-wire literal', () => {
       expect(valibot({ type: 'number', default: 2.5 }, 'Schema', false, { paramIn: 'query' })).toBe(
-        'v.optional(v.pipe(v.string(),v.transform(Number),v.number()),"2.5")',
+        'v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.finite()),"2.5")',
       )
     })
 
@@ -1141,7 +1154,7 @@ describe('valibot', () => {
       expect(
         valibot({ type: 'boolean', default: true }, 'Schema', false, { paramIn: 'path' }),
       ).toBe(
-        "v.optional(v.pipe(v.picklist(['true','false']),v.transform((input)=>input==='true')),\"true\")",
+        'v.optional(v.pipe(v.string(),v.regex(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i),v.transform((input)=>/^(?:true|1|yes|on|y|enabled)$/i.test(input))),"true")',
       )
     })
 
@@ -1271,5 +1284,276 @@ describe('valibot contains / minContains / maxContains', () => {
     ],
   ])('valibot(%o) → %s', (input, expected) => {
     expect(valibot(input)).toBe(expected)
+  })
+
+  describe('#99: wire bigint, binary files and RFC 3339 times', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'integer', format: 'bigint' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^-?\\d+$/),v.transform((input)=>BigInt(input)),v.bigint())',
+      ],
+      [{ type: 'string', format: 'binary' }, undefined, 'v.file()'],
+      [
+        { type: 'string', format: 'time' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)?$/))',
+      ],
+      [
+        { type: 'boolean' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i),v.transform((input)=>/^(?:true|1|yes|on|y|enabled)$/i.test(input)))',
+      ],
+    ])('valibot(%o, %o) → %s', (schema, options, expected) => {
+      expect(valibot(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#102: the wire-parameter coercion of #96', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'array', items: { type: 'integer' } },
+        { paramIn: 'query' },
+        'v.pipe(v.unknown(),v.transform((input)=>(input===undefined||Array.isArray(input)?input:[input])),v.array(v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())))',
+      ],
+      [
+        { type: 'integer', enum: [1, 2] },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.union([v.literal(1),v.literal(2)]))',
+      ],
+      [
+        { type: 'boolean', const: true },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^(?:true|1|yes|on|y|enabled|false|0|no|off|n|disabled)$/i),v.transform((input)=>/^(?:true|1|yes|on|y|enabled)$/i.test(input)),v.literal(true))',
+      ],
+      [
+        { type: 'integer', nullable: true },
+        { paramIn: 'query' },
+        "v.pipe(v.unknown(),v.transform((input)=>(input==='null'?null:input)),v.nullable(v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())))",
+      ],
+      [
+        { oneOf: [{ type: 'integer' }, { type: 'null' }] },
+        { paramIn: 'query' },
+        "v.pipe(v.unknown(),v.transform((input)=>(input==='null'?null:input)),v.nullable(v.union([v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger()),v.pipe(v.unknown(),v.transform((input)=>(input==='null'?null:input)),v.nullable(v.null()))])))",
+      ],
+      [
+        { minimum: 1 },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.finite(),v.minValue(1))',
+      ],
+      [{ maxLength: 3 }, { paramIn: 'query' }, 'v.pipe(v.string(),v.maxCodePoints(3))'],
+      [
+        { type: 'integer', not: { const: 0 } },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger(),v.check((input) => input !== 0))',
+      ],
+      [
+        { type: ['integer', 'string'] },
+        { paramIn: 'query' },
+        'v.union([v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger()),v.string()])',
+      ],
+      [{ type: ['string', 'number'] }, undefined, 'v.union([v.string(),v.number()])'],
+      [
+        { type: 'integer', format: 'int64' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^-?\\d+$/),v.transform((input)=>BigInt(input)),v.minValue(-9223372036854775808n),v.maxValue(9223372036854775807n))',
+      ],
+      [
+        { type: 'integer', format: 'uint64' },
+        undefined,
+        'v.pipe(v.union([v.bigint(),v.pipe(v.number(),v.integer()),v.pipe(v.string(),v.regex(/^-?\\d+$/))]),v.transform((input)=>BigInt(input)),v.minValue(0n),v.maxValue(18446744073709551615n))',
+      ],
+      [
+        { type: 'integer', format: 'int64', enum: [1, 2] },
+        undefined,
+        'v.pipe(v.union([v.bigint(),v.pipe(v.number(),v.integer()),v.pipe(v.string(),v.regex(/^-?\\d+$/))]),v.transform((input)=>BigInt(input)),v.union([v.literal(1n),v.literal(2n)]))',
+      ],
+      [{ type: 'string', format: 'nanoid' }, undefined, 'v.pipe(v.string(),v.nanoid())'],
+      [{ type: 'string', format: 'cuid2' }, undefined, 'v.pipe(v.string(),v.cuid2())'],
+      [{ type: 'string', format: 'ulid' }, undefined, 'v.pipe(v.string(),v.ulid())'],
+      [{ type: 'string', format: 'mac' }, undefined, 'v.pipe(v.string(),v.mac())'],
+      [{ type: 'string', format: 'hex' }, undefined, 'v.pipe(v.string(),v.hexadecimal())'],
+      [{ type: 'string', format: 'url' }, undefined, 'v.pipe(v.string(),v.url())'],
+      [
+        { type: 'string', format: 'httpUrl' },
+        undefined,
+        'v.pipe(v.string(),v.url(),v.regex(/^https?:\\/\\//))',
+      ],
+      [
+        { type: 'string', format: 'uuidv4' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$/))',
+      ],
+      [
+        { type: 'string', format: 'uuid', 'x-uuidVersion': 'v7' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$/))',
+      ],
+      [
+        { type: 'string', format: 'base64url' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^[A-Za-z0-9_-]*$/))',
+      ],
+      [
+        { type: 'string', format: 'hostname' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^(?=.{1,253}\\.?$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[-0-9a-zA-Z]{0,61}[0-9a-zA-Z])?)*\\.?$/))',
+      ],
+      [
+        { type: 'string', format: 'guid' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/))',
+      ],
+      [
+        { type: 'string', format: 'e164' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^\\+[1-9]\\d{6,14}$/))',
+      ],
+      [
+        { type: 'string', format: 'cidrv4' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\/([0-9]|[1-2][0-9]|3[0-2])$/))',
+      ],
+      [
+        { type: 'string', format: 'duration' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^P(?:(\\d+W)|(?!.*W)(?=\\d|T\\d)(\\d+Y)?(\\d+M)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+([.,]\\d+)?S)?)?)$/))',
+      ],
+      [{ type: 'string', format: 'trim' }, undefined, 'v.pipe(v.string(),v.trim())'],
+      [
+        { type: 'string', format: 'email', 'x-trim': true },
+        undefined,
+        'v.pipe(v.string(),v.trim(),v.email())',
+      ],
+      [
+        // A `constructor` key in an object literal is checked against Object's own member.
+        { type: 'object', properties: Object.fromEntries([['constructor', { type: 'integer' }]]) },
+        { paramIn: 'query' },
+        'v.pipe(v.unknown(),v.transform((input)=>(typeof input==="object"&&input!==null&&!Array.isArray(input)?Object.assign(Object.create(null),input):input)),v.partial(v.object({constructor:v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())})))',
+      ],
+      [
+        { type: 'object', properties: { int_def: { type: 'integer', default: 20 } } },
+        { paramIn: 'query' },
+        'v.object({int_def:v.optional(v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger()),"20")})',
+      ],
+      [
+        {
+          type: 'object',
+          properties: { a: { type: 'string', default: 'x' }, b: { type: 'string' } },
+        },
+        undefined,
+        'v.object({a:v.optional(v.string(),"x"),b:v.optional(v.string())})',
+      ],
+      [
+        { type: 'number' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.finite())',
+      ],
+      [
+        { type: 'number', format: 'float32' },
+        undefined,
+        'v.pipe(v.number(),v.minValue(-3.4028234663852886e38),v.maxValue(3.4028234663852886e38))',
+      ],
+      [
+        { type: 'integer' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())',
+      ],
+      [
+        { type: 'integer', format: 'int32' },
+        undefined,
+        'v.pipe(v.number(),v.integer(),v.minValue(-2147483648),v.maxValue(2147483647))',
+      ],
+      [
+        { type: 'integer', format: 'uint32' },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger(),v.minValue(0),v.maxValue(4294967295))',
+      ],
+      [
+        { type: 'string', format: 'date' },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$/))',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoPrecision': 3 },
+        { paramIn: 'query' },
+        'v.pipe(v.string(),v.regex(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$/))',
+      ],
+      [
+        { type: 'string', format: 'date-time', 'x-isoOffset': false, 'x-isoLocal': true },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z)|(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?)$/))',
+      ],
+      [
+        { type: 'string', format: 'time', 'x-isoPrecision': -1 },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^(?:[01]\\d|2[0-3]):[0-5]\\d(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)?$/))',
+      ],
+      [
+        { type: 'string', format: 'time', 'x-isoOffset': false },
+        undefined,
+        'v.pipe(v.string(),v.regex(/^(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?$/))',
+      ],
+      [
+        { type: 'array', items: { type: 'integer' } },
+        { paramIn: 'query', explode: false },
+        "v.pipe(v.unknown(),v.transform((input)=>{if(typeof input!=='string')return input;const text=input;return (text===''?[]:text.split(\",\"))}),v.unknown(),v.transform((input)=>(input===undefined||Array.isArray(input)?input:[input])),v.array(v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())))",
+      ],
+      [
+        { type: 'object', properties: { age: { type: 'integer' } } },
+        { paramIn: 'query', style: 'deepObject' },
+        "v.pipe(v.unknown(),v.transform((input)=>{if(typeof input!=='object'||input===null||Array.isArray(input))return input;const out=Object.entries(input).reduce<{[k:string]:unknown}>((acc,[key,value])=>{const name=/^[^[\\]]+\\[([^\\]]+)\\]$/u.exec(key)?.[1];return name===undefined?acc:{...acc,[name]:value}},{});return Object.keys(out).length>0?out:input}),v.partial(v.object({age:v.pipe(v.string(),v.transform(Number),v.number(),v.safeInteger())})))",
+      ],
+      [
+        { type: 'object', properties: { id: { type: 'integer' } } },
+        { paramIn: 'query', contentType: 'application/json' },
+        "v.pipe(v.unknown(),v.transform((input)=>{if(typeof input!=='string')return input;try{return JSON.parse(input)}catch{return input}}),v.partial(v.object({id:v.pipe(v.number(),v.integer())})))",
+      ],
+      [
+        { type: 'string' },
+        { paramIn: 'query', allowEmptyValue: true },
+        "v.pipe(v.unknown(),v.transform((input)=>(input===''?undefined:input)),v.string())",
+      ],
+    ])('valibot(%o, %o) → %s', (schema, options, expected) => {
+      expect(valibot(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#105: minLength / maxLength count code points', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        { type: 'string', minLength: 2, maxLength: 4 },
+        undefined,
+        'v.pipe(v.string(),v.minCodePoints(2),v.maxCodePoints(4))',
+      ],
+      [
+        { type: 'string', minLength: 6, maxLength: 6, 'x-length-message': 'six' },
+        undefined,
+        'v.pipe(v.string(),v.codePoints(6))',
+      ],
+    ])('valibot(%o, %o) → %s', (schema, options, expected) => {
+      expect(valibot(schema, 'Schema', false, options)).toBe(expected)
+    })
+  })
+
+  describe('#106: a $ref beside a default is wrapped once', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        {
+          type: 'object',
+          properties: { ref_def: { $ref: '#/components/schemas/Count', default: 3 } },
+        },
+        { paramIn: 'query' },
+        'v.object({ref_def:v.optional(CountSchema,"3")})',
+      ],
+      [{ $ref: '#/components/schemas/Count', default: 3 }, undefined, 'v.optional(CountSchema,3)'],
+      [
+        { $ref: '#/components/schemas/Count', nullable: true },
+        undefined,
+        'v.nullable(CountSchema)',
+      ],
+    ])('valibot(%o, %o) → %s', (schema, options, expected) => {
+      expect(valibot(schema, 'Schema', false, options)).toBe(expected)
+    })
   })
 })

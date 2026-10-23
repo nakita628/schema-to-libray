@@ -21,13 +21,15 @@ const Member: Schema.Schema<_Member> = Schema.Struct({
   role: Schema.Literals(['admin', 'member', 'guest']).annotate({
     description: 'The role of the user in the organization.',
   }),
-  joinedAt: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)).annotate({
-    description: 'The timestamp when the user joined the organization.',
-  }),
+  joinedAt: Schema.String.check(
+    Schema.isPattern(
+      /^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$/,
+    ),
+  ).annotate({ description: 'The timestamp when the user joined the organization.' }),
   invitedBy: Schema.optional(
-    Schema.suspend(() => Member)
-      .annotate({ description: 'The member who invited this user (recursive reference).' })
-      .annotate({ description: 'The member who invited this user (recursive reference).' }),
+    Schema.suspend(() => Member).annotate({
+      description: 'The member who invited this user (recursive reference).',
+    }),
   ),
 })
   .annotate({ parseOptions: { onExcessProperty: 'error' } })
@@ -37,18 +39,20 @@ export const Organization: Schema.Schema<_Organization> = Schema.Struct({
   id: Schema.String.check(Schema.isUUID()).annotate({
     description: 'The UUID of the organization.',
   }),
-  name: Schema.String.check(Schema.isMinLength(1)).annotate({
-    description: 'The name of the organization.',
-  }),
+  name: Schema.String.check(
+    Schema.makeFilter((input) => [...input].length >= 1, {
+      expected: 'a string of at least 1 character',
+    }),
+  ).annotate({ description: 'The name of the organization.' }),
   members: Schema.optional(
     Schema.Array(Schema.suspend(() => Member)).annotate({
       description: 'A list of members belonging to the organization.',
     }),
   ),
   parent: Schema.optional(
-    Schema.suspend(() => Organization)
-      .annotate({ description: 'An optional reference to a parent organization (recursive).' })
-      .annotate({ description: 'An optional reference to a parent organization (recursive).' }),
+    Schema.suspend(() => Organization).annotate({
+      description: 'An optional reference to a parent organization (recursive).',
+    }),
   ),
 })
   .annotate({ parseOptions: { onExcessProperty: 'error' } })

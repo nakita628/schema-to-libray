@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { NodeServices } from '@effect/platform-node'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { Effect } from 'effect'
-import { ChildProcess } from 'effect/unstable/process'
-import { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
+import { ChildProcess } from 'effect/process'
+import { ChildProcessSpawner } from 'effect/process/ChildProcessSpawner'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { readFile } from './file/index.js'

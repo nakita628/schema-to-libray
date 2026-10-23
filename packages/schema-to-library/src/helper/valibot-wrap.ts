@@ -6,25 +6,42 @@ import type { CodeExtensionOptions } from './code-extensions.js'
 import { serializeJSValue } from './meta.js'
 import { examplesOf } from './schema.js'
 import { jsLiteral } from './value.js'
+import { isNullMatchedFirst, wireDefaultValue, wireNullText } from './wire.js'
 
-/**
- * `v.optional(schema, default)` types the default as the inner schema's
- * InferInput, so a kept `null` default must wrap the nullable schema
- * (`v.optional(v.nullable(x), null)`) — nesting it inside `v.nullable` is a
- * type error. Non-null defaults keep the established nullable-outer nesting.
- */
-function wrapDefaultNullable(inner: string, nullable: boolean, defaultLiteral: string | undefined) {
-  if (defaultLiteral === 'null' && nullable) return `v.optional(v.nullable(${inner}),null)`
-  const withDefault =
-    defaultLiteral !== undefined ? `v.optional(${inner},${defaultLiteral})` : inner
-  return nullable ? `v.nullable(${withDefault})` : withDefault
+/** The options of {@link valibotWrap} beyond the code extensions. */
+export type ValibotWrapOptions = CodeExtensionOptions & {
+  /**
+   * The schema reads a string-wire parameter: its input is text, so a default is spelled
+   * in its text form (`'1'`, `'true'`), which the pipe coerces back.
+   */
+  readonly stringWire?: boolean
+  /**
+   * The text `null` is read as `null` ahead of the schema, which takes `null` but no
+   * string. A combinator's members would coerce the text to `0` or `false` first, so
+   * such a schema is also made nullable unless a `null` literal of its own matches first.
+   */
+  readonly nullText?: boolean
+}
+
+/** A default as the Valibot literal of the schema's input: a bigint for a 64-bit integer. */
+function defaultLiteral(schema: JSONSchema, value: unknown, stringWire: boolean): string {
+  if (stringWire) return jsLiteral(wireDefaultValue(value))
+  if (typeof value === 'number') {
+    if (schema.format === 'int64' || schema.format === 'uint64') return `${value}n`
+    if (schema.format === 'bigint') return `BigInt(${value})`
+  }
+  return jsLiteral(value)
 }
 
 /**
- * Wraps a Valibot schema string with `v.optional()`, `v.nullable()`, metadata
- * actions (`v.description()` / `v.metadata()`) and `v.brand()` based on the
- * JSON Schema's `default` / `nullable` / `x-brand` and OpenAPI metadata
- * fields. All actions are consolidated into a single outer `v.pipe(...)`.
+ * Wraps a Valibot schema string with `v.nullable()`, `v.optional(..., default)`,
+ * metadata actions (`v.description()` / `v.metadata()`) and `v.brand()` based on the
+ * JSON Schema's `default` / `nullable` / `x-brand` and OpenAPI metadata fields. All
+ * actions are consolidated into a single outer `v.pipe(...)`.
+ *
+ * `v.optional(schema, default)` is the outermost of the three so that an object never
+ * has to wrap the property again: the key is optional and its default applies whatever
+ * the schema inside.
  *
  * Metadata mapping (Valibot v1 actions):
  * - `description` → `v.description(text)`
@@ -37,20 +54,19 @@ function wrapDefaultNullable(inner: string, nullable: boolean, defaultLiteral: s
 export function valibotWrap(
   valibotStr: string,
   schema: JSONSchema,
-  options?: CodeExtensionOptions & { readonly stringWire?: boolean },
+  options?: ValibotWrapOptions,
 ): string {
+  const nullText = options?.nullText === true
+  const nullable = isNullable(schema) || (nullText && !isNullMatchedFirst(schema))
+  const withNullable = nullable ? `v.nullable(${valibotStr})` : valibotStr
+  const withNullText = nullText
+    ? `v.pipe(v.unknown(),v.transform(${wireNullText('input')}),${withNullable})`
+    : withNullable
   const defaultResult =
     schema.default !== undefined ? coerceDefault(schema, schema.default) : undefined
-  // For a string-wire param (`query` / `path`), `valibotStr` is a coercion pipe
-  // whose *input* is a string (`v.pipe(v.string(),v.transform(Number),...)` etc).
-  // Valibot's `optional(schema, default)` types the default as `InferInput`, so a
-  // numeric/boolean default must be emitted in its string-wire form (`'1'`,
-  // `'true'`) — the pipe coerces it back. Emitting the raw `1` is a type error.
-  const defaultLiteral =
-    defaultResult?.keep === true
-      ? jsLiteral(options?.stringWire === true ? String(defaultResult.value) : defaultResult.value)
-      : undefined
-  const withNullable = wrapDefaultNullable(valibotStr, isNullable(schema), defaultLiteral)
+  const withDefault = defaultResult?.keep
+    ? `v.optional(${withNullText},${defaultLiteral(schema, defaultResult.value, options?.stringWire === true)})`
+    : withNullText
 
   const examples = examplesOf(schema)
   const actions: string[] = []
@@ -83,7 +99,7 @@ export function valibotWrap(
   const pipeExt = readCodeExtension(schema, 'x-pipe', options)
   if (pipeExt) actions.push(pipeExt)
 
-  const piped = actions.length === 0 ? withNullable : `v.pipe(${withNullable},${actions.join(',')})`
+  const piped = actions.length === 0 ? withDefault : `v.pipe(${withDefault},${actions.join(',')})`
   if (schema['x-fallback'] !== undefined) {
     return `v.fallback(${piped},${jsLiteral(schema['x-fallback'])})`
   }

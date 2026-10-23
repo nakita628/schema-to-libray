@@ -167,6 +167,11 @@ export function zodError(message: string) {
   return isArrowExpression(message) ? `{error:${message}}` : `{error:${JSON.stringify(message)}}`
 }
 
+/** `zodError(message)` as a trailing argument, or nothing when there is no message. */
+export function zodErrorPart(message: string | undefined): string {
+  return message ? `,${zodError(message)}` : ''
+}
+
 /**
  * Build the base `{error:...}` argument for a Zod v4 schema constructor when
  * `x-error-message` (type / generic) and/or `x-required-message`
@@ -197,6 +202,11 @@ export function valibotError(message: string) {
   return isArrowExpression(message) ? message : JSON.stringify(message)
 }
 
+/** `valibotError(message)` as a trailing argument, or nothing when there is no message. */
+export function valibotErrorPart(message: string | undefined): string {
+  return message ? `,${valibotError(message)}` : ''
+}
+
 /**
  * Format an error message annotation for Effect Schema.
  *
@@ -211,6 +221,11 @@ export function valibotError(message: string) {
  */
 export function effectError(message: string) {
   return `{message:${effectMessage(message)}}`
+}
+
+/** `effectError(message)` as a trailing argument, or nothing when there is no message. */
+export function effectErrorPart(message: string | undefined): string {
+  return message ? `,${effectError(message)}` : ''
 }
 
 /**

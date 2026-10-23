@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { NodeServices } from '@effect/platform-node'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { Console, Effect, Exit } from 'effect'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
@@ -416,7 +416,7 @@ describe('x-error-message: schema-to-valibot', () => {
     expect(result.code).toBe(`import * as v from 'valibot'
 
 export const UserForm = v.object({
-  name: v.pipe(v.string('Name is required'), v.minLength(1)),
+  name: v.pipe(v.string('Name is required'), v.minCodePoints(1)),
   email: v.pipe(v.string('Invalid email'), v.email('Invalid email')),
   age: v.optional(
     v.pipe(v.number('Invalid age'), v.integer('Invalid age'), v.minValue(0), v.maxValue(150)),
@@ -436,7 +436,11 @@ describe('x-error-message: schema-to-effect', () => {
     expect(result.code).toBe(`import { Schema } from 'effect'
 
 export const UserForm = Schema.Struct({
-  name: Schema.String.check(Schema.isMinLength(1)).annotate({ message: 'Name is required' }),
+  name: Schema.String.check(
+    Schema.makeFilter((input) => [...input].length >= 1, {
+      expected: 'a string of at least 1 character',
+    }),
+  ).annotate({ message: 'Name is required' }),
   email: Schema.String.check(
     Schema.isPattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/),
   ).annotate({ message: 'Invalid email' }),
@@ -482,9 +486,11 @@ describe('x-error-message: schema-to-arktype', () => {
     expect(result.code).toBe(`import { type } from 'arktype'
 
 export const UserForm = type({
-  name: type('string >= 1').describe('Name is required'),
+  name: type('string')
+    .narrow((data, ctx) => [...data].length >= 1 || ctx.mustBe('Name is required'))
+    .describe('Name is required'),
   email: type('string.email').describe('Invalid email'),
-  'age?': type('number.integer >= 0').and(type('number.integer <= 150')).describe('Invalid age'),
+  'age?': type('number.integer >= 0 & number.integer <= 150').describe('Invalid age'),
   'role?': type("'admin' | 'user'").describe('Invalid role'),
 })
 `)
@@ -524,8 +530,8 @@ describe('granular messages: schema-to-valibot', () => {
 export const Product = v.object({
   name: v.pipe(
     v.string(),
-    v.minLength(1, 'Name cannot be empty'),
-    v.maxLength(100, 'Name too long'),
+    v.minCodePoints(1, 'Name cannot be empty'),
+    v.maxCodePoints(100, 'Name too long'),
   ),
   sku: v.pipe(v.string(), v.regex(/^[A-Z]{3}-[0-9]{4}$/, 'SKU must be like ABC-1234')),
   price: v.pipe(v.number(), v.minValue(0, 'Price cannot be negative')),
@@ -552,8 +558,14 @@ describe('granular messages: schema-to-effect', () => {
 
 export const Product = Schema.Struct({
   name: Schema.String.check(
-    Schema.isMinLength(1, { message: 'Name cannot be empty' }),
-    Schema.isMaxLength(100, { message: 'Name too long' }),
+    Schema.makeFilter((input) => [...input].length >= 1, {
+      expected: 'a string of at least 1 character',
+      message: 'Name cannot be empty',
+    }),
+    Schema.makeFilter((input) => [...input].length <= 100, {
+      expected: 'a string of at most 100 characters',
+      message: 'Name too long',
+    }),
   ),
   sku: Schema.String.check(
     Schema.isPattern(/^[A-Z]{3}-[0-9]{4}$/, { message: 'SKU must be like ABC-1234' }),
@@ -601,9 +613,9 @@ describe('array/nullable/default: schema-to-valibot', () => {
 
 export const Config = v.object({
   tags: v.pipe(v.array(v.string()), v.minLength(1)),
-  enabled: v.optional(v.optional(v.boolean(), true)),
+  enabled: v.optional(v.boolean(), true),
   count: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
-  label: v.optional(v.optional(v.string(), 'untitled')),
+  label: v.optional(v.string(), 'untitled'),
 })
 `)
   })
@@ -637,9 +649,9 @@ describe('array/nullable/default: schema-to-typebox', () => {
 
 export const Config = Type.Object({
   tags: Type.Array(Type.String(), { minItems: 1 }),
-  enabled: Type.Optional(Type.Optional(Type.Boolean({ default: true }))),
+  enabled: Type.Optional(Type.Boolean({ default: true })),
   count: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
-  label: Type.Optional(Type.Optional(Type.String({ default: 'untitled' }))),
+  label: Type.Optional(Type.String({ default: 'untitled' })),
 })
 `)
   })

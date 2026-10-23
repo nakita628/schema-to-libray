@@ -24,6 +24,9 @@ alone will not tell you.
 
 ## Everything else worth knowing before you write
 
+- **Effect is imported by module** — `import * as Effect from 'effect/Effect'`, never the
+  `'effect'` barrel: the CLI pays for every module it loads at start-up, and the barrel
+  loads all of them. The same goes for `@effect/platform-node/NodeServices` and friends.
 - **Relative imports keep the `.js` extension** (`./string.js`) — NodeNext resolution
   needs it at runtime and `tsc` will not tell you.
 - **No default exports**, and no `require`. ESM only, `node:` protocol for built-in modules.

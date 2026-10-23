@@ -460,7 +460,7 @@ describe('zod fixtures: title runtime', () => {
           code: 'invalid_format',
           format: 'email',
           pattern:
-            "/^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/",
+            "/^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/",
           path: ['email'],
           message: 'Invalid email address',
         },
@@ -594,7 +594,7 @@ describe('zod fixtures: split-nested runtime', () => {
           code: 'invalid_format',
           format: 'email',
           pattern:
-            "/^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/",
+            "/^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/",
           path: ['customer', 'email'],
           message: 'Invalid email address',
         },

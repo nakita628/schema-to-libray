@@ -2,11 +2,19 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Effect } from 'effect'
 import { fmt, parseSchemaFile, schemaToArktype } from 'schema-to-library'
+import type { GenerateOptions } from 'schema-to-library'
 
 const fixturesDir = join(import.meta.dirname, '..')
 
 const SPLIT_FIXTURES = ['split-refs', 'split-nested']
 const READONLY_FIXTURES = ['readonly']
+/** Fixtures generated as an OpenAPI parameter, with the options its Parameter Object implies. */
+const PARAM_FIXTURES: { readonly [name: string]: GenerateOptions } = {
+  'wire-query': { paramIn: 'query' },
+  'param-form-no-explode': { paramIn: 'query', explode: false },
+  'param-deep-object': { paramIn: 'query', style: 'deepObject' },
+  'param-json-content': { paramIn: 'query', contentType: 'application/json' },
+}
 
 const fixtures = readdirSync(fixturesDir, { withFileTypes: true })
   .filter((d) => d.isDirectory() && d.name !== 'src' && d.name !== 'node_modules')
@@ -25,7 +33,7 @@ for (const name of fixtures) {
     raw = schemaToArktype(input, { readonly: true })
   } else {
     const input = JSON.parse(readFileSync(inputPath, 'utf-8'))
-    raw = schemaToArktype(input)
+    raw = schemaToArktype(input, PARAM_FIXTURES[name])
   }
 
   writeFileSync(outputPath, await Effect.runPromise(fmt(raw)))

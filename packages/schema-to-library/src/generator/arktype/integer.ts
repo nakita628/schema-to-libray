@@ -1,107 +1,97 @@
+import { INTEGER_TEXT_PATTERN, NUMBER_RANGES } from '../../constants/index.js'
+import { regexSource } from '../../helper/format.js'
 import type { JSONSchema } from '../../parser/index.js'
+import {
+  constraintDefinition,
+  hasPerKeywordMessage,
+  numericConstraints,
+  numericNarrows,
+  rangeConstraints,
+} from './number.js'
 
-export function integer(schema: JSONSchema) {
+/** Whether a node is a 64-bit integer: a value beyond 2^53 that is read as a bigint. */
+export function isInt64(schema: JSONSchema): boolean {
+  return schema.format === 'int64' || schema.format === 'uint64'
+}
+
+/**
+ * A morph reading a 64-bit integer into a bigint. On the string wire the text is a sign
+ * and digits; in a JSON body the value is a bigint, a safe-integer number, or the string
+ * of digits that is the only lossless way to carry a larger one.
+ */
+export function bigintMorph(isWire: boolean): string {
+  const digits = regexSource(INTEGER_TEXT_PATTERN)
+  if (isWire) {
+    return `type("string").pipe((data, ctx) => (${digits}.test(data) ? BigInt(data) : ctx.error("an integer")))`
+  }
+  return `type("bigint | number.integer").or(${digits}).pipe((data) => BigInt(data))`
+}
+
+/**
+ * The `.narrow(...)` chain holding a bigint within its bounds: ArkType's DSL has no
+ * bigint comparators, so each is a predicate with `ctx.mustBe`.
+ */
+function bigintNarrows(schema: JSONSchema, lit: (n: number) => string): string {
+  const range = schema.format === undefined ? undefined : NUMBER_RANGES[schema.format]
+  const narrows = [
+    range === undefined
+      ? undefined
+      : `.narrow((data, ctx) => (data >= ${range.minimum} && data <= ${range.maximum}) || ctx.mustBe(${JSON.stringify(schema.format === 'uint64' ? 'a uint64' : 'an int64')}))`,
+    schema.minimum === undefined
+      ? undefined
+      : schema.exclusiveMinimum === true
+        ? `.narrow((data, ctx) => data > ${lit(schema.minimum)} || ctx.mustBe(${JSON.stringify(`more than ${schema.minimum}`)}))`
+        : `.narrow((data, ctx) => data >= ${lit(schema.minimum)} || ctx.mustBe(${JSON.stringify(`at least ${schema.minimum}`)}))`,
+    typeof schema.exclusiveMinimum === 'number'
+      ? `.narrow((data, ctx) => data > ${lit(schema.exclusiveMinimum)} || ctx.mustBe(${JSON.stringify(`more than ${schema.exclusiveMinimum}`)}))`
+      : undefined,
+    schema.maximum === undefined
+      ? undefined
+      : schema.exclusiveMaximum === true
+        ? `.narrow((data, ctx) => data < ${lit(schema.maximum)} || ctx.mustBe(${JSON.stringify(`less than ${schema.maximum}`)}))`
+        : `.narrow((data, ctx) => data <= ${lit(schema.maximum)} || ctx.mustBe(${JSON.stringify(`at most ${schema.maximum}`)}))`,
+    typeof schema.exclusiveMaximum === 'number'
+      ? `.narrow((data, ctx) => data < ${lit(schema.exclusiveMaximum)} || ctx.mustBe(${JSON.stringify(`less than ${schema.exclusiveMaximum}`)}))`
+      : undefined,
+    schema.multipleOf === undefined
+      ? undefined
+      : `.narrow((data, ctx) => data % ${lit(schema.multipleOf)} === 0n || ctx.mustBe(${JSON.stringify(`a multiple of ${schema.multipleOf}`)}))`,
+  ].filter((v) => v !== undefined)
+  return narrows.join('')
+}
+
+/**
+ * The ArkType definition of an integer node: the `number.integer` keyword with its
+ * comparators, `int32` / `uint32` carrying their range. `int64` / `uint64` are bigints
+ * wherever they come from, and `bigint` is one too; their bounds are narrows.
+ */
+export function integer(schema: JSONSchema, options?: { readonly wire?: boolean }) {
   const errorMessage = schema['x-error-message'] ?? schema['x-required-message']
   const describe = errorMessage ? `.describe(${JSON.stringify(errorMessage)})` : ''
-  const minMessage = schema['x-minimum-message']
-  const maxMessage = schema['x-maximum-message']
-  const exclusiveMinimumMessage = schema['x-exclusiveMinimum-message']
-  const exclusiveMaximumMessage = schema['x-exclusiveMaximum-message']
-  const multipleOfMessage = schema['x-multipleOf-message']
-  // `.some(Boolean)`, not `??`: an empty message is no message, and the branch it
-  // guards would emit `ctx.mustBe('')`.
-  const hasPerKeywordMessage = [
-    minMessage,
-    maxMessage,
-    exclusiveMinimumMessage,
-    exclusiveMaximumMessage,
-    multipleOfMessage,
-  ].some(Boolean)
 
   if (schema.format === 'bigint') {
-    if (errorMessage) return `type("bigint")${describe}`
-    return '"bigint"'
+    const narrows = bigintNarrows(schema, (n) => `BigInt(${n})`)
+    const base =
+      options?.wire === true
+        ? bigintMorph(true)
+        : narrows || errorMessage
+          ? 'type("bigint")'
+          : '"bigint"'
+    return `${base}${narrows}${describe}`
+  }
+  if (isInt64(schema)) {
+    return `${bigintMorph(options?.wire === true)}${bigintNarrows(schema, (n) => `${n}n`)}${describe}`
   }
 
-  if (hasPerKeywordMessage) {
-    const narrows: string[] = []
-    if (schema.minimum !== undefined && schema.exclusiveMinimum !== true) {
-      const msg = minMessage ?? errorMessage ?? `must be >= ${schema.minimum}`
-      narrows.push(
-        `.narrow((data, ctx) => data >= ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (schema.exclusiveMinimum === true && schema.minimum !== undefined) {
-      const msg = exclusiveMinimumMessage ?? errorMessage ?? `must be > ${schema.minimum}`
-      narrows.push(
-        `.narrow((data, ctx) => data > ${schema.minimum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (typeof schema.exclusiveMinimum === 'number') {
-      const msg = exclusiveMinimumMessage ?? errorMessage ?? `must be > ${schema.exclusiveMinimum}`
-      narrows.push(
-        `.narrow((data, ctx) => data > ${schema.exclusiveMinimum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (schema.maximum !== undefined && schema.exclusiveMaximum !== true) {
-      const msg = maxMessage ?? errorMessage ?? `must be <= ${schema.maximum}`
-      narrows.push(
-        `.narrow((data, ctx) => data <= ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (schema.exclusiveMaximum === true && schema.maximum !== undefined) {
-      const msg = exclusiveMaximumMessage ?? errorMessage ?? `must be < ${schema.maximum}`
-      narrows.push(
-        `.narrow((data, ctx) => data < ${schema.maximum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (typeof schema.exclusiveMaximum === 'number') {
-      const msg = exclusiveMaximumMessage ?? errorMessage ?? `must be < ${schema.exclusiveMaximum}`
-      narrows.push(
-        `.narrow((data, ctx) => data < ${schema.exclusiveMaximum} || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    if (schema.multipleOf !== undefined) {
-      const msg = multipleOfMessage ?? errorMessage ?? `must be a multiple of ${schema.multipleOf}`
-      narrows.push(
-        `.narrow((data, ctx) => data % ${schema.multipleOf} === 0 || ctx.mustBe(${JSON.stringify(msg)}))`,
-      )
-    }
-    return `type("number.integer")${narrows.join('')}${describe}`
+  const range = rangeConstraints(schema.format)
+  if (hasPerKeywordMessage(schema)) {
+    const base = constraintDefinition('number.integer', range)
+    return `type(${base})${numericNarrows(schema, errorMessage)}${describe}`
   }
-
-  const minimum = (() => {
-    if (schema.minimum !== undefined) return `>= ${schema.minimum}`
-    if (typeof schema.exclusiveMinimum === 'number') return `> ${schema.exclusiveMinimum}`
-    return undefined
-  })()
-
-  const maximum = (() => {
-    if (schema.maximum !== undefined) return `<= ${schema.maximum}`
-    if (typeof schema.exclusiveMaximum === 'number') return `< ${schema.exclusiveMaximum}`
-    return undefined
-  })()
-
-  const multipleOf = schema.multipleOf !== undefined ? `% ${schema.multipleOf}` : undefined
-
-  const constraints = [minimum, maximum, multipleOf].filter((v) => v !== undefined)
-
-  if (constraints.length > 1) {
-    const parts = constraints.map((c) => `type("number.integer ${c}")`)
-    const expr = `${parts[0]}${parts
-      .slice(1)
-      .map((p) => `.and(${p})`)
-      .join('')}`
-    if (errorMessage) return `${expr}${describe}`
-    return expr
-  }
-
-  if (constraints.length === 1) {
-    const expr = `"number.integer ${constraints[0]}"`
-    if (errorMessage) return `type(${expr})${describe}`
-    return expr
-  }
-
-  if (errorMessage) return `type("number.integer")${describe}`
-  return '"number.integer"'
+  const definition = constraintDefinition('number.integer', [
+    ...range,
+    ...numericConstraints(schema),
+  ])
+  if (errorMessage) return `type(${definition})${describe}`
+  return definition
 }

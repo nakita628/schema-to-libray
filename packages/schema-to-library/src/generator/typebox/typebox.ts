@@ -103,6 +103,11 @@ function tbComp(
   return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
 }
 
+/** A reference to a peer of a `Type.Cyclic` map, reached by name. */
+function byName(name: string, s: JSONSchema): string {
+  return tbComp('Type.Ref', `'${name}'`, s)
+}
+
 function messageOpt(msg: unknown): readonly string[] {
   return typeof msg === 'string' ? [`errorMessage:${JSON.stringify(msg)}`] : []
 }
@@ -121,33 +126,25 @@ export function typebox(
   // A name emitted inside `Type.Cyclic($defs, root)` can only be reached by
   // name — the peer `const` it would otherwise reference may be declared later
   // in the same cycle.
-  const byName = (name: string, s: JSONSchema): string => tbComp('Type.Ref', `'${name}'`, s)
   const named = (name: string, s: JSONSchema): string =>
     options?.cyclicRefs?.has(name) ? byName(name, s) : name
 
   if (schema.$ref) {
+    // The expression a `$ref` names, bare: the caller wraps it once with what the node
+    // itself carries, a `default` or `nullable` beside the `$ref` included.
     const ref = (s: JSONSchema): string => {
       // A reference back to the schema being emitted is always a cycle, so it
       // always goes by name — `schemaToTypebox` puts such a schema inside a
       // `Type.Cyclic` map.
-      if (isRootRef(s.$ref)) {
-        return typeboxWrap(byName(rootName, s), s)
-      }
-      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) {
-        return typeboxWrap('Type.Unknown()', s)
-      }
+      if (isRootRef(s.$ref)) return byName(rootName, s)
+      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return 'Type.Unknown()'
       if (options?.openapi && s.$ref) {
         const resolved = resolveOpenAPIRef(s.$ref)
-        if (resolved) {
-          if (resolved === rootName) return typeboxWrap(byName(resolved, s), s)
-          return typeboxWrap(named(resolved, s), s)
-        }
+        if (resolved) return resolved === rootName ? byName(resolved, s) : named(resolved, s)
       }
       const toName = schemaNamer(options?.openapi)
       for (const prefix of DEFINITION_REF_PREFIXES) {
-        if (s.$ref?.startsWith(prefix)) {
-          return typeboxWrap(named(toName(s.$ref.slice(prefix.length)), s), s)
-        }
+        if (s.$ref?.startsWith(prefix)) return named(toName(s.$ref.slice(prefix.length)), s)
       }
       if (s.$ref?.startsWith('#')) {
         const refName = s.$ref.slice(1)

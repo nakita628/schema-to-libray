@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema, ParamIn } from '../../parser/index.js'
 import { zod } from './zod.js'
 
@@ -1208,7 +1209,7 @@ describe('zod', () => {
         [
           { $ref: '#/components/schemas/Pet', nullable: true },
           'TestSchema',
-          'PetSchema.nullable().nullable()',
+          'PetSchema.nullable()',
         ],
         // allOf with openapi ref
         [{ allOf: [{ $ref: '#/components/schemas/Base' }] }, 'TestSchema', 'BaseSchema'],
@@ -2151,5 +2152,26 @@ describe('zod parameter serialization', () => {
     ],
   ])('zod(%o, %o) → %s', (schema, options, expected) => {
     expect(zod(schema, 'Schema', false, options)).toBe(expected)
+  })
+
+  describe('#106: a $ref beside a default is wrapped once', () => {
+    it.concurrent.each<[JSONSchema, EmitOptions | undefined, string]>([
+      [
+        {
+          type: 'object',
+          properties: { ref_def: { $ref: '#/components/schemas/Count', default: 3 } },
+        },
+        undefined,
+        'z.object({ref_def:CountSchema.default(3).exactOptional()})',
+      ],
+      [
+        { $ref: '#/components/schemas/Count', default: 3 },
+        { paramIn: 'query' },
+        'CountSchema.default(3)',
+      ],
+      [{ type: 'integer', format: 'uint32' }, undefined, 'z.uint32()'],
+    ])('zod(%o, %o) → %s', (schema, options, expected) => {
+      expect(zod(schema, 'Schema', false, options)).toBe(expected)
+    })
   })
 })

@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "schema-to-library": "workspace:^",
-    "effect": "^4.0.0-rc.112"
+    "effect": "^4.0.5",
+    "schema-to-library": "workspace:^"
   },
   "devDependencies": {
     "tsx": "4.23.15",

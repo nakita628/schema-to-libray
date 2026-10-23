@@ -10,7 +10,7 @@ describe('arktype integer', () => {
     [{ type: 'integer', maximum: 100 }, '"number.integer <= 100"'],
     [
       { type: 'integer', minimum: 0, maximum: 100 },
-      'type("number.integer >= 0").and(type("number.integer <= 100"))',
+      '"number.integer >= 0 & number.integer <= 100"',
     ],
     [{ type: 'integer', exclusiveMinimum: 50 }, '"number.integer > 50"'],
     [{ type: 'integer', exclusiveMaximum: 50 }, '"number.integer < 50"'],
@@ -33,7 +33,7 @@ describe('arktype integer', () => {
           maximum: 100,
           'x-error-message': 'Must be 0-100',
         },
-        'type("number.integer >= 0").and(type("number.integer <= 100")).describe("Must be 0-100")',
+        'type("number.integer >= 0 & number.integer <= 100").describe("Must be 0-100")',
       ],
       [
         {
@@ -113,7 +113,10 @@ describe('arktype integer per-keyword message', () => {
       { type: 'integer', minimum: 0, 'x-minimum-message': 'min!', 'x-error-message': 'E' },
       'type("number.integer").narrow((data, ctx) => data >= 0 || ctx.mustBe("min!")).describe("E")',
     ],
-    [{ type: 'integer', format: 'bigint', minimum: 0, 'x-minimum-message': 'min!' }, '"bigint"'],
+    [
+      { type: 'integer', format: 'bigint', minimum: 0, 'x-minimum-message': 'min!' },
+      'type("bigint").narrow((data, ctx) => data >= BigInt(0) || ctx.mustBe("at least 0"))',
+    ],
   ])('integer(%o) → %s', (input, expected) => {
     expect(integer(input)).toBe(expected)
   })

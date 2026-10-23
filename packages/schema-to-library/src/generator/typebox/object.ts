@@ -1,5 +1,6 @@
 import { hasCombinator } from '../../guard/index.js'
 import { typeboxDefaultOpt, typeboxMetaOpts, typeboxRefOpt } from '../../helper/meta.js'
+import { isOptionalByDefault } from '../../helper/schema.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { nestedTypeboxOptions, typebox } from './typebox.js'
@@ -66,9 +67,12 @@ export function object(
     .map(([key, propSchema]) => {
       const parsed = typebox(propSchema, rootName, isTypebox, childOptions)
       if (!parsed) return null
-      const isRequired = required.has(key)
       const safeKey = makeSafeKey(key)
-      return isRequired ? `${safeKey}:${parsed}` : `${safeKey}:Type.Optional(${parsed})`
+      // A property with a default is already `Type.Optional` from its own emitter, so it
+      // is not wrapped a second time.
+      return required.has(key) || isOptionalByDefault(propSchema)
+        ? `${safeKey}:${parsed}`
+        : `${safeKey}:Type.Optional(${parsed})`
     })
     .filter((p) => p !== null)
 

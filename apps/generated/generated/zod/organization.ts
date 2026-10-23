@@ -26,7 +26,6 @@ const Member: z.ZodType<_Member> = z
     invitedBy: z
       .lazy(() => Member)
       .meta({ description: 'The member who invited this user (recursive reference).' })
-      .meta({ description: 'The member who invited this user (recursive reference).' })
       .exactOptional(),
   })
   .meta({ description: 'A person who is a member of the organization.' })
@@ -41,7 +40,6 @@ export const Organization: z.ZodType<_Organization> = z
       .exactOptional(),
     parent: z
       .lazy(() => Organization)
-      .meta({ description: 'An optional reference to a parent organization (recursive).' })
       .meta({ description: 'An optional reference to a parent organization (recursive).' })
       .exactOptional(),
   })

@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "arktype": "^2.2.3",
-    "effect": "^4.0.0-rc.112",
+    "arktype": "^2.2.9",
+    "effect": "^4.0.5",
     "schema-to-library": "workspace:^"
   },
   "devDependencies": {
