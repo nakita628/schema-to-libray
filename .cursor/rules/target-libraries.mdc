@@ -15,7 +15,7 @@ plan.
 | Zod | `zod@^4.6.7` | `import * as z from 'zod'` | [zod.dev](https://zod.dev/), [API](https://zod.dev/api) | [llms.txt](https://zod.dev/llms.txt), [llms-full.txt](https://zod.dev/llms-full.txt) |
 | Valibot | `valibot@^1.5.0` | `import * as v from 'valibot'` | [valibot.dev](https://valibot.dev/) | [llms.txt](https://valibot.dev/llms.txt), [llms-full.txt](https://valibot.dev/llms-full.txt), [llms-api.txt](https://valibot.dev/llms-api.txt) |
 | Effect Schema | `effect@^4.0.5` | `import { Schema } from 'effect'` | [v4 Schema docs](https://effect.website/docs/v4/schema/introduction) | none published — read the v4 docs, not v3 answers |
-| TypeBox | `typebox@^1.4.2` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — its GitHub README is the reference |
+| TypeBox | `typebox@^1.4.3` | `import { Type, type Static } from 'typebox'` | [TypeBox on GitHub](https://github.com/sinclairzx81/typebox) | none published — its GitHub README is the reference |
 | ArkType | `arktype@^2.2.9` | `import { type } from 'arktype'` | [arktype.io](https://arktype.io/) | [llms.txt](https://arktype.io/llms.txt) |
 | Ajv | `ajv@^8.20.0` (+ `ajv-formats@^3.0.1`) | `import Ajv from 'ajv'` | [ajv.js.org](https://ajv.js.org/) | none published — Getting started, TypeScript and [ajv-formats](https://ajv.js.org/packages/ajv-formats.html) are the reference |
 | Yup | `yup@^1.7.1` | `import * as yup from 'yup'` | [Yup on GitHub](https://github.com/jquense/yup) | none published — its GitHub README is the reference |

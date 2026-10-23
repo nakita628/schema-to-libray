@@ -11,7 +11,7 @@
   "dependencies": {
     "effect": "^4.0.5",
     "schema-to-library": "workspace:^",
-    "typebox": "^1.4.2"
+    "typebox": "^1.4.3"
   },
   "devDependencies": {
     "ajv": "8.20.0",
