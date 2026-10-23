@@ -4,9 +4,9 @@ import {
   isObjectPrototypeProperty,
   isStringWireLocation,
 } from '../../guard/index.js'
-import type { EmitOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { issueMessageExpression, makeSafeKey, zodError } from '../../utils/index.js'
+import { issueMessageExpression, makeSafeKey, zodError, zodErrorPart } from '../../utils/index.js'
 import { zod } from './zod.js'
 
 /**
@@ -35,16 +35,16 @@ export function object(
   if (hasCombinator(schema)) return zod(schema, rootName, isZod, options)
 
   const errorMessage = schema['x-error-message']
-  const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
+  const errorArg = zodErrorPart(errorMessage)
   // v3.0: 1 keyword = 1 message
   const minPropsMessage = schema['x-minProperties-message']
-  const minErrorArg = minPropsMessage ? `,${zodError(minPropsMessage)}` : ''
+  const minErrorArg = zodErrorPart(minPropsMessage)
   const maxPropsMessage = schema['x-maxProperties-message']
-  const maxErrorArg = maxPropsMessage ? `,${zodError(maxPropsMessage)}` : ''
+  const maxErrorArg = zodErrorPart(maxPropsMessage)
   const patternPropsMessage = schema['x-patternProperties-message']
-  const patternErrorArg = patternPropsMessage ? `,${zodError(patternPropsMessage)}` : ''
+  const patternErrorArg = zodErrorPart(patternPropsMessage)
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage ? `,${zodError(propNamesMessage)}` : ''
+  const propNamesErrorArg = zodErrorPart(propNamesMessage)
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${zodError(depReqMessage)}` : errorArg
   const depSchMessage = schema['x-dependentSchemas-message']
@@ -169,13 +169,13 @@ export function object(
     const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenS) {
-      const arg = thenMessage ? `,${zodError(thenMessage)}` : ''
+      const arg = zodErrorPart(thenMessage)
       parts.push(
         `.refine((val)=>!${ifS}.safeParse(val).success||${thenS}.safeParse(val).success${arg})`,
       )
     }
     if (elseS) {
-      const arg = elseMessage ? `,${zodError(elseMessage)}` : ''
+      const arg = zodErrorPart(elseMessage)
       parts.push(
         `.refine((val)=>${ifS}.safeParse(val).success||${elseS}.safeParse(val).success${arg})`,
       )

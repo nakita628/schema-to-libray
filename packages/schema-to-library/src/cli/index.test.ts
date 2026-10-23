@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { NodeServices } from '@effect/platform-node'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { Console, Effect, Exit } from 'effect'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 

@@ -9,6 +9,15 @@ function lit(v: unknown): string {
   return JSON.stringify(v) ?? 'null'
 }
 
+/**
+ * One enum member as a TypeBox type. TypeBox v1's `TLiteralValue` excludes `null`
+ * (string | number | boolean | bigint only), so a `null` member is `Type.Null()`, not
+ * `Type.Literal(null)`.
+ */
+function member(v: unknown): string {
+  return v === null ? 'Type.Null()' : `Type.Literal(${lit(v)})`
+}
+
 export function _enum(schema: JSONSchema, ref?: string) {
   // v3.0: x-enum-message overrides x-error-message for enum mismatch.
   const enumMessage = schema['x-enum-message']
@@ -19,9 +28,6 @@ export function _enum(schema: JSONSchema, ref?: string) {
     ...metaOpts,
   ].filter((v) => v !== undefined)
   const optsTrailer = optsParts.length > 0 ? `,{${optsParts.join(',')}}` : ''
-  // TypeBox v1's `TLiteralValue` excludes `null` (string | number | boolean |
-  // bigint only), so a `null` enum member is `Type.Null()`, not `Type.Literal(null)`.
-  const member = (v: unknown): string => (v === null ? 'Type.Null()' : `Type.Literal(${lit(v)})`)
   if (!schema.enum || schema.enum.length === 0) {
     return optsParts.length > 0 ? `Type.Any({${optsParts.join(',')}})` : 'Type.Any()'
   }

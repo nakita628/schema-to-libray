@@ -1,5 +1,5 @@
-import type { GenerateOptions } from '../../helper/index.js'
 import { rootNameOf, schemaNamer } from '../../helper/index.js'
+import type { GenerateOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { yup } from './yup.js'
 

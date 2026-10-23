@@ -1,7 +1,10 @@
 import path from 'node:path'
 
-import { Console, Effect, Schema, Stdio } from 'effect'
-import { Argument, CliError, Command, Flag } from 'effect/unstable/cli'
+import { Argument, CliError, Command, Flag } from 'effect/cli'
+import * as Console from 'effect/Console'
+import * as Effect from 'effect/Effect'
+import * as Schema from 'effect/Schema'
+import * as Stdio from 'effect/Stdio'
 
 import { mkdir, writeFile } from '../file/index.js'
 import { fmt } from '../format/index.js'
@@ -38,27 +41,27 @@ const OutputPathSchema = Schema.String.pipe(
  * schema every value is decoded through before {@link generate} ever sees it.
  */
 const commandLine = {
-  input: Argument.file('input', { mustExist: true }).pipe(
+  input: Argument.File('input', { mustExist: true }).pipe(
     Argument.withSchema(InputPathSchema),
     Argument.withDescription('JSON Schema document to generate from'),
     Argument.withMetavar('input.{json,yaml}'),
   ),
-  // `Flag.string`, not `Flag.file`: the file primitive rewrites its value to an absolute
+  // `Flag.String`, not `Flag.File`: the file primitive rewrites its value to an absolute
   // path, and `--output` is echoed back in the "Generated" message, which should read as
   // the path the caller typed.
-  output: Flag.string('output').pipe(
+  output: Flag.String('output').pipe(
     Flag.withAlias('o'),
     Flag.withSchema(OutputPathSchema),
     Flag.withDescription('TypeScript file the generated schema is written to'),
     Flag.withMetavar('output.ts'),
   ),
-  // `Flag.boolean` is still a required flag until it is given a default — without this,
+  // `Flag.Boolean` is still a required flag until it is given a default — without this,
   // every invocation is rejected for not passing `--export-type`.
-  exportType: Flag.boolean('export-type').pipe(
+  exportType: Flag.Boolean('export-type').pipe(
     Flag.withDescription('Include the inferred type export in the output'),
     Flag.withDefault(false),
   ),
-  readonly: Flag.boolean('readonly').pipe(
+  readonly: Flag.Boolean('readonly').pipe(
     Flag.withDescription('Generate readonly types'),
     Flag.withDefault(false),
   ),
@@ -126,7 +129,7 @@ export type CliOptions<Name extends string> = {
 
 /**
  * The command for one generator: parsing, validation, `--help`, `--version` and shell
- * completions are owned by `effect/unstable/cli`, {@link generate} is the rest.
+ * completions are owned by `effect/cli`, {@link generate} is the rest.
  *
  * Every binary is the same command with a different name and generator, so they are built
  * from one definition rather than one copy per target that can drift apart.

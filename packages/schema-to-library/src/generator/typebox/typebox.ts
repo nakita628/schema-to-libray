@@ -103,6 +103,11 @@ function tbComp(
   return opts.length === 0 ? `${name}(${payload})` : `${name}(${payload},{${opts.join(',')}})`
 }
 
+/** A reference to a peer of a `Type.Cyclic` map, reached by name. */
+function byName(name: string, s: JSONSchema): string {
+  return tbComp('Type.Ref', `'${name}'`, s)
+}
+
 function messageOpt(msg: unknown): readonly string[] {
   return typeof msg === 'string' ? [`errorMessage:${JSON.stringify(msg)}`] : []
 }
@@ -121,7 +126,6 @@ export function typebox(
   // A name emitted inside `Type.Cyclic($defs, root)` can only be reached by
   // name — the peer `const` it would otherwise reference may be declared later
   // in the same cycle.
-  const byName = (name: string, s: JSONSchema): string => tbComp('Type.Ref', `'${name}'`, s)
   const named = (name: string, s: JSONSchema): string =>
     options?.cyclicRefs?.has(name) ? byName(name, s) : name
 

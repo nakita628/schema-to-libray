@@ -3,7 +3,7 @@ import { hasFixedLength } from '../../guard/index.js'
 import { timePattern } from '../../helper/format.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { zodBaseError, zodError } from '../../utils/index.js'
+import { zodBaseError, zodErrorPart } from '../../utils/index.js'
 
 /** The formats Zod checks with a top-level validator, keyed by the lower-cased format. */
 const FORMAT_STRING: { readonly [k: string]: string } = {
@@ -57,7 +57,7 @@ const IBAN_CHECK = `(val)=>{let rest=0;for(const char of val.slice(4)+val.slice(
  */
 function formatChecks(schema: JSONSchema, format: string): string | undefined {
   const errorMessage = schema['x-error-message']
-  const errorPart = errorMessage ? `,${zodError(errorMessage)}` : ''
+  const errorPart = zodErrorPart(errorMessage)
   // RFC 3339 `full-time` carries an offset, which `z.iso.time()` cannot express.
   if (format === 'time' && schema['x-isoOffset'] !== false) {
     const precision = schema['x-isoPrecision']
@@ -195,13 +195,13 @@ export function string(schema: JSONSchema) {
   // handler runs, so issue.input === undefined is unreachable — drop x-required-message.
   const baseErrorArg = zodBaseError(errorMessage, coerce ? undefined : requiredMessage)
   const patternMessage = schema['x-pattern-message']
-  const patternErrorPart = patternMessage ? `,${zodError(patternMessage)}` : ''
+  const patternErrorPart = zodErrorPart(patternMessage)
   const minLengthMessage = schema['x-minLength-message']
-  const minErrorPart = minLengthMessage ? `,${zodError(minLengthMessage)}` : ''
+  const minErrorPart = zodErrorPart(minLengthMessage)
   const maxLengthMessage = schema['x-maxLength-message']
-  const maxErrorPart = maxLengthMessage ? `,${zodError(maxLengthMessage)}` : ''
+  const maxErrorPart = zodErrorPart(maxLengthMessage)
   const fixedLengthMessage = minLengthMessage ?? maxLengthMessage
-  const fixedLengthErrorPart = fixedLengthMessage ? `,${zodError(fixedLengthMessage)}` : ''
+  const fixedLengthErrorPart = zodErrorPart(fixedLengthMessage)
   const hash = hashBase(schema, baseErrorArg)
   const formatName = schema.format?.toLowerCase()
   const format = formatName !== undefined ? formatCall(schema, formatName) : undefined

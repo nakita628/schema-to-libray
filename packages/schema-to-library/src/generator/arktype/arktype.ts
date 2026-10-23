@@ -25,6 +25,7 @@ import {
   isNullTextRead,
   isPrimitiveUnion,
   itemsSchemaOf,
+  notPredicate,
   parameterReaders,
   schemaNamer,
   stringboolPattern,
@@ -34,7 +35,8 @@ import {
   wireNullText,
   withoutParameterSerialization,
 } from '../../helper/index.js'
-import type { ArktypeWrapOptions, EmitOptions } from '../../helper/index.js'
+import type { ArktypeWrapOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
 import { _enum } from './enum.js'
@@ -42,21 +44,6 @@ import { bigintMorph, integer, isInt64 } from './integer.js'
 import { number, numberMorph } from './number.js'
 import { object } from './object.js'
 import { string } from './string.js'
-
-/**
- * The `not` predicates by `type`, as the source of a `(data: unknown) => ...` arrow.
- * `data` is the parameter name every predicate shares, so their bodies can be joined
- * with `&&`.
- */
-const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
-  string: `(data: unknown) => typeof data !== 'string'`,
-  number: `(data: unknown) => typeof data !== 'number'`,
-  integer: `(data: unknown) => typeof data !== 'number' || !Number.isInteger(data)`,
-  boolean: `(data: unknown) => typeof data !== 'boolean'`,
-  array: '(data: unknown) => !Array.isArray(data)',
-  object: `(data: unknown) => typeof data !== 'object' || data === null || Array.isArray(data)`,
-  null: '(data: unknown) => data !== null',
-}
 
 /**
  * Combine two ArkType expressions.
@@ -289,15 +276,8 @@ function node(
     if (typeof inner !== 'object' || inner === null) return arktypeWrap('"unknown"', schema)
     const notMessage = schema['x-not-message']
     const predicate = ((): string | undefined => {
-      if ('const' in inner) return `(data: unknown) => data !== ${JSON.stringify(inner.const)}`
-      if (typeof inner.type === 'string') return NOT_TYPE_PREDICATES[inner.type]
-      if (Array.isArray(inner.type)) {
-        const bodies = normalizeTypes(inner.type)
-          .map((t) => NOT_TYPE_PREDICATES[t])
-          .filter((p) => p !== undefined)
-          .map((p) => `(${p.replace(/^\(data: unknown\) => /u, '')})`)
-        if (bodies.length > 0) return `(data: unknown) => ${bodies.join(' && ')}`
-      }
+      const shared = notPredicate(inner, 'data', 'data: unknown')
+      if (shared !== undefined) return shared
       if (Array.isArray(inner.enum)) {
         return `(data: unknown) => !${JSON.stringify(inner.enum)}.includes(data as never)`
       }

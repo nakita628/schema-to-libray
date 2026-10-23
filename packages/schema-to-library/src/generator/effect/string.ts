@@ -2,7 +2,7 @@ import { hasFixedLength } from '../../guard/index.js'
 import { formatPattern } from '../../helper/format.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { effectError, effectMessage } from '../../utils/index.js'
+import { effectError, effectErrorPart, effectMessage } from '../../utils/index.js'
 
 /**
  * Formats whose Effect Schema v4 equivalent is a check on `Schema.String`.
@@ -108,7 +108,7 @@ export function string(schema: JSONSchema) {
   // A `binary` string is a file, not text.
   if (formatName === 'binary') return annotate('Schema.instanceOf(File)')
   const patternMessage = schema['x-pattern-message']
-  const patternErrorPart = patternMessage ? `,${effectError(patternMessage)}` : ''
+  const patternErrorPart = effectErrorPart(patternMessage)
   const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
   const minimumMessage = schema['x-minLength-message']
   const maximumMessage = schema['x-maxLength-message']

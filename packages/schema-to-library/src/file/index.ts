@@ -1,5 +1,6 @@
-import { NodeFileSystem } from '@effect/platform-node'
-import { Effect, FileSystem } from 'effect'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as Effect from 'effect/Effect'
+import * as FileSystem from 'effect/FileSystem'
 
 /**
  * Node's `FileSystem` implementation.

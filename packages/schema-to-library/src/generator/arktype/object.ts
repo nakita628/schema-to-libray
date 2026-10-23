@@ -5,7 +5,7 @@ import {
   isStringWireLocation,
 } from '../../guard/index.js'
 import { arktypePreprocess, ownProperties } from '../../helper/index.js'
-import type { EmitOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import { makeSafeKey } from '../../utils/index.js'
 import { arktype } from './arktype.js'

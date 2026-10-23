@@ -1,12 +1,10 @@
-import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
+import { DEFAULT_ROOT_NAME } from '../../constants/index.js'
 import {
   hasFixedItemCount,
-  isDeepLocalPointer,
   isDefaultOnlyMember,
   isNullable,
   isNullTypeMember,
   isPrimitive,
-  isRootRef,
   isSchemaObject,
   isShapelessMember,
   isStringWireLocation,
@@ -18,8 +16,9 @@ import {
   isPrimitiveUnion,
   itemsSchemaOf,
   jsLiteral,
+  notPredicate,
   parameterReaders,
-  schemaNamer,
+  refTarget,
   stringboolPattern,
   stringboolTruthyPattern,
   unionPrimitiveTypes,
@@ -27,13 +26,14 @@ import {
   wireArrayOnce,
   withoutParameterSerialization,
 } from '../../helper/index.js'
-import type { EmitOptions, ValibotWrapOptions } from '../../helper/index.js'
+import type { ValibotWrapOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 import {
   issueMessageExpression,
   normalizeTypes,
-  resolveOpenAPIRef,
   valibotError,
+  valibotErrorPart,
 } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { int64Input, integer, isInt64 } from './integer.js'
@@ -66,20 +66,6 @@ function appendPipe(inner: string, actions: readonly string[]): string {
 function preprocess(readers: readonly string[], inner: string): string {
   if (readers.length === 0) return inner
   return prependPipe(['v.unknown()', ...readers.map((reader) => `v.transform(${reader})`)], inner)
-}
-
-/**
- * The `not` predicates by `type`, as the source of an `(input) => ...` arrow. `input` is
- * the parameter name every predicate shares, so their bodies can be joined with `&&`.
- */
-const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
-  string: `(input) => typeof input !== 'string'`,
-  number: `(input) => typeof input !== 'number'`,
-  integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
-  boolean: `(input) => typeof input !== 'boolean'`,
-  array: '(input) => !Array.isArray(input)',
-  object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
-  null: '(input) => input !== null',
 }
 
 /** The pipe items reading the boolean spellings of the wire into a boolean, as `z.stringbool()` reads them. */
@@ -158,43 +144,11 @@ function node(
     // The expression a `$ref` names, bare: the caller wraps it once with what the node
     // itself carries, a `default` or `nullable` beside the `$ref` included.
     const ref = (s: JSONSchema): string => {
-      if (isRootRef(s.$ref)) return `v.lazy(() => ${rootName})`
-      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return 'v.unknown()'
-      if (options?.openapi && s.$ref) {
-        const resolved = resolveOpenAPIRef(s.$ref)
-        if (resolved) {
-          if (resolved === rootName) return `v.lazy(() => ${resolved})`
-          return isValibot ? `v.lazy(() => ${resolved})` : resolved
-        }
-      }
-      const toName = schemaNamer(options?.openapi)
-      for (const prefix of DEFINITION_REF_PREFIXES) {
-        if (s.$ref?.startsWith(prefix)) {
-          const pascalCaseName = toName(s.$ref.slice(prefix.length))
-          if (pascalCaseName === rootName) return `v.lazy(() => ${pascalCaseName})`
-          return isValibot
-            ? `v.lazy(() => ${pascalCaseName})`
-            : rootName === DEFAULT_ROOT_NAME
-              ? `${pascalCaseName}Schema`
-              : `v.lazy(() => ${pascalCaseName})`
-        }
-      }
-      if (s.$ref?.startsWith('#')) {
-        const refName = s.$ref.slice(1)
-        if (refName === '') return `v.lazy(() => ${rootName})`
-        const pascalCaseName = toName(refName)
-        return isValibot
-          ? `v.lazy(() => ${pascalCaseName})`
-          : rootName === DEFAULT_ROOT_NAME
-            ? `${pascalCaseName}Schema`
-            : `v.lazy(() => ${pascalCaseName})`
-      }
-      if (s.$ref?.includes('#')) return 'v.unknown()'
-      if (s.$ref?.startsWith('http')) {
-        const last = s.$ref.split('/').at(-1)
-        if (last) return last.replace(/\.json$/, '')
-      }
-      return 'v.any()'
+      if (s.$ref === undefined) return 'v.any()'
+      const target = refTarget(s.$ref, rootName, isValibot, options?.openapi)
+      if (target.kind === 'lazy') return `v.lazy(() => ${target.name})`
+      if (target.kind === 'value') return target.name
+      return target.kind === 'unknown' ? 'v.unknown()' : 'v.any()'
     }
     const items = itemsSchemaOf(schema.items)
     if (schema.type === 'array' && items?.$ref) {
@@ -214,7 +168,7 @@ function node(
     if (schema.oneOf.length === 0) return valibotWrap('v.any()', schema)
     const schemas = schema.oneOf.map((s) => valibot(s, rootName, isValibot, options))
     const oneOfMessage = schema['x-oneOf-message']
-    const errorPart = oneOfMessage ? `,${valibotError(oneOfMessage)}` : ''
+    const errorPart = valibotErrorPart(oneOfMessage)
     const discriminator = schema.discriminator?.propertyName
     const hasRefOrAllOf = schema.oneOf.some((s) => s.$ref !== undefined || s.allOf !== undefined)
     const expr =
@@ -228,7 +182,7 @@ function node(
     if (schema.anyOf.length === 0) return valibotWrap('v.any()', schema)
     const schemas = schema.anyOf.map((s) => valibot(s, rootName, isValibot, options))
     const anyOfMessage = schema['x-implication-message'] ?? schema['x-anyOf-message']
-    const errorPart = anyOfMessage ? `,${valibotError(anyOfMessage)}` : ''
+    const errorPart = valibotErrorPart(anyOfMessage)
     return valibotWrap(`v.union([${schemas.join(',')}]${errorPart})`, schema)
   }
 
@@ -259,17 +213,10 @@ function node(
     const { not: inner, ...withoutNot } = schema
     if (typeof inner !== 'object' || inner === null) return valibotWrap('v.any()', schema)
     const notMessage = schema['x-not-message']
-    const errorPart = notMessage ? `,${valibotError(notMessage)}` : ''
+    const errorPart = valibotErrorPart(notMessage)
     const predicate = ((): string | undefined => {
-      if ('const' in inner) return `(input) => input !== ${JSON.stringify(inner.const)}`
-      if (typeof inner.type === 'string') return NOT_TYPE_PREDICATES[inner.type]
-      if (Array.isArray(inner.type)) {
-        const bodies = normalizeTypes(inner.type)
-          .map((t) => NOT_TYPE_PREDICATES[t])
-          .filter((p) => p !== undefined)
-          .map((p) => `(${p.replace(/^\(input\) => /u, '')})`)
-        if (bodies.length > 0) return `(input) => ${bodies.join(' && ')}`
-      }
+      const shared = notPredicate(inner, 'input')
+      if (shared !== undefined) return shared
       if (Array.isArray(inner.enum)) {
         // `Array<string>.includes(unknown)` is a type error (the custom predicate's
         // `val` is `unknown`); compare via `.some(===)` which accepts any operand.
@@ -349,9 +296,7 @@ function node(
       // `unevaluatedItems: schema` → `v.tupleWithRest(...)`.
       const u = schema.unevaluatedItems
       const unevaluatedItemsMessage = schema['x-unevaluatedItems-message']
-      const unevaluatedItemsArg = unevaluatedItemsMessage
-        ? `,${valibotError(unevaluatedItemsMessage)}`
-        : ''
+      const unevaluatedItemsArg = valibotErrorPart(unevaluatedItemsMessage)
       const tupleExpr = isSchemaObject(u)
         ? `v.tupleWithRest([${items.join(',')}],${valibot(u, rootName, isValibot, options)})`
         : u === false
@@ -372,13 +317,13 @@ function node(
     // Per-keyword messages
     const lengthMessage = schema['x-length-message']
     const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
-    const minArg = minItemsMessage ? `,${valibotError(minItemsMessage)}` : ''
+    const minArg = valibotErrorPart(minItemsMessage)
     const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
-    const maxArg = maxItemsMessage ? `,${valibotError(maxItemsMessage)}` : ''
+    const maxArg = valibotErrorPart(maxItemsMessage)
     const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
-    const sizeArg = tupleItemsMessage ? `,${valibotError(tupleItemsMessage)}` : ''
+    const sizeArg = valibotErrorPart(tupleItemsMessage)
     const uniqueItemsMessage = schema['x-uniqueItems-message']
-    const uniqueArg = uniqueItemsMessage ? `,${valibotError(uniqueItemsMessage)}` : ''
+    const uniqueArg = valibotErrorPart(uniqueItemsMessage)
     // v3.0: contains / minContains / maxContains as separate checks
     const containsActions = (() => {
       const c = schema.contains
@@ -390,7 +335,7 @@ function node(
       const fallback = schema['x-contains-message'] ?? errorMessage
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
-        const containsArg = fallback ? `,${valibotError(fallback)}` : ''
+        const containsArg = valibotErrorPart(fallback)
         out.push(
           `v.check((input)=>input.some((item)=>v.safeParse(${containsSchema},item).success)${containsArg})`,
         )
@@ -398,14 +343,14 @@ function node(
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
-          const minContainsArg = minContainsMessage ? `,${valibotError(minContainsMessage)}` : ''
+          const minContainsArg = valibotErrorPart(minContainsMessage)
           out.push(
             `v.check((input)=>input.filter((item)=>v.safeParse(${containsSchema},item).success).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
-          const maxContainsArg = maxContainsMessage ? `,${valibotError(maxContainsMessage)}` : ''
+          const maxContainsArg = valibotErrorPart(maxContainsMessage)
           out.push(
             `v.check((input)=>input.filter((item)=>v.safeParse(${containsSchema},item).success).length<=${maxC}${maxContainsArg})`,
           )

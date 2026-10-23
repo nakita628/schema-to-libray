@@ -1,6 +1,6 @@
 import { hasType } from '../guard/index.js'
+import type { EmitOptions } from '../options/index.js'
 import type { JSONSchema, ParamIn, ParamStyle } from '../parser/index.js'
-import type { EmitOptions } from './document.js'
 
 /**
  * How an OpenAPI Parameter Object's text is read into the value its schema describes:

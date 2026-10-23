@@ -5,9 +5,14 @@ import {
   isStringWireLocation,
 } from '../../guard/index.js'
 import { isOptionalByDefault, ownProperties } from '../../helper/index.js'
-import type { EmitOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { issueMessageExpression, makeSafeKey, valibotError } from '../../utils/index.js'
+import {
+  issueMessageExpression,
+  makeSafeKey,
+  valibotError,
+  valibotErrorPart,
+} from '../../utils/index.js'
 import { valibot } from './valibot.js'
 
 /**
@@ -32,16 +37,16 @@ export function object(
   if (hasCombinator(schema)) return valibot(schema, rootName, isValibot, options)
 
   const errorMessage = schema['x-error-message']
-  const errorArg = errorMessage ? `,${valibotError(errorMessage)}` : ''
+  const errorArg = valibotErrorPart(errorMessage)
   const minimumMessage = schema['x-minProperties-message']
-  const minErrorArg = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
+  const minErrorArg = valibotErrorPart(minimumMessage)
   const maximumMessage = schema['x-maxProperties-message']
-  const maxErrorArg = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
+  const maxErrorArg = valibotErrorPart(maximumMessage)
   // v3.0: 1 keyword = 1 message
   const patternPropsMessage = schema['x-patternProperties-message']
-  const patternErrorArg = patternPropsMessage ? `,${valibotError(patternPropsMessage)}` : ''
+  const patternErrorArg = valibotErrorPart(patternPropsMessage)
   const propNamesMessage = schema['x-propertyNames-message']
-  const propNamesErrorArg = propNamesMessage ? `,${valibotError(propNamesMessage)}` : ''
+  const propNamesErrorArg = valibotErrorPart(propNamesMessage)
   const depReqMessage = schema['x-dependentRequired-message']
   const depReqErrorArg = depReqMessage ? `,${valibotError(depReqMessage)}` : errorArg
   const depSchMessage = schema['x-dependentSchemas-message']
@@ -115,9 +120,7 @@ export function object(
 
   // `v.strictObject(entries, message)` surfaces the custom message on extras.
   const strictMessageArg =
-    objectKind === 'strictObject' && strictExtrasMessage
-      ? `,${valibotError(strictExtrasMessage)}`
-      : ''
+    objectKind === 'strictObject' ? valibotErrorPart(strictExtrasMessage) : ''
   const rawBase =
     required.size === 0 && !hasOwnDefault && props.every((p) => p.includes('v.optional('))
       ? `v.partial(v.${objectKind}({${props
@@ -168,13 +171,13 @@ export function object(
     const elseMessage = schema['x-else-message'] ?? ifMessage
     const parts: string[] = []
     if (thenSchema) {
-      const arg = thenMessage ? `,${valibotError(thenMessage)}` : ''
+      const arg = valibotErrorPart(thenMessage)
       parts.push(
         `v.check((input)=>!v.safeParse(${ifSchema},input).success||v.safeParse(${thenSchema},input).success${arg})`,
       )
     }
     if (elseSchema) {
-      const arg = elseMessage ? `,${valibotError(elseMessage)}` : ''
+      const arg = valibotErrorPart(elseMessage)
       parts.push(
         `v.check((input)=>v.safeParse(${ifSchema},input).success||v.safeParse(${elseSchema},input).success${arg})`,
       )

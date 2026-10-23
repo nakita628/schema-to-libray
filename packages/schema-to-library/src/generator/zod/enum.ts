@@ -1,6 +1,6 @@
 import { hasType, isComposite, isPlainObject } from '../../guard/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { makeSafeKey, zodError } from '../../utils/index.js'
+import { makeSafeKey, zodErrorPart } from '../../utils/index.js'
 import { isInt64 } from './integer.js'
 
 /**
@@ -38,7 +38,7 @@ export function _enum(schema: JSONSchema) {
   // enum case (no new capability).
   const enumMessage = schema['x-enum-message']
   const errorMessage = enumMessage ?? schema['x-error-message']
-  const errorArg = errorMessage ? `,${zodError(errorMessage)}` : ''
+  const errorArg = zodErrorPart(errorMessage)
   // Zod v4 `z.literal` is primitive-only; array/object enum members need a
   // structural matcher (`z.tuple` / `z.strictObject`). Primitives and `null`
   // keep their `z.literal(...)` output byte-for-byte.

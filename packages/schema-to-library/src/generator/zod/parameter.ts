@@ -1,5 +1,5 @@
-import type { EmitOptions } from '../../helper/index.js'
 import { parameterReaders } from '../../helper/parameter.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
 
 export { hasParameterSerialization, withoutParameterSerialization } from '../../helper/parameter.js'

@@ -1,6 +1,6 @@
 import { NUMBER_RANGES } from '../../constants/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { valibotError } from '../../utils/index.js'
+import { valibotError, valibotErrorPart } from '../../utils/index.js'
 
 /** The `v.minValue` / `v.maxValue` / `v.gtValue` / `v.ltValue` / `v.multipleOf` actions of a numeric node. */
 export function numberActions(
@@ -8,16 +8,16 @@ export function numberActions(
   lit: (n: number) => string = (n) => `${n}`,
 ): readonly string[] {
   const minimumMessage = schema['x-minimum-message']
-  const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
+  const minErrorPart = valibotErrorPart(minimumMessage)
   const maximumMessage = schema['x-maximum-message']
-  const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
+  const maxErrorPart = valibotErrorPart(maximumMessage)
   // v3.0: x-exclusiveMin/Max-message for valibot's gtValue / ltValue
   const exMinMessage = schema['x-exclusiveMinimum-message']
-  const exMinErrorPart = exMinMessage ? `,${valibotError(exMinMessage)}` : ''
+  const exMinErrorPart = valibotErrorPart(exMinMessage)
   const exMaxMessage = schema['x-exclusiveMaximum-message']
-  const exMaxErrorPart = exMaxMessage ? `,${valibotError(exMaxMessage)}` : ''
+  const exMaxErrorPart = valibotErrorPart(exMaxMessage)
   const multipleOfMessage = schema['x-multipleOf-message']
-  const multipleOfErrorPart = multipleOfMessage ? `,${valibotError(multipleOfMessage)}` : ''
+  const multipleOfErrorPart = valibotErrorPart(multipleOfMessage)
   const minimum = (() => {
     if (schema.minimum !== undefined) {
       return schema.exclusiveMinimum === true

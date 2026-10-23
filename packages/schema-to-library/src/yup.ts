@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { NodeRuntime, NodeServices } from '@effect/platform-node'
-import { Effect } from 'effect'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
+import * as Effect from 'effect/Effect'
 
 import pkg from '../package.json' with { type: 'json' }
 import { cli } from './cli/index.js'

@@ -1,5 +1,5 @@
 import type { JSONSchema } from '../../parser/index.js'
-import { zodBaseError, zodError } from '../../utils/index.js'
+import { zodBaseError, zodError, zodErrorPart } from '../../utils/index.js'
 
 /** Whether a node is a 64-bit integer: a value beyond 2^53 that Zod reads as a bigint. */
 export function isInt64(schema: JSONSchema): boolean {
@@ -106,7 +106,7 @@ export function integer(schema: JSONSchema) {
     return undefined
   })()
   const multipleOfMessage = schema['x-multipleOf-message'] ?? errorMessage
-  const multipleOfErrorArg = multipleOfMessage ? `,${zodError(multipleOfMessage)}` : ''
+  const multipleOfErrorArg = zodErrorPart(multipleOfMessage)
   const multipleOf =
     typeof schema.multipleOf === 'number'
       ? `.multipleOf(${lit(schema.multipleOf)}${multipleOfErrorArg})`

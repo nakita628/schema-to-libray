@@ -31,7 +31,7 @@ import { Payload as ParamJsonContentPayload } from '../param-json-content/output
 
 // valibot 1.3.x internals exposed in issue objects.
 const NAME_REGEX = /^[a-zA-Z]+$/
-const EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-z]+(?:[.-][\da-z]+)*\.[a-z]{2,}$/iu
+const EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-zA-Z]+(?:[.-][\da-zA-Z]+)*\.[a-zA-Z]{2,}$/u
 // `format: uuid` is checked with the regex Zod uses, so the five targets agree on versions.
 const UUID_REGEX =
   /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/

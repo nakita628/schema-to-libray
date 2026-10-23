@@ -2,7 +2,7 @@ import { hasFixedLength } from '../../guard/index.js'
 import { formatPattern } from '../../helper/format.js'
 import { regexLiteral } from '../../helper/regex.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { valibotError } from '../../utils/index.js'
+import { valibotError, valibotErrorPart } from '../../utils/index.js'
 
 /** The formats Valibot checks with an action of its own, keyed by the lower-cased format. */
 const FORMAT_ACTION: { readonly [k: string]: string } = {
@@ -70,13 +70,13 @@ export function string(schema: JSONSchema) {
   // A `binary` string is a file, not text.
   if (formatName === 'binary') return errorMessage ? `v.file(${baseErrorArg})` : 'v.file()'
   const patternMessage = schema['x-pattern-message']
-  const patternErrorPart = patternMessage ? `,${valibotError(patternMessage)}` : ''
+  const patternErrorPart = valibotErrorPart(patternMessage)
   const lengthMessage = schema['x-minLength-message'] ?? schema['x-maxLength-message']
-  const lengthErrorPart = lengthMessage ? `,${valibotError(lengthMessage)}` : ''
+  const lengthErrorPart = valibotErrorPart(lengthMessage)
   const minimumMessage = schema['x-minLength-message']
-  const minErrorPart = minimumMessage ? `,${valibotError(minimumMessage)}` : ''
+  const minErrorPart = valibotErrorPart(minimumMessage)
   const maximumMessage = schema['x-maxLength-message']
-  const maxErrorPart = maximumMessage ? `,${valibotError(maximumMessage)}` : ''
+  const maxErrorPart = valibotErrorPart(maximumMessage)
   const format =
     formatName === undefined
       ? []

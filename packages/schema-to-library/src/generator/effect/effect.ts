@@ -1,11 +1,9 @@
-import { DEFAULT_ROOT_NAME, DEFINITION_REF_PREFIXES } from '../../constants/index.js'
+import { DEFAULT_ROOT_NAME } from '../../constants/index.js'
 import {
   hasFixedItemCount,
-  isDeepLocalPointer,
   isDefaultOnlyMember,
   isNullable,
   isNullTypeMember,
-  isRootRef,
   isSchemaObject,
   isShapelessMember,
   isStringWireLocation,
@@ -19,17 +17,19 @@ import {
   isPrimitiveUnion,
   itemsSchemaOf,
   jsLiteral,
+  notPredicate,
   parameterReaders,
-  schemaNamer,
+  refTarget,
   stringboolPattern,
   stringboolTruthyPattern,
   unionPrimitiveTypes,
   wireArrayOnce,
   withoutParameterSerialization,
 } from '../../helper/index.js'
-import type { EffectWrapOptions, EmitOptions } from '../../helper/index.js'
+import type { EffectWrapOptions } from '../../helper/index.js'
+import type { EmitOptions } from '../../options/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { effectError, normalizeTypes, resolveOpenAPIRef } from '../../utils/index.js'
+import { effectError, effectErrorPart, normalizeTypes } from '../../utils/index.js'
 import { _enum } from './enum.js'
 import { int64Input, integer, isInt64 } from './integer.js'
 import { number } from './number.js'
@@ -48,20 +48,6 @@ function stringbool(): string {
     `SchemaTransformation.transform({decode:(input)=>${stringboolTruthyPattern()}.test(input),` +
     `encode:(output)=>output?"true":"false"})))`
   )
-}
-
-/**
- * The `not` predicates by `type`, as the source of an `(input) => ...` arrow. `input` is
- * the parameter name every predicate shares, so their bodies can be joined with `&&`.
- */
-const NOT_TYPE_PREDICATES: { readonly [k: string]: string } = {
-  string: `(input) => typeof input !== 'string'`,
-  number: `(input) => typeof input !== 'number'`,
-  integer: `(input) => typeof input !== 'number' || !Number.isInteger(input)`,
-  boolean: `(input) => typeof input !== 'boolean'`,
-  array: '(input) => !Array.isArray(input)',
-  object: `(input) => typeof input !== 'object' || input === null || Array.isArray(input)`,
-  null: '(input) => input !== null',
 }
 
 /**
@@ -163,43 +149,10 @@ function node(
     // The expression a `$ref` names, bare: the caller wraps it once with what the node
     // itself carries, a `default` or `nullable` beside the `$ref` included.
     const ref = (s: JSONSchema): string => {
-      if (isRootRef(s.$ref)) return `Schema.suspend(() => ${rootName})`
-      if (typeof s.$ref === 'string' && isDeepLocalPointer(s.$ref)) return 'Schema.Unknown'
-      if (options?.openapi && s.$ref) {
-        const resolved = resolveOpenAPIRef(s.$ref)
-        if (resolved) {
-          if (resolved === rootName) return `Schema.suspend(() => ${resolved})`
-          return isEffect ? `Schema.suspend(() => ${resolved})` : resolved
-        }
-      }
-      const toName = schemaNamer(options?.openapi)
-      for (const prefix of DEFINITION_REF_PREFIXES) {
-        if (s.$ref?.startsWith(prefix)) {
-          const pascalCaseName = toName(s.$ref.slice(prefix.length))
-          if (pascalCaseName === rootName) return `Schema.suspend(() => ${pascalCaseName})`
-          return isEffect
-            ? `Schema.suspend(() => ${pascalCaseName})`
-            : rootName === DEFAULT_ROOT_NAME
-              ? `${pascalCaseName}Schema`
-              : `Schema.suspend(() => ${pascalCaseName})`
-        }
-      }
-      if (s.$ref?.startsWith('#')) {
-        const refName = s.$ref.slice(1)
-        if (refName === '') return `Schema.suspend(() => ${rootName})`
-        const pascalCaseName = toName(refName)
-        return isEffect
-          ? `Schema.suspend(() => ${pascalCaseName})`
-          : rootName === DEFAULT_ROOT_NAME
-            ? `${pascalCaseName}Schema`
-            : `Schema.suspend(() => ${pascalCaseName})`
-      }
-      if (s.$ref?.includes('#')) return 'Schema.Unknown'
-      if (s.$ref?.startsWith('http')) {
-        const last = s.$ref.split('/').at(-1)
-        if (last) return last.replace(/\.json$/, '')
-      }
-      return 'Schema.Unknown'
+      if (s.$ref === undefined) return 'Schema.Unknown'
+      const target = refTarget(s.$ref, rootName, isEffect, options?.openapi)
+      if (target.kind === 'lazy') return `Schema.suspend(() => ${target.name})`
+      return target.kind === 'value' ? target.name : 'Schema.Unknown'
     }
     const items = itemsSchemaOf(schema.items)
     if (schema.type === 'array' && items?.$ref) {
@@ -263,17 +216,10 @@ function node(
     const { not: inner, ...withoutNot } = schema
     if (typeof inner !== 'object' || inner === null) return effectWrap('Schema.Unknown', schema)
     const notMessage = schema['x-not-message']
-    const filterOpts = notMessage ? `,${effectError(notMessage)}` : ''
+    const filterOpts = effectErrorPart(notMessage)
     const predicate = ((): string | undefined => {
-      if ('const' in inner) return `(input) => input !== ${JSON.stringify(inner.const)}`
-      if (typeof inner.type === 'string') return NOT_TYPE_PREDICATES[inner.type]
-      if (Array.isArray(inner.type)) {
-        const bodies = normalizeTypes(inner.type)
-          .map((t) => NOT_TYPE_PREDICATES[t])
-          .filter((p) => p !== undefined)
-          .map((p) => `(${p.replace(/^\(input\) => /u, '')})`)
-        if (bodies.length > 0) return `(input) => ${bodies.join(' && ')}`
-      }
+      const shared = notPredicate(inner, 'input')
+      if (shared !== undefined) return shared
       if (Array.isArray(inner.enum)) {
         // `Array<string>.includes(unknown)` is a type error (the predicate's `val`
         // is `unknown`); compare via `.some(===)` which accepts any operand.
@@ -371,13 +317,13 @@ function node(
     // Per-keyword array messages
     const lengthMessage = schema['x-length-message']
     const minItemsMessage = schema['x-minItems-message'] ?? lengthMessage
-    const minArg = minItemsMessage ? `,${effectError(minItemsMessage)}` : ''
+    const minArg = effectErrorPart(minItemsMessage)
     const maxItemsMessage = schema['x-maxItems-message'] ?? lengthMessage
-    const maxArg = maxItemsMessage ? `,${effectError(maxItemsMessage)}` : ''
+    const maxArg = effectErrorPart(maxItemsMessage)
     const tupleItemsMessage = minItemsMessage ?? maxItemsMessage
-    const sizeArg = tupleItemsMessage ? `,${effectError(tupleItemsMessage)}` : ''
+    const sizeArg = effectErrorPart(tupleItemsMessage)
     const uniqueItemsMessage = schema['x-uniqueItems-message']
-    const uniqueArg = uniqueItemsMessage ? `,${effectError(uniqueItemsMessage)}` : ''
+    const uniqueArg = effectErrorPart(uniqueItemsMessage)
     // v3.0: contains / minContains / maxContains as separate filters
     const containsChecks = (() => {
       const c = schema.contains
@@ -389,7 +335,7 @@ function node(
       const fallback = schema['x-contains-message'] ?? errorMessage
       const out: string[] = []
       if (minC === undefined && maxC === undefined) {
-        const containsArg = fallback ? `,${effectError(fallback)}` : ''
+        const containsArg = effectErrorPart(fallback)
         out.push(
           `Schema.makeFilter((input)=>input.some((item)=>Schema.is(${containsSchema})(item))${containsArg})`,
         )
@@ -397,14 +343,14 @@ function node(
         const effectiveMin = minC ?? 1
         if (effectiveMin > 0) {
           const minContainsMessage = schema['x-minContains-message'] ?? fallback
-          const minContainsArg = minContainsMessage ? `,${effectError(minContainsMessage)}` : ''
+          const minContainsArg = effectErrorPart(minContainsMessage)
           out.push(
             `Schema.makeFilter((input)=>input.filter((item)=>Schema.is(${containsSchema})(item)).length>=${effectiveMin}${minContainsArg})`,
           )
         }
         if (maxC !== undefined) {
           const maxContainsMessage = schema['x-maxContains-message'] ?? fallback
-          const maxContainsArg = maxContainsMessage ? `,${effectError(maxContainsMessage)}` : ''
+          const maxContainsArg = effectErrorPart(maxContainsMessage)
           out.push(
             `Schema.makeFilter((input)=>input.filter((item)=>Schema.is(${containsSchema})(item)).length<=${maxC}${maxContainsArg})`,
           )

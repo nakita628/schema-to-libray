@@ -1,6 +1,6 @@
 import { NUMBER_RANGES } from '../../constants/index.js'
 import type { JSONSchema } from '../../parser/index.js'
-import { effectError } from '../../utils/index.js'
+import { effectError, effectErrorPart } from '../../utils/index.js'
 
 /** The bound and `multipleOf` checks of a numeric node. */
 export function numberChecks(
@@ -9,16 +9,16 @@ export function numberChecks(
   suffix = '',
 ): readonly string[] {
   const minimumMessage = schema['x-minimum-message']
-  const minErrorPart = minimumMessage ? `,${effectError(minimumMessage)}` : ''
+  const minErrorPart = effectErrorPart(minimumMessage)
   const maximumMessage = schema['x-maximum-message']
-  const maxErrorPart = maximumMessage ? `,${effectError(maximumMessage)}` : ''
+  const maxErrorPart = effectErrorPart(maximumMessage)
   // v3.0: exclusive bounds get their own message (isGreaterThan / isLessThan)
   const exMinMessage = schema['x-exclusiveMinimum-message']
-  const exMinErrorPart = exMinMessage ? `,${effectError(exMinMessage)}` : ''
+  const exMinErrorPart = effectErrorPart(exMinMessage)
   const exMaxMessage = schema['x-exclusiveMaximum-message']
-  const exMaxErrorPart = exMaxMessage ? `,${effectError(exMaxMessage)}` : ''
+  const exMaxErrorPart = effectErrorPart(exMaxMessage)
   const multipleOfMessage = schema['x-multipleOf-message']
-  const multipleOfErrorPart = multipleOfMessage ? `,${effectError(multipleOfMessage)}` : ''
+  const multipleOfErrorPart = effectErrorPart(multipleOfMessage)
   const minimum = (() => {
     if (schema.minimum !== undefined) {
       return schema.exclusiveMinimum === true
