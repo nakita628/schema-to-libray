@@ -4,8 +4,8 @@ export const User = v.object({
   name: v.pipe(
     v.string('Invalid name'),
     v.regex(/^[a-zA-Z]+$/, 'Only alphabetic characters'),
-    v.check((input) => [...input].length >= 3, 'Name too short'),
-    v.check((input) => [...input].length <= 20, 'Name too long'),
+    v.minCodePoints(3, 'Name too short'),
+    v.maxCodePoints(20, 'Name too long'),
   ),
   age: v.pipe(
     v.number('Invalid age'),

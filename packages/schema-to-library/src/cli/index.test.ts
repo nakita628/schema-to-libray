@@ -416,10 +416,7 @@ describe('x-error-message: schema-to-valibot', () => {
     expect(result.code).toBe(`import * as v from 'valibot'
 
 export const UserForm = v.object({
-  name: v.pipe(
-    v.string('Name is required'),
-    v.check((input) => [...input].length >= 1),
-  ),
+  name: v.pipe(v.string('Name is required'), v.minCodePoints(1)),
   email: v.pipe(v.string('Invalid email'), v.email('Invalid email')),
   age: v.optional(
     v.pipe(v.number('Invalid age'), v.integer('Invalid age'), v.minValue(0), v.maxValue(150)),
@@ -533,8 +530,8 @@ describe('granular messages: schema-to-valibot', () => {
 export const Product = v.object({
   name: v.pipe(
     v.string(),
-    v.check((input) => [...input].length >= 1, 'Name cannot be empty'),
-    v.check((input) => [...input].length <= 100, 'Name too long'),
+    v.minCodePoints(1, 'Name cannot be empty'),
+    v.maxCodePoints(100, 'Name too long'),
   ),
   sku: v.pipe(v.string(), v.regex(/^[A-Z]{3}-[0-9]{4}$/, 'SKU must be like ABC-1234')),
   price: v.pipe(v.number(), v.minValue(0, 'Price cannot be negative')),

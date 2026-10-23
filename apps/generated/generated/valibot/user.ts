@@ -10,13 +10,7 @@ export const User = v.strictObject({
     ),
     v.description('Unique identifier for the user'),
   ),
-  name: v.pipe(
-    v.pipe(
-      v.string(),
-      v.check((input) => [...input].length >= 1),
-    ),
-    v.description('Name of the user'),
-  ),
+  name: v.pipe(v.pipe(v.string(), v.minCodePoints(1)), v.description('Name of the user')),
   age: v.optional(
     v.pipe(v.pipe(v.number(), v.integer(), v.minValue(0)), v.description('Age of the user')),
   ),

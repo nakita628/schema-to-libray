@@ -60,10 +60,7 @@ export const Organization: v.GenericSchema<unknown, _Organization> = v.pipe(
       v.description('The UUID of the organization.'),
     ),
     name: v.pipe(
-      v.pipe(
-        v.string(),
-        v.check((input) => [...input].length >= 1),
-      ),
+      v.pipe(v.string(), v.minCodePoints(1)),
       v.description('The name of the organization.'),
     ),
     members: v.optional(

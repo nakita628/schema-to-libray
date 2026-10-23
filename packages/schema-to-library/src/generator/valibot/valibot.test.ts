@@ -420,7 +420,7 @@ describe('valibot', () => {
       [{ type: ['string', 'null'] }, 'v.nullable(v.string())'],
       [
         { type: 'string', minLength: 1, maxLength: 10 },
-        'v.pipe(v.string(),v.check((input)=>[...input].length>=1),v.check((input)=>[...input].length<=10))',
+        'v.pipe(v.string(),v.minCodePoints(1),v.maxCodePoints(10))',
       ],
       [{ type: 'string', pattern: '^\\w+$' }, 'v.pipe(v.string(),v.regex(/^\\w+$/))'],
       [{ type: 'string', default: 'test' }, 'v.optional(v.string(),"test")'],
@@ -1341,11 +1341,7 @@ describe('valibot contains / minContains / maxContains', () => {
         { paramIn: 'query' },
         'v.pipe(v.string(),v.transform(Number),v.number(),v.finite(),v.minValue(1))',
       ],
-      [
-        { maxLength: 3 },
-        { paramIn: 'query' },
-        'v.pipe(v.string(),v.check((input)=>[...input].length<=3))',
-      ],
+      [{ maxLength: 3 }, { paramIn: 'query' }, 'v.pipe(v.string(),v.maxCodePoints(3))'],
       [
         { type: 'integer', not: { const: 0 } },
         { paramIn: 'query' },
@@ -1528,12 +1524,12 @@ describe('valibot contains / minContains / maxContains', () => {
       [
         { type: 'string', minLength: 2, maxLength: 4 },
         undefined,
-        'v.pipe(v.string(),v.check((input)=>[...input].length>=2),v.check((input)=>[...input].length<=4))',
+        'v.pipe(v.string(),v.minCodePoints(2),v.maxCodePoints(4))',
       ],
       [
         { type: 'string', minLength: 6, maxLength: 6, 'x-length-message': 'six' },
         undefined,
-        'v.pipe(v.string(),v.check((input)=>[...input].length===6))',
+        'v.pipe(v.string(),v.codePoints(6))',
       ],
     ])('valibot(%o, %o) → %s', (schema, options, expected) => {
       expect(valibot(schema, 'Schema', false, options)).toBe(expected)

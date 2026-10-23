@@ -28,19 +28,13 @@ describe('valibot string', () => {
     [{ type: 'string', format: 'ipv6' }, 'v.pipe(v.string(),v.ipv6())'],
     [{ type: 'string', format: 'emoji' }, 'v.pipe(v.string(),v.emoji())'],
     [{ type: 'string', format: 'base64' }, 'v.pipe(v.string(),v.base64())'],
-    [{ type: 'string', minLength: 1 }, 'v.pipe(v.string(),v.check((input)=>[...input].length>=1))'],
-    [
-      { type: 'string', maxLength: 100 },
-      'v.pipe(v.string(),v.check((input)=>[...input].length<=100))',
-    ],
+    [{ type: 'string', minLength: 1 }, 'v.pipe(v.string(),v.minCodePoints(1))'],
+    [{ type: 'string', maxLength: 100 }, 'v.pipe(v.string(),v.maxCodePoints(100))'],
     [
       { type: 'string', minLength: 3, maxLength: 20 },
-      'v.pipe(v.string(),v.check((input)=>[...input].length>=3),v.check((input)=>[...input].length<=20))',
+      'v.pipe(v.string(),v.minCodePoints(3),v.maxCodePoints(20))',
     ],
-    [
-      { type: 'string', minLength: 5, maxLength: 5 },
-      'v.pipe(v.string(),v.check((input)=>[...input].length===5))',
-    ],
+    [{ type: 'string', minLength: 5, maxLength: 5 }, 'v.pipe(v.string(),v.codePoints(5))'],
     [{ type: 'string', pattern: '^[a-z]+$' }, 'v.pipe(v.string(),v.regex(/^[a-z]+$/))'],
   ])('string(%o) → %s', (input, expected) => {
     expect(string(input)).toBe(expected)
@@ -77,7 +71,7 @@ describe('valibot string', () => {
           'x-minLength-message': 'Min 3 chars',
           'x-maxLength-message': 'Max 20 chars',
         },
-        'v.pipe(v.string(),v.check((input)=>[...input].length>=3,"Min 3 chars"),v.check((input)=>[...input].length<=20,"Max 20 chars"))',
+        'v.pipe(v.string(),v.minCodePoints(3,"Min 3 chars"),v.maxCodePoints(20,"Max 20 chars"))',
       ],
       [
         {
@@ -87,7 +81,7 @@ describe('valibot string', () => {
           'x-minLength-message': 'Must be exactly 10 characters',
           'x-maxLength-message': 'Must be exactly 10 characters',
         },
-        'v.pipe(v.string(),v.check((input)=>[...input].length===10,"Must be exactly 10 characters"))',
+        'v.pipe(v.string(),v.codePoints(10,"Must be exactly 10 characters"))',
       ],
     ])('string(%o) → %s', (input, expected) => {
       expect(string(input)).toBe(expected)

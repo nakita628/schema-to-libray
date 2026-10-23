@@ -56,12 +56,12 @@ describe('error-messages: User', () => {
       expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
-          type: 'check',
+          type: 'min_code_points',
           input: 'a',
-          expected: null,
-          received: '"a"',
+          expected: '>=3',
+          received: '1',
           message: 'Name too short',
-          requirement: expect.any(Function),
+          requirement: 3,
           path: [{ type: 'object', origin: 'value', input, key: 'name', value: 'a' }],
           issues: undefined,
           lang: undefined,
@@ -425,12 +425,12 @@ describe('nested: Order', () => {
         },
         {
           kind: 'validation',
-          type: 'check',
+          type: 'min_code_points',
           input: '',
-          expected: null,
-          received: '""',
-          message: 'Invalid input: Received ""',
-          requirement: expect.any(Function),
+          expected: '>=1',
+          received: '0',
+          message: 'Invalid code points: Expected >=1 but received 0',
+          requirement: 1,
           path: [
             { type: 'object', origin: 'value', input, key: 'customer', value: customer },
             { type: 'object', origin: 'value', input: customer, key: 'name', value: '' },
@@ -1168,12 +1168,12 @@ describe('valibot fixtures: length-message runtime', () => {
       expect(result.issues).toStrictEqual([
         {
           kind: 'validation',
-          type: 'check',
+          type: 'code_points',
           input: '',
-          expected: null,
-          received: '""',
+          expected: '6',
+          received: '0',
           message: 'Code must be exactly 6 characters',
-          requirement: expect.any(Function),
+          requirement: 6,
           path: [
             {
               type: 'object',

@@ -316,7 +316,7 @@ export type MinMaxOutput = v.InferOutput<typeof MinMax>`
     })
     const expected = `import * as v from 'valibot'
 
-export const Length = v.partial(v.object({name:v.pipe(v.string(),v.check((input)=>[...input].length>=1),v.check((input)=>[...input].length<=100))}))
+export const Length = v.partial(v.object({name:v.pipe(v.string(),v.minCodePoints(1),v.maxCodePoints(100))}))
 
 export type LengthOutput = v.InferOutput<typeof Length>`
     expect(result).toBe(expected)
@@ -1059,7 +1059,7 @@ export type ConfigOutput = v.InferOutput<typeof Config>`
       })
       const expected = `import * as v from 'valibot'
 
-export const Username = v.pipe(v.pipe(v.string(),v.check((input)=>[...input].length>=3),v.check((input)=>[...input].length<=20)),v.brand("Username"))
+export const Username = v.pipe(v.pipe(v.string(),v.minCodePoints(3),v.maxCodePoints(20)),v.brand("Username"))
 
 export type UsernameOutput = v.InferOutput<typeof Username>`
       expect(result).toBe(expected)

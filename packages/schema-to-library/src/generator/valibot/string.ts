@@ -52,8 +52,9 @@ function formatActions(schema: JSONSchema, format: string, errorArg: string): re
 
 /**
  * The Valibot schema of a string node. `minLength` / `maxLength` count code points, as
- * JSON Schema does, so a check over `[...input]` stands in for `v.minLength`, which
- * counts UTF-16 units.
+ * JSON Schema does, so they are `v.minCodePoints` / `v.maxCodePoints` / `v.codePoints`
+ * rather than `v.minLength`, which counts UTF-16 units, or `v.minGraphemes`, which
+ * counts user-perceived characters.
  */
 export function string(schema: JSONSchema) {
   const errorMessage = schema['x-error-message']
@@ -118,14 +119,12 @@ export function string(schema: JSONSchema) {
     includes,
     ...format,
     schema.pattern ? `v.regex(${regexLiteral(schema.pattern)}${patternErrorPart})` : undefined,
-    isFixedLength
-      ? `v.check((input)=>[...input].length===${schema.minLength}${lengthErrorPart})`
-      : undefined,
+    isFixedLength ? `v.codePoints(${schema.minLength}${lengthErrorPart})` : undefined,
     !isFixedLength && schema.minLength !== undefined
-      ? `v.check((input)=>[...input].length>=${schema.minLength}${minErrorPart})`
+      ? `v.minCodePoints(${schema.minLength}${minErrorPart})`
       : undefined,
     !isFixedLength && schema.maxLength !== undefined
-      ? `v.check((input)=>[...input].length<=${schema.maxLength}${maxErrorPart})`
+      ? `v.maxCodePoints(${schema.maxLength}${maxErrorPart})`
       : undefined,
   ].filter((v) => v !== undefined)
   if (actions.length > 0) return `v.pipe(v.string(${baseErrorArg}),${actions.join(',')})`
